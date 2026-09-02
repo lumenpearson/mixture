@@ -8,7 +8,12 @@
     "build": "pnpm approve-builds && turbo run build --filter=web",
     "start": "turbo run start",
     "lint": "turbo run lint",
-    "licenses": "turbo run licenses"
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "licenses": "turbo run licenses",
+    "generate": "pnpm --filter @mixture/protocol generate",
+    "check:protocol-generation": "node scripts/check-protocol-generation.mjs",
+    "check": "pnpm check:protocol-generation && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {
     "turbo": "^2.9.16"

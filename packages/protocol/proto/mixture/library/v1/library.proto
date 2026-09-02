@@ -1,0 +1,128 @@
+syntax = "proto3";
+
+package mixture.library.v1;
+
+import "mixture/common/v1/common.proto";
+
+// A library category. Built-in categories are shipped with the app; custom
+// ones are stored in Postgres and carry `custom = true`.
+message CategoryDef {
+  string id = 1;
+  string accent = 2;
+  string tint = 3;
+  string icon = 4;
+  mixture.common.v1.LocalizedText label = 5;
+  bool custom = 6;
+}
+
+// A screen insert: the library card plus its generation prompts.
+message Insert {
+  string id = 1;
+  string date = 2;
+  string episode = 3;
+  string scene = 4;
+  string category = 5;
+  mixture.common.v1.DeviceType device = 6;
+  mixture.common.v1.AspectRatio aspect = 7;
+  mixture.common.v1.InsertStatus status = 8;
+  mixture.common.v1.LocalizedText title = 9;
+  mixture.common.v1.LocalizedText description = 10;
+  mixture.common.v1.LocalizedText prompt = 11;
+  mixture.common.v1.LocalizedText short_prompt = 12;
+  mixture.common.v1.LocalizedText negative_prompt = 13;
+  mixture.common.v1.LocalizedList technical_notes = 14;
+  // true for rows stored in the database (as opposed to built-in / generated
+  // inserts that ship with the source tree).
+  bool custom = 15;
+}
+
+// The full merged library: built-ins, generated packages and custom rows.
+message Library {
+  repeated CategoryDef categories = 1;
+  repeated Insert inserts = 2;
+  // false when the database is unreachable and only built-in data is served.
+  bool persistent = 3;
+  // true when the server requires an edit token for mutations.
+  bool edit_locked = 4;
+}
+
+message GetLibraryRequest {}
+
+message GetLibraryResponse {
+  Library library = 1;
+}
+
+message AddCategoryRequest {
+  string label_ru = 1;
+  string label_en = 2;
+  string slug = 3;
+  string accent = 4;
+  string tint = 5;
+  string icon = 6;
+}
+
+message AddCategoryResponse {
+  Library library = 1;
+  string id = 2;
+}
+
+message AddInsertRequest {
+  string slug = 1;
+  string category = 2;
+  mixture.common.v1.DeviceType device = 3;
+  mixture.common.v1.AspectRatio aspect = 4;
+  mixture.common.v1.InsertStatus status = 5;
+  string episode = 6;
+  string scene = 7;
+  string date = 8;
+  string title_ru = 9;
+  string title_en = 10;
+  string description_ru = 11;
+  string description_en = 12;
+  string prompt_ru = 13;
+  string prompt_en = 14;
+  string short_prompt_ru = 15;
+  string short_prompt_en = 16;
+  string negative_prompt_ru = 17;
+  string negative_prompt_en = 18;
+  repeated string technical_notes_ru = 19;
+  repeated string technical_notes_en = 20;
+}
+
+message AddInsertResponse {
+  Library library = 1;
+  string id = 2;
+}
+
+message DeleteInsertRequest {
+  string id = 1;
+}
+
+message DeleteInsertResponse {
+  Library library = 1;
+}
+
+message DeleteCategoryRequest {
+  string id = 1;
+}
+
+message DeleteCategoryResponse {
+  Library library = 1;
+}
+
+message ResetLibraryRequest {}
+
+message ResetLibraryResponse {
+  Library library = 1;
+}
+
+// The insert library. Reads are public; mutations are gated by the optional
+// `x-mixture-edit-token` header when MIXTURE_EDIT_TOKEN is configured.
+service LibraryService {
+  rpc GetLibrary(GetLibraryRequest) returns (GetLibraryResponse);
+  rpc AddCategory(AddCategoryRequest) returns (AddCategoryResponse);
+  rpc AddInsert(AddInsertRequest) returns (AddInsertResponse);
+  rpc DeleteInsert(DeleteInsertRequest) returns (DeleteInsertResponse);
+  rpc DeleteCategory(DeleteCategoryRequest) returns (DeleteCategoryResponse);
+  rpc ResetLibrary(ResetLibraryRequest) returns (ResetLibraryResponse);
+}

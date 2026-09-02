@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
-    ignoreBuildErrors: true,
+    // type errors fail the build; `pnpm typecheck` is the same gate locally
+    ignoreBuildErrors: false,
   },
   images: {
     unoptimized: true,
@@ -10,6 +11,7 @@ const nextConfig = {
     externalDir: true,
   },
   transpilePackages: [
+    "@mixture/protocol",
     "@screenkit/core",
     "@screenkit/insert-bank",
     "@screenkit/insert-call",

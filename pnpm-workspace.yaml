@@ -5,3 +5,5 @@ packages:
   - "packages/inserts/*/*"
 allowBuilds:
   sharp: false
+  "@bufbuild/buf": true
+  unrs-resolver: true

@@ -1,0 +1,187 @@
+syntax = "proto3";
+
+package mixture.changelog.v1;
+
+// Live GitHub changelog for the project repository.
+
+message RepositoryOwner {
+  string login = 1;
+  string avatar_url = 2;
+  string url = 3;
+}
+
+message Repository {
+  string name = 1;
+  string url = 2;
+  string description = 3;
+  bool private = 4;
+  bool fork = 5;
+  string default_branch = 6;
+  string primary_language = 7;
+  int32 stars = 8;
+  int32 watchers = 9;
+  int32 forks = 10;
+  int32 open_issues = 11;
+  int32 size = 12;
+  string created_at = 13;
+  string updated_at = 14;
+  string pushed_at = 15;
+  string license = 16;
+  RepositoryOwner owner = 17;
+}
+
+message BranchStats {
+  string name = 1;
+  string sha = 2;
+  bool protected = 3;
+  int32 commits = 4;
+  string last_commit_at = 5;
+}
+
+message ContributorStats {
+  string login = 1;
+  string avatar_url = 2;
+  string url = 3;
+  int32 contributions = 4;
+  int32 commits = 5;
+  int32 events = 6;
+  string last_active_at = 7;
+  int32 score = 8;
+}
+
+message LanguageStat {
+  string name = 1;
+  int64 bytes = 2;
+  double percent = 3;
+}
+
+message Release {
+  int64 id = 1;
+  string name = 2;
+  string tag = 3;
+  string url = 4;
+  bool draft = 5;
+  bool prerelease = 6;
+  string published_at = 7;
+}
+
+message Tag {
+  string name = 1;
+  string sha = 2;
+  string zipball_url = 3;
+  string tarball_url = 4;
+}
+
+message RepoSmallItem {
+  int64 id = 1;
+  int32 number = 2;
+  string title = 3;
+  string state = 4;
+  string url = 5;
+  string updated_at = 6;
+  string author = 7;
+  string avatar_url = 8;
+}
+
+message ItemCounts {
+  int32 open = 1;
+  int32 closed = 2;
+  repeated RepoSmallItem recent = 3;
+}
+
+message DayStats {
+  string day = 1;
+  int32 commits = 2;
+  int32 events = 3;
+  int32 total = 4;
+}
+
+message EventTypeStat {
+  string type = 1;
+  int32 count = 2;
+}
+
+message Stats {
+  repeated DayStats days = 1;
+  repeated EventTypeStat event_types = 2;
+  map<string, int32> totals = 3;
+}
+
+message Commit {
+  string id = 1;
+  string slug = 2;
+  string sha = 3;
+  string short_sha = 4;
+  string title = 5;
+  string body = 6;
+  string date = 7;
+  string url = 8;
+  string author = 9;
+  string author_login = 10;
+  string avatar_url = 11;
+  repeated string branches = 12;
+  int32 parent_count = 13;
+}
+
+message Event {
+  string id = 1;
+  string slug = 2;
+  string event_type = 3;
+  string title = 4;
+  string description = 5;
+  string date = 6;
+  string actor = 7;
+  string avatar_url = 8;
+  string branch = 9;
+  string url = 10;
+}
+
+// A feed item is either a commit or a repository event.
+message Item {
+  oneof item {
+    Commit commit = 1;
+    Event event = 2;
+  }
+}
+
+message Limits {
+  int32 branch_commit_limit = 1;
+  int32 commit_pages_per_branch = 2;
+  int32 event_pages = 3;
+  int32 page_size = 4;
+}
+
+message Changelog {
+  string repo = 1;
+  string generated_at = 2;
+  string source = 3;
+  Repository repository = 4;
+  repeated BranchStats branches = 5;
+  repeated ContributorStats contributors = 6;
+  repeated LanguageStat languages = 7;
+  repeated Release releases = 8;
+  repeated Tag tags = 9;
+  ItemCounts issues = 10;
+  ItemCounts pulls = 11;
+  Stats stats = 12;
+  repeated Commit commits = 13;
+  repeated Event events = 14;
+  repeated Item items = 15;
+  Limits limits = 16;
+  string error = 17;
+}
+
+message GetChangelogRequest {
+  // bypass the server cache and rebuild from GitHub
+  bool force_refresh = 1;
+}
+
+message GetChangelogResponse {
+  Changelog changelog = 1;
+  // hit | stale | refreshed | miss | stale-error | error
+  string cache_state = 2;
+}
+
+service ChangelogService {
+  rpc GetChangelog(GetChangelogRequest) returns (GetChangelogResponse);
+}

@@ -1,0 +1,26 @@
+{
+  "name": "@mixture/protocol",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Protobuf contracts and generated ConnectRPC bindings for mixture (mixture.*.v1)",
+  "exports": {
+    "./common": "./src/gen/mixture/common/v1/common_pb.ts",
+    "./library": "./src/gen/mixture/library/v1/library_pb.ts",
+    "./changelog": "./src/gen/mixture/changelog/v1/changelog_pb.ts",
+    "./cloud": "./src/gen/mixture/cloud/v1/cloud_pb.ts"
+  },
+  "scripts": {
+    "generate": "buf generate",
+    "lint": "buf lint",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "^2.14.1"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "^1.72.0",
+    "@bufbuild/protoc-gen-es": "^2.14.1",
+    "typescript": "5.7.3"
+  }
+}

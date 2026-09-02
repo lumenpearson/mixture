@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package mixture.common.v1;
+
+// Localized text: russian is the primary language, english is optional.
+// `has_en` distinguishes an absent translation from an empty string so the
+// client can keep showing the "ru only" badge exactly as before.
+message LocalizedText {
+  string ru = 1;
+  string en = 2;
+  bool has_en = 3;
+}
+
+// Localized list of short lines (technical notes).
+message LocalizedList {
+  repeated string ru = 1;
+  repeated string en = 2;
+  bool has_en = 3;
+}
+
+// The physical prop screen an insert is designed for.
+enum DeviceType {
+  DEVICE_TYPE_UNSPECIFIED = 0;
+  DEVICE_TYPE_PHONE = 1;
+  DEVICE_TYPE_MONITOR = 2;
+  DEVICE_TYPE_TV = 3;
+  DEVICE_TYPE_TABLET = 4;
+  DEVICE_TYPE_PROJECTOR = 5;
+  DEVICE_TYPE_CCTV = 6;
+}
+
+// Insert frame aspect ratio.
+enum AspectRatio {
+  ASPECT_RATIO_UNSPECIFIED = 0;
+  ASPECT_RATIO_9_16 = 1;
+  ASPECT_RATIO_16_9 = 2;
+  ASPECT_RATIO_4_3 = 3;
+  ASPECT_RATIO_16_10 = 4;
+}
+
+// Production status of an insert.
+enum InsertStatus {
+  INSERT_STATUS_UNSPECIFIED = 0;
+  INSERT_STATUS_DRAFT = 1;
+  INSERT_STATUS_READY = 2;
+  INSERT_STATUS_NEEDS_REVIEW = 3;
+  INSERT_STATUS_SHOOTING = 4;
+}
