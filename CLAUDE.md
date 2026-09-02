@@ -114,6 +114,14 @@ sha256 hashes). Roles: anonymous < viewer < editor < owner. Single-file changes 
 contents API; moves and recursive deletes are one commit through the git data API.
 Uploads are capped at 4 MiB (Vercel body limit). Details: `.claude/agents/cloud-engineer.md`.
 
+### Deployment
+
+Vercel builds from git: pushes become previews, `master` is production. The root
+`vercel.json` (framework `nextjs`, `pnpm build`, output `apps/web/.next`) is what lets
+the project build from the repository root; `next` is also a root devDependency because
+the Vercel Next.js builder resolves it from the entry directory. Keep both in step with
+`apps/web`.
+
 ### Further reading
 
 - `.agents/conventions.md` — the invariants and how they are checked
