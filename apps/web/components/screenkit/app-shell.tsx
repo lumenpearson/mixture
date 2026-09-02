@@ -7,6 +7,7 @@ import { Menu } from "lucide-react"
 import * as React from "react"
 import { CategoryPanel } from "./category-panel"
 import { Content } from "./content"
+import { CommandPalette } from "./command-palette"
 import { Hotkeys } from "./hotkeys"
 import { Rail } from "./rail"
 import { ScreenkitProvider, useScreenkit } from "./store"
@@ -94,6 +95,7 @@ function ShellInner({ notFound = false }: { notFound?: boolean }) {
       <div className="flex h-[100dvh] flex-col bg-sidebar text-foreground">
         <LocaleFlowEffect />
         <Hotkeys />
+        <CommandPalette />
         <MobileTopBar />
         <MobileNav />
         <div className="flex min-h-0 flex-1 bg-sidebar">

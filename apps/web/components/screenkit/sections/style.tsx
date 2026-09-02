@@ -1,12 +1,15 @@
 "use client"
 
-import { LANG_LABEL, LOCALES } from "@/lib/screenkit/i18n"
-import type { Locale } from "@/lib/screenkit/types"
+import { LANG_LABEL, UI_LOCALES } from "@/lib/screenkit/i18n"
+import type { UiLocale } from "@/lib/screenkit/types"
 import { Check, Monitor, Moon, Sun } from "lucide-react"
 import * as React from "react"
 import { LibraryListControls } from "../library-list-controls"
 import { DEFAULT_MOTION_FEATURES, useMotion, type MotionFeature } from "../motion"
 import { Explain, SectionHeading, SegmentedControl } from "../primitives"
+import { GlassControls } from "../settings/glass-controls"
+import { LayoutControls } from "../settings/layout-controls"
+import { RpcSettings } from "../settings/rpc-settings"
 import { SettingsTabs } from "../settings-tabs"
 import { useScreenkit, type ContentWidth } from "../store"
 import {
@@ -313,8 +316,8 @@ export function StyleSection() {
       {/* site language */}
       <div className="flex flex-col gap-3">
         <SectionHeading title={t("style.language")} />
-        <SegmentedControl<Locale>
-          options={LOCALES.map((l) => ({ value: l, label: LANG_LABEL[l] }))}
+        <SegmentedControl<UiLocale>
+          options={UI_LOCALES.map((l) => ({ value: l, label: LANG_LABEL[l] }))}
           value={locale}
           onChange={setLocale}
         />
@@ -323,8 +326,11 @@ export function StyleSection() {
 
       <MotionControls />
       <LayoutWidthControls />
+      <LayoutControls />
       <LibraryListControls variant="settings" />
       <ThemeControls />
+      <GlassControls />
+      <RpcSettings />
       <HotkeysCard />
 
       <div className="flex flex-col gap-4">

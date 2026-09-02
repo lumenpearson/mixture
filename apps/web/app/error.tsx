@@ -1,7 +1,7 @@
 "use client"
 
-import { DEFAULT_LOCALE, LOCALE_STORAGE_KEY, translate } from "@/lib/screenkit/i18n"
-import type { Locale } from "@/lib/screenkit/types"
+import { DEFAULT_LOCALE, LOCALE_STORAGE_KEY, isUiLocale, translate } from "@/lib/screenkit/i18n"
+import type { UiLocale } from "@/lib/screenkit/types"
 import { AlertTriangle, ArrowLeft, RotateCcw } from "lucide-react"
 import Link from "next/link"
 import * as React from "react"
@@ -9,12 +9,12 @@ import * as React from "react"
 /* section-level error boundary: keeps the shell's look, offers a retry and a
    way home, and never leaks the stack to the visitor (it goes to the console) */
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  const [locale, setLocale] = React.useState<Locale>(DEFAULT_LOCALE)
+  const [locale, setLocale] = React.useState<UiLocale>(DEFAULT_LOCALE)
   React.useEffect(() => {
     console.error(error)
     try {
       const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY)
-      if (stored === "ru" || stored === "en") setLocale(stored)
+      if (isUiLocale(stored)) setLocale(stored)
     } catch {
       // ignore
     }

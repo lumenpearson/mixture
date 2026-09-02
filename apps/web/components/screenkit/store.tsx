@@ -8,10 +8,14 @@ import type {
   CategoryId,
   DeviceType,
   Insert,
+  InsertKind,
+  InsertSource,
   InsertStatus,
   Locale,
   PlaybackMode,
+  UiLocale,
 } from "@/lib/screenkit/types"
+import { contentLocaleOf } from "@/lib/screenkit/types"
 import {
   DEFAULT_CATEGORY_DEFS,
   INSERTS,
@@ -20,7 +24,7 @@ import {
   findInsert,
   hasEnglish,
 } from "@/lib/screenkit/data"
-import { DEFAULT_LOCALE, LOCALE_STORAGE_KEY, translate } from "@/lib/screenkit/i18n"
+import { DEFAULT_LOCALE, LOCALE_STORAGE_KEY, isUiLocale, translate } from "@/lib/screenkit/i18n"
 import {
   EDIT_TOKEN_STORAGE_KEY,
   getEditToken,
@@ -199,6 +203,9 @@ export type NewInsertInput = {
   negativePromptEn?: string
   technicalNotesRu?: string[]
   technicalNotesEn?: string[]
+  /** scene (default), site or file */
+  kind?: InsertKind
+  source?: InsertSource
 }
 
 type Ctx = {
@@ -253,9 +260,10 @@ type Ctx = {
   isFavorite: (id: string) => boolean
   toggleFavorite: (id: string) => void
 
-  // site language (persisted)
-  locale: Locale
-  setLocale: (l: Locale) => void
+  // interface language (persisted); `contentLocale` is what inserts render in
+  locale: UiLocale
+  contentLocale: Locale
+  setLocale: (l: UiLocale) => void
   t: (key: string) => string
 
   // per-insert language override, independent of the site language
@@ -315,7 +323,8 @@ export function ScreenkitProvider({
     deepLinked ?? allInserts[0]?.id ?? "",
   )
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false)
-  const [locale, setLocaleState] = React.useState<Locale>(DEFAULT_LOCALE)
+  const [locale, setLocaleState] = React.useState<UiLocale>(DEFAULT_LOCALE)
+  const contentLocale = contentLocaleOf(locale)
   const [contentWidth, setContentWidthState] = React.useState<ContentWidth>("default")
   const [insertLocaleOverrides, setInsertLocaleOverrides] = React.useState<
     Record<string, Locale>
@@ -382,7 +391,7 @@ export function ScreenkitProvider({
   React.useEffect(() => {
     try {
       const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY)
-      if (stored === "ru" || stored === "en") setLocaleState(stored)
+      if (isUiLocale(stored)) setLocaleState(stored)
       const width = window.localStorage.getItem(CONTENT_WIDTH_STORAGE_KEY)
       if (width === "narrow" || width === "default" || width === "wide") {
         setContentWidthState(width)
@@ -412,10 +421,11 @@ export function ScreenkitProvider({
 
   // keep <html lang> in step with the site language for assistive tech
   React.useEffect(() => {
-    document.documentElement.lang = locale
-  }, [locale])
+    document.documentElement.lang = contentLocale
+    document.documentElement.dataset.uiLocale = locale
+  }, [locale, contentLocale])
 
-  const setLocale = React.useCallback((l: Locale) => {
+  const setLocale = React.useCallback((l: UiLocale) => {
     setLocaleState(l)
     try {
       window.localStorage.setItem(LOCALE_STORAGE_KEY, l)
@@ -452,9 +462,9 @@ export function ScreenkitProvider({
   const catLabel = React.useCallback(
     (id: CategoryId) => {
       const def = findCategoryDef(categories, id)
-      return def ? categoryLabelFromDef(def, locale) : String(id)
+      return def ? categoryLabelFromDef(def, contentLocale) : String(id)
     },
-    [categories, locale],
+    [categories, contentLocale],
   )
 
   const apply = React.useCallback((data: LibraryData) => {
@@ -588,10 +598,10 @@ export function ScreenkitProvider({
     (id: string): Locale => {
       const insert = findInsert(inserts, id)
       const english = insert ? hasEnglish(insert) : false
-      const wanted = insertLocaleOverrides[id] ?? locale
+      const wanted = insertLocaleOverrides[id] ?? contentLocale
       return wanted === "en" && !english ? "ru" : wanted
     },
-    [insertLocaleOverrides, locale, inserts],
+    [insertLocaleOverrides, contentLocale, inserts],
   )
 
   const openInPreview = React.useCallback(
@@ -682,6 +692,7 @@ export function ScreenkitProvider({
     isFavorite,
     toggleFavorite,
     locale,
+    contentLocale,
     setLocale,
     t,
     insertLocaleOverrides,

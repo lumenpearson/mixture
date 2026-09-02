@@ -52,7 +52,7 @@ export function PreviewSection() {
     setSelectedId,
     preview,
     setPreview,
-    locale,
+    contentLocale,
     insertLocaleFor,
     t,
     inserts,
@@ -119,14 +119,14 @@ export function PreviewSection() {
             <SelectContent className="max-h-80 border-panel-border bg-popover font-mono">
               {inserts.map((i) => (
                 <SelectItem key={i.id} value={i.id} className="lowercase">
-                  {resolveInsert(i, locale).title}
+                  {resolveInsert(i, contentLocale).title}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <StatusBadge
             status={insert.status}
-            label={statusLabel(insert.status, locale)}
+            label={statusLabel(insert.status, contentLocale)}
           />
           <div className="flex items-center gap-1">
             <HeaderButton label={t("preview.prevInsert")} onClick={() => stepInsert(-1)}>
@@ -183,16 +183,16 @@ export function PreviewSection() {
       <div className="flex flex-col gap-7">
         <Control title={t("preview.deviceFormat")} desc={t("preview.deviceFormatDesc")}>
           <SegmentedControl<DeviceType>
-            options={DEVICES.map((d) => ({ value: d.id, label: deviceLabel(d.id, locale) }))}
+            options={DEVICES.map((d) => ({ value: d.id, label: deviceLabel(d.id, contentLocale) }))}
             value={preview.device}
             onChange={(device) => setPreview((p) => ({ ...p, device }))}
             size="sm"
           />
         </Control>
 
-        <Control title={t("preview.playbackMode")} desc={modeNote(preview.mode, locale)}>
+        <Control title={t("preview.playbackMode")} desc={modeNote(preview.mode, contentLocale)}>
           <SegmentedControl<PlaybackMode>
-            options={PLAYBACK_MODES.map((m) => ({ value: m.id, label: modeLabel(m.id, locale) }))}
+            options={PLAYBACK_MODES.map((m) => ({ value: m.id, label: modeLabel(m.id, contentLocale) }))}
             value={preview.mode}
             onChange={(mode) => setPreview((p) => ({ ...p, mode }))}
           />

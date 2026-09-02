@@ -1,5 +1,36 @@
 export type Locale = "ru" | "en"
 
+/* the interface may speak more languages than the inserts do: `snark` is a
+   russian voice with light sarcasm and kaomoji that falls back to russian for
+   any insert content */
+export type UiLocale = Locale | "snark"
+
+/** the content locale an interface locale resolves to */
+export const contentLocaleOf = (locale: UiLocale): Locale => (locale === "en" ? "en" : "ru")
+
+/* what an insert renders: a packaged scene, a live website inside the frame,
+   or a file from the cloud drive (image, video, pdf, text) */
+export type InsertKind = "scene" | "site" | "file"
+
+export type InsertSource = {
+  /** website url for `site` inserts */
+  url?: string
+  /** cloud-drive path for `file` inserts */
+  path?: string
+  /** how a file fills the screen */
+  fit?: "contain" | "cover"
+  /** zoom factor for sites and images (1 = natural) */
+  zoom?: number
+  /** allow scrolling inside a site insert */
+  scroll?: boolean
+  /** media playback flags for file inserts */
+  autoplay?: boolean
+  loop?: boolean
+  muted?: boolean
+  /** background behind letterboxed content, a css color */
+  background?: string
+}
+
 export type LocalizedText = { ru: string; en?: string }
 export type LocalizedList = { ru: string[]; en?: string[] }
 
@@ -57,6 +88,10 @@ export type Insert = {
   technicalNotes: LocalizedList
   /** true for rows stored in the database (user-added), absent for built-ins */
   custom?: boolean
+  /** scene (default), site or file — see InsertKind */
+  kind?: InsertKind
+  /** where a site / file insert gets its content from */
+  source?: InsertSource
 }
 
 /* a fully resolved insert with all localized text flattened to strings */
@@ -77,4 +112,6 @@ export type ResolvedInsert = {
   technicalNotes: string[]
   hasEnglish: boolean
   custom: boolean
+  kind: InsertKind
+  source: InsertSource
 }

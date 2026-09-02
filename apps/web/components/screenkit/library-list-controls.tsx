@@ -31,10 +31,10 @@ export function LibraryListControls({
   variant?: LibraryListControlsVariant
   className?: string
 }) {
-  const { locale, libraryListSettings, setLibraryListSettings } = useScreenkit()
-  const labels = LIBRARY_LIST_UI[locale]
-  const sortOptions = librarySortOptions(locale)
-  const viewOptions = libraryViewOptions(locale)
+  const { contentLocale, libraryListSettings, setLibraryListSettings } = useScreenkit()
+  const labels = LIBRARY_LIST_UI[contentLocale]
+  const sortOptions = librarySortOptions(contentLocale)
+  const viewOptions = libraryViewOptions(contentLocale)
 
   const setSort = (sort: LibrarySortKey) =>
     setLibraryListSettings((settings) => ({ ...settings, sort }))

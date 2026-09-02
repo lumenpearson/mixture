@@ -41,7 +41,7 @@ export function LibrarySection() {
     filters,
     setFilters,
     openInPreview,
-    locale,
+    contentLocale,
     t,
     inserts,
     categories,
@@ -53,7 +53,7 @@ export function LibrarySection() {
     toggleFavorite,
   } = useScreenkit()
 
-  const labels = LIBRARY_LIST_UI[locale]
+  const labels = LIBRARY_LIST_UI[contentLocale]
   const { sort: sortKey, view: viewMode, pageSize } = libraryListSettings
   const [page, setPage] = React.useState(1)
 
@@ -66,14 +66,14 @@ export function LibrarySection() {
         if (filters.status !== "all" && i.status !== filters.status) return false
         if (filters.search) {
           const q = filters.search.toLowerCase()
-          const r = resolveInsert(i, locale)
+          const r = resolveInsert(i, contentLocale)
           const hay =
             `${i.title.ru} ${i.title.en ?? ""} ${r.title} ${r.description} ${i.episode} ${i.scene} ${i.id}`.toLowerCase()
           if (!hay.includes(q)) return false
         }
         return true
       }),
-    [filters, inserts, locale, favorites],
+    [filters, inserts, contentLocale, favorites],
   )
 
   const hasActiveFilters =
@@ -86,9 +86,9 @@ export function LibrarySection() {
   const sorted = React.useMemo(
     () =>
       filtered
-        .map((raw) => resolveInsert(raw, locale))
+        .map((raw) => resolveInsert(raw, contentLocale))
         .sort((a, b) => compareLibraryInserts(a, b, sortKey)),
-    [filtered, locale, sortKey],
+    [filtered, contentLocale, sortKey],
   )
 
   const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
@@ -175,7 +175,7 @@ export function LibrarySection() {
               active={filters.device === d.id}
               onClick={() => setFilters((f) => ({ ...f, device: d.id }))}
             >
-              {deviceLabel(d.id, locale)}
+              {deviceLabel(d.id, contentLocale)}
             </Pill>
           ))}
         </FilterRow>
@@ -203,7 +203,7 @@ export function LibrarySection() {
               active={filters.status === s.id}
               onClick={() => setFilters((f) => ({ ...f, status: s.id }))}
             >
-              {statusLabel(s.id, locale)}
+              {statusLabel(s.id, contentLocale)}
             </Pill>
           ))}
         </FilterRow>
@@ -234,7 +234,7 @@ export function LibrarySection() {
           <li key={insert.id} className="min-w-0 sk-animate-in" style={staggerDelay(idx)}>
             <InsertCard
               insert={insert}
-              locale={locale}
+              contentLocale={contentLocale}
               viewMode={viewMode}
               categoryAccent={catDef(insert.category)?.accent ?? "var(--accent-grey)"}
               categoryTint={catDef(insert.category)?.tint ?? "rgba(255,255,255,0.06)"}
@@ -272,7 +272,7 @@ export function LibrarySection() {
 
 function InsertCard({
   insert,
-  locale,
+  contentLocale,
   viewMode,
   categoryAccent,
   categoryTint,
@@ -287,7 +287,7 @@ function InsertCard({
   onToggleFavorite,
 }: {
   insert: ResolvedInsert
-  locale: Locale
+  contentLocale: Locale
   viewMode: LibraryViewMode
   categoryAccent: string
   categoryTint: string
@@ -334,7 +334,7 @@ function InsertCard({
           <span className="min-w-0 truncate font-mono text-sm lowercase text-foreground">
             {insert.title}
           </span>
-          <StatusBadge status={insert.status} label={statusLabel(insert.status, locale)} />
+          <StatusBadge status={insert.status} label={statusLabel(insert.status, contentLocale)} />
           {!insert.hasEnglish && (
             <RuOnlyBadge label={ruOnlyLabel} title={ruOnlyHint} />
           )}
@@ -355,7 +355,7 @@ function InsertCard({
           <span>{insert.date}</span>
           <span>· {insert.episode}</span>
           <span>· {insert.scene}</span>
-          <span>· {deviceLabel(insert.device, locale)}</span>
+          <span>· {deviceLabel(insert.device, contentLocale)}</span>
           <span>· {categoryLabel}</span>
           <span>· {insert.aspect}</span>
         </div>

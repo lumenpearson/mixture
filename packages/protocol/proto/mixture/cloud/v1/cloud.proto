@@ -104,6 +104,20 @@ message ListEntriesResponse {
   Status status = 3;
 }
 
+message GetTreeRequest {
+  // only entries under this folder ("" for everything)
+  string prefix = 1;
+}
+
+message GetTreeResponse {
+  // every visible file and folder under the prefix, recursively
+  repeated Entry entries = 1;
+  // true when the repository is too large for one listing
+  bool truncated = 2;
+  // the commit sha the listing was taken from
+  string sha = 3;
+}
+
 message ReadFileRequest {
   string path = 1;
 }
@@ -193,6 +207,8 @@ service CloudService {
   // GitHub token when it does not exist yet
   rpc InitRepository(InitRepositoryRequest) returns (InitRepositoryResponse);
   rpc ListEntries(ListEntriesRequest) returns (ListEntriesResponse);
+  // recursive listing for search, the command palette and folder pickers
+  rpc GetTree(GetTreeRequest) returns (GetTreeResponse);
   rpc ReadFile(ReadFileRequest) returns (ReadFileResponse);
   rpc WriteFile(WriteFileRequest) returns (WriteFileResponse);
   rpc DeleteEntry(DeleteEntryRequest) returns (DeleteEntryResponse);

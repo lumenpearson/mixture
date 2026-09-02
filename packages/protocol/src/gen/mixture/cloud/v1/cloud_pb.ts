@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file mixture/cloud/v1/cloud.proto.
  */
 export const file_mixture_cloud_v1_cloud: GenFile = /*@__PURE__*/
-  fileDesc("ChxtaXh0dXJlL2Nsb3VkL3YxL2Nsb3VkLnByb3RvEhBtaXh0dXJlLmNsb3VkLnYxItkBCgVFbnRyeRIMCgRwYXRoGAEgASgJEgwKBG5hbWUYAiABKAkSKQoEa2luZBgDIAEoDjIbLm1peHR1cmUuY2xvdWQudjEuRW50cnlLaW5kEgwKBHNpemUYBCABKAMSCwoDc2hhGAUgASgJEjAKCnZpc2liaWxpdHkYBiABKA4yHC5taXh0dXJlLmNsb3VkLnYxLlZpc2liaWxpdHkSEAoIZWRpdGFibGUYByABKAgSFAoMY29udGVudF90eXBlGAggASgJEhQKDGRvd25sb2FkX3VybBgJIAEoCSKTAQoGU3RhdHVzEhIKCmNvbmZpZ3VyZWQYASABKAgSDAoEcmVwbxgCIAEoCRIOCgZicmFuY2gYAyABKAkSDQoFbG9naW4YBCABKAkSJAoEcm9sZRgFIAEoDjIWLm1peHR1cmUuY2xvdWQudjEuUm9sZRIPCgdtZXNzYWdlGAYgASgJEhEKCXJlYWNoYWJsZRgHIAEoCCJTCg5WaXNpYmlsaXR5UnVsZRIPCgdwYXR0ZXJuGAEgASgJEjAKCnZpc2liaWxpdHkYAiABKA4yHC5taXh0dXJlLmNsb3VkLnYxLlZpc2liaWxpdHkiUQoJQWNjZXNzS2V5EgwKBG5hbWUYASABKAkSJAoEcm9sZRgCIAEoDjIWLm1peHR1cmUuY2xvdWQudjEuUm9sZRIQCghrZXlfaGFzaBgDIAEoCSKFAQoGQWNjZXNzEg4KBm93bmVycxgBIAMoCRIPCgdlZGl0b3JzGAIgAygJEg8KB3ZpZXdlcnMYAyADKAkSHgoWYWxsb3dfYW5vbnltb3VzX3B1YmxpYxgEIAEoCBIpCgRrZXlzGAUgAygLMhsubWl4dHVyZS5jbG91ZC52MS5BY2Nlc3NLZXkirgEKBkNvbmZpZxIPCgd2ZXJzaW9uGAEgASgFEjgKEmRlZmF1bHRfdmlzaWJpbGl0eRgCIAEoDjIcLm1peHR1cmUuY2xvdWQudjEuVmlzaWJpbGl0eRIvCgVydWxlcxgDIAMoCzIgLm1peHR1cmUuY2xvdWQudjEuVmlzaWJpbGl0eVJ1bGUSKAoGYWNjZXNzGAQgASgLMhgubWl4dHVyZS5jbG91ZC52MS5BY2Nlc3MiEgoQR2V0U3RhdHVzUmVxdWVzdCI9ChFHZXRTdGF0dXNSZXNwb25zZRIoCgZzdGF0dXMYASABKAsyGC5taXh0dXJlLmNsb3VkLnYxLlN0YXR1cyIiChJMaXN0RW50cmllc1JlcXVlc3QSDAoEcGF0aBgBIAEoCSJ3ChNMaXN0RW50cmllc1Jlc3BvbnNlEgwKBHBhdGgYASABKAkSKAoHZW50cmllcxgCIAMoCzIXLm1peHR1cmUuY2xvdWQudjEuRW50cnkSKAoGc3RhdHVzGAMgASgLMhgubWl4dHVyZS5jbG91ZC52MS5TdGF0dXMiHwoPUmVhZEZpbGVSZXF1ZXN0EgwKBHBhdGgYASABKAkiXgoQUmVhZEZpbGVSZXNwb25zZRImCgVlbnRyeRgBIAEoCzIXLm1peHR1cmUuY2xvdWQudjEuRW50cnkSDwoHY29udGVudBgCIAEoDBIRCgl0cnVuY2F0ZWQYAyABKAgiTwoQV3JpdGVGaWxlUmVxdWVzdBIMCgRwYXRoGAEgASgJEg8KB2NvbnRlbnQYAiABKAwSCwoDc2hhGAMgASgJEg8KB21lc3NhZ2UYBCABKAkiTwoRV3JpdGVGaWxlUmVzcG9uc2USJgoFZW50cnkYASABKAsyFy5taXh0dXJlLmNsb3VkLnYxLkVudHJ5EhIKCmNvbW1pdF9zaGEYAiABKAkiLwoSRGVsZXRlRW50cnlSZXF1ZXN0EgwKBHBhdGgYASABKAkSCwoDc2hhGAIgASgJIikKE0RlbGV0ZUVudHJ5UmVzcG9uc2USEgoKY29tbWl0X3NoYRgBIAEoCSIsChBNb3ZlRW50cnlSZXF1ZXN0EgwKBGZyb20YASABKAkSCgoCdG8YAiABKAkiOwoRTW92ZUVudHJ5UmVzcG9uc2USJgoFZW50cnkYASABKAsyFy5taXh0dXJlLmNsb3VkLnYxLkVudHJ5IiYKFkNyZWF0ZURpcmVjdG9yeVJlcXVlc3QSDAoEcGF0aBgBIAEoCSJBChdDcmVhdGVEaXJlY3RvcnlSZXNwb25zZRImCgVlbnRyeRgBIAEoCzIXLm1peHR1cmUuY2xvdWQudjEuRW50cnkiKAoVSW5pdFJlcG9zaXRvcnlSZXF1ZXN0Eg8KB3ByaXZhdGUYASABKAgiZQoWSW5pdFJlcG9zaXRvcnlSZXNwb25zZRIoCgZzdGF0dXMYASABKAsyGC5taXh0dXJlLmNsb3VkLnYxLlN0YXR1cxIPCgdjcmVhdGVkGAIgASgIEhAKCGh0bWxfdXJsGAMgASgJIhIKEEdldENvbmZpZ1JlcXVlc3QiSgoRR2V0Q29uZmlnUmVzcG9uc2USKAoGY29uZmlnGAEgASgLMhgubWl4dHVyZS5jbG91ZC52MS5Db25maWcSCwoDc2hhGAIgASgJIkwKE1VwZGF0ZUNvbmZpZ1JlcXVlc3QSKAoGY29uZmlnGAEgASgLMhgubWl4dHVyZS5jbG91ZC52MS5Db25maWcSCwoDc2hhGAIgASgJIk0KFFVwZGF0ZUNvbmZpZ1Jlc3BvbnNlEigKBmNvbmZpZxgBIAEoCzIYLm1peHR1cmUuY2xvdWQudjEuQ29uZmlnEgsKA3NoYRgCIAEoCSpuCgpWaXNpYmlsaXR5EhoKFlZJU0lCSUxJVFlfVU5TUEVDSUZJRUQQABIWChJWSVNJQklMSVRZX1BSSVZBVEUQARIVChFWSVNJQklMSVRZX1BVQkxJQxACEhUKEVZJU0lCSUxJVFlfSElEREVOEAMqVgoJRW50cnlLaW5kEhoKFkVOVFJZX0tJTkRfVU5TUEVDSUZJRUQQABITCg9FTlRSWV9LSU5EX0ZJTEUQARIYChRFTlRSWV9LSU5EX0RJUkVDVE9SWRACKmIKBFJvbGUSFAoQUk9MRV9VTlNQRUNJRklFRBAAEhIKDlJPTEVfQU5PTllNT1VTEAESDwoLUk9MRV9WSUVXRVIQAhIPCgtST0xFX0VESVRPUhADEg4KClJPTEVfT1dORVIQBDKdBwoMQ2xvdWRTZXJ2aWNlElQKCUdldFN0YXR1cxIiLm1peHR1cmUuY2xvdWQudjEuR2V0U3RhdHVzUmVxdWVzdBojLm1peHR1cmUuY2xvdWQudjEuR2V0U3RhdHVzUmVzcG9uc2USYwoOSW5pdFJlcG9zaXRvcnkSJy5taXh0dXJlLmNsb3VkLnYxLkluaXRSZXBvc2l0b3J5UmVxdWVzdBooLm1peHR1cmUuY2xvdWQudjEuSW5pdFJlcG9zaXRvcnlSZXNwb25zZRJaCgtMaXN0RW50cmllcxIkLm1peHR1cmUuY2xvdWQudjEuTGlzdEVudHJpZXNSZXF1ZXN0GiUubWl4dHVyZS5jbG91ZC52MS5MaXN0RW50cmllc1Jlc3BvbnNlElEKCFJlYWRGaWxlEiEubWl4dHVyZS5jbG91ZC52MS5SZWFkRmlsZVJlcXVlc3QaIi5taXh0dXJlLmNsb3VkLnYxLlJlYWRGaWxlUmVzcG9uc2USVAoJV3JpdGVGaWxlEiIubWl4dHVyZS5jbG91ZC52MS5Xcml0ZUZpbGVSZXF1ZXN0GiMubWl4dHVyZS5jbG91ZC52MS5Xcml0ZUZpbGVSZXNwb25zZRJaCgtEZWxldGVFbnRyeRIkLm1peHR1cmUuY2xvdWQudjEuRGVsZXRlRW50cnlSZXF1ZXN0GiUubWl4dHVyZS5jbG91ZC52MS5EZWxldGVFbnRyeVJlc3BvbnNlElQKCU1vdmVFbnRyeRIiLm1peHR1cmUuY2xvdWQudjEuTW92ZUVudHJ5UmVxdWVzdBojLm1peHR1cmUuY2xvdWQudjEuTW92ZUVudHJ5UmVzcG9uc2USZgoPQ3JlYXRlRGlyZWN0b3J5EigubWl4dHVyZS5jbG91ZC52MS5DcmVhdGVEaXJlY3RvcnlSZXF1ZXN0GikubWl4dHVyZS5jbG91ZC52MS5DcmVhdGVEaXJlY3RvcnlSZXNwb25zZRJUCglHZXRDb25maWcSIi5taXh0dXJlLmNsb3VkLnYxLkdldENvbmZpZ1JlcXVlc3QaIy5taXh0dXJlLmNsb3VkLnYxLkdldENvbmZpZ1Jlc3BvbnNlEl0KDFVwZGF0ZUNvbmZpZxIlLm1peHR1cmUuY2xvdWQudjEuVXBkYXRlQ29uZmlnUmVxdWVzdBomLm1peHR1cmUuY2xvdWQudjEuVXBkYXRlQ29uZmlnUmVzcG9uc2ViBnByb3RvMw");
+  fileDesc("ChxtaXh0dXJlL2Nsb3VkL3YxL2Nsb3VkLnByb3RvEhBtaXh0dXJlLmNsb3VkLnYxItkBCgVFbnRyeRIMCgRwYXRoGAEgASgJEgwKBG5hbWUYAiABKAkSKQoEa2luZBgDIAEoDjIbLm1peHR1cmUuY2xvdWQudjEuRW50cnlLaW5kEgwKBHNpemUYBCABKAMSCwoDc2hhGAUgASgJEjAKCnZpc2liaWxpdHkYBiABKA4yHC5taXh0dXJlLmNsb3VkLnYxLlZpc2liaWxpdHkSEAoIZWRpdGFibGUYByABKAgSFAoMY29udGVudF90eXBlGAggASgJEhQKDGRvd25sb2FkX3VybBgJIAEoCSKTAQoGU3RhdHVzEhIKCmNvbmZpZ3VyZWQYASABKAgSDAoEcmVwbxgCIAEoCRIOCgZicmFuY2gYAyABKAkSDQoFbG9naW4YBCABKAkSJAoEcm9sZRgFIAEoDjIWLm1peHR1cmUuY2xvdWQudjEuUm9sZRIPCgdtZXNzYWdlGAYgASgJEhEKCXJlYWNoYWJsZRgHIAEoCCJTCg5WaXNpYmlsaXR5UnVsZRIPCgdwYXR0ZXJuGAEgASgJEjAKCnZpc2liaWxpdHkYAiABKA4yHC5taXh0dXJlLmNsb3VkLnYxLlZpc2liaWxpdHkiUQoJQWNjZXNzS2V5EgwKBG5hbWUYASABKAkSJAoEcm9sZRgCIAEoDjIWLm1peHR1cmUuY2xvdWQudjEuUm9sZRIQCghrZXlfaGFzaBgDIAEoCSKFAQoGQWNjZXNzEg4KBm93bmVycxgBIAMoCRIPCgdlZGl0b3JzGAIgAygJEg8KB3ZpZXdlcnMYAyADKAkSHgoWYWxsb3dfYW5vbnltb3VzX3B1YmxpYxgEIAEoCBIpCgRrZXlzGAUgAygLMhsubWl4dHVyZS5jbG91ZC52MS5BY2Nlc3NLZXkirgEKBkNvbmZpZxIPCgd2ZXJzaW9uGAEgASgFEjgKEmRlZmF1bHRfdmlzaWJpbGl0eRgCIAEoDjIcLm1peHR1cmUuY2xvdWQudjEuVmlzaWJpbGl0eRIvCgVydWxlcxgDIAMoCzIgLm1peHR1cmUuY2xvdWQudjEuVmlzaWJpbGl0eVJ1bGUSKAoGYWNjZXNzGAQgASgLMhgubWl4dHVyZS5jbG91ZC52MS5BY2Nlc3MiEgoQR2V0U3RhdHVzUmVxdWVzdCI9ChFHZXRTdGF0dXNSZXNwb25zZRIoCgZzdGF0dXMYASABKAsyGC5taXh0dXJlLmNsb3VkLnYxLlN0YXR1cyIiChJMaXN0RW50cmllc1JlcXVlc3QSDAoEcGF0aBgBIAEoCSJ3ChNMaXN0RW50cmllc1Jlc3BvbnNlEgwKBHBhdGgYASABKAkSKAoHZW50cmllcxgCIAMoCzIXLm1peHR1cmUuY2xvdWQudjEuRW50cnkSKAoGc3RhdHVzGAMgASgLMhgubWl4dHVyZS5jbG91ZC52MS5TdGF0dXMiIAoOR2V0VHJlZVJlcXVlc3QSDgoGcHJlZml4GAEgASgJIlsKD0dldFRyZWVSZXNwb25zZRIoCgdlbnRyaWVzGAEgAygLMhcubWl4dHVyZS5jbG91ZC52MS5FbnRyeRIRCgl0cnVuY2F0ZWQYAiABKAgSCwoDc2hhGAMgASgJIh8KD1JlYWRGaWxlUmVxdWVzdBIMCgRwYXRoGAEgASgJIl4KEFJlYWRGaWxlUmVzcG9uc2USJgoFZW50cnkYASABKAsyFy5taXh0dXJlLmNsb3VkLnYxLkVudHJ5Eg8KB2NvbnRlbnQYAiABKAwSEQoJdHJ1bmNhdGVkGAMgASgIIk8KEFdyaXRlRmlsZVJlcXVlc3QSDAoEcGF0aBgBIAEoCRIPCgdjb250ZW50GAIgASgMEgsKA3NoYRgDIAEoCRIPCgdtZXNzYWdlGAQgASgJIk8KEVdyaXRlRmlsZVJlc3BvbnNlEiYKBWVudHJ5GAEgASgLMhcubWl4dHVyZS5jbG91ZC52MS5FbnRyeRISCgpjb21taXRfc2hhGAIgASgJIi8KEkRlbGV0ZUVudHJ5UmVxdWVzdBIMCgRwYXRoGAEgASgJEgsKA3NoYRgCIAEoCSIpChNEZWxldGVFbnRyeVJlc3BvbnNlEhIKCmNvbW1pdF9zaGEYASABKAkiLAoQTW92ZUVudHJ5UmVxdWVzdBIMCgRmcm9tGAEgASgJEgoKAnRvGAIgASgJIjsKEU1vdmVFbnRyeVJlc3BvbnNlEiYKBWVudHJ5GAEgASgLMhcubWl4dHVyZS5jbG91ZC52MS5FbnRyeSImChZDcmVhdGVEaXJlY3RvcnlSZXF1ZXN0EgwKBHBhdGgYASABKAkiQQoXQ3JlYXRlRGlyZWN0b3J5UmVzcG9uc2USJgoFZW50cnkYASABKAsyFy5taXh0dXJlLmNsb3VkLnYxLkVudHJ5IigKFUluaXRSZXBvc2l0b3J5UmVxdWVzdBIPCgdwcml2YXRlGAEgASgIImUKFkluaXRSZXBvc2l0b3J5UmVzcG9uc2USKAoGc3RhdHVzGAEgASgLMhgubWl4dHVyZS5jbG91ZC52MS5TdGF0dXMSDwoHY3JlYXRlZBgCIAEoCBIQCghodG1sX3VybBgDIAEoCSISChBHZXRDb25maWdSZXF1ZXN0IkoKEUdldENvbmZpZ1Jlc3BvbnNlEigKBmNvbmZpZxgBIAEoCzIYLm1peHR1cmUuY2xvdWQudjEuQ29uZmlnEgsKA3NoYRgCIAEoCSJMChNVcGRhdGVDb25maWdSZXF1ZXN0EigKBmNvbmZpZxgBIAEoCzIYLm1peHR1cmUuY2xvdWQudjEuQ29uZmlnEgsKA3NoYRgCIAEoCSJNChRVcGRhdGVDb25maWdSZXNwb25zZRIoCgZjb25maWcYASABKAsyGC5taXh0dXJlLmNsb3VkLnYxLkNvbmZpZxILCgNzaGEYAiABKAkqbgoKVmlzaWJpbGl0eRIaChZWSVNJQklMSVRZX1VOU1BFQ0lGSUVEEAASFgoSVklTSUJJTElUWV9QUklWQVRFEAESFQoRVklTSUJJTElUWV9QVUJMSUMQAhIVChFWSVNJQklMSVRZX0hJRERFThADKlYKCUVudHJ5S2luZBIaChZFTlRSWV9LSU5EX1VOU1BFQ0lGSUVEEAASEwoPRU5UUllfS0lORF9GSUxFEAESGAoURU5UUllfS0lORF9ESVJFQ1RPUlkQAipiCgRSb2xlEhQKEFJPTEVfVU5TUEVDSUZJRUQQABISCg5ST0xFX0FOT05ZTU9VUxABEg8KC1JPTEVfVklFV0VSEAISDwoLUk9MRV9FRElUT1IQAxIOCgpST0xFX09XTkVSEAQy7QcKDENsb3VkU2VydmljZRJUCglHZXRTdGF0dXMSIi5taXh0dXJlLmNsb3VkLnYxLkdldFN0YXR1c1JlcXVlc3QaIy5taXh0dXJlLmNsb3VkLnYxLkdldFN0YXR1c1Jlc3BvbnNlEmMKDkluaXRSZXBvc2l0b3J5EicubWl4dHVyZS5jbG91ZC52MS5Jbml0UmVwb3NpdG9yeVJlcXVlc3QaKC5taXh0dXJlLmNsb3VkLnYxLkluaXRSZXBvc2l0b3J5UmVzcG9uc2USWgoLTGlzdEVudHJpZXMSJC5taXh0dXJlLmNsb3VkLnYxLkxpc3RFbnRyaWVzUmVxdWVzdBolLm1peHR1cmUuY2xvdWQudjEuTGlzdEVudHJpZXNSZXNwb25zZRJOCgdHZXRUcmVlEiAubWl4dHVyZS5jbG91ZC52MS5HZXRUcmVlUmVxdWVzdBohLm1peHR1cmUuY2xvdWQudjEuR2V0VHJlZVJlc3BvbnNlElEKCFJlYWRGaWxlEiEubWl4dHVyZS5jbG91ZC52MS5SZWFkRmlsZVJlcXVlc3QaIi5taXh0dXJlLmNsb3VkLnYxLlJlYWRGaWxlUmVzcG9uc2USVAoJV3JpdGVGaWxlEiIubWl4dHVyZS5jbG91ZC52MS5Xcml0ZUZpbGVSZXF1ZXN0GiMubWl4dHVyZS5jbG91ZC52MS5Xcml0ZUZpbGVSZXNwb25zZRJaCgtEZWxldGVFbnRyeRIkLm1peHR1cmUuY2xvdWQudjEuRGVsZXRlRW50cnlSZXF1ZXN0GiUubWl4dHVyZS5jbG91ZC52MS5EZWxldGVFbnRyeVJlc3BvbnNlElQKCU1vdmVFbnRyeRIiLm1peHR1cmUuY2xvdWQudjEuTW92ZUVudHJ5UmVxdWVzdBojLm1peHR1cmUuY2xvdWQudjEuTW92ZUVudHJ5UmVzcG9uc2USZgoPQ3JlYXRlRGlyZWN0b3J5EigubWl4dHVyZS5jbG91ZC52MS5DcmVhdGVEaXJlY3RvcnlSZXF1ZXN0GikubWl4dHVyZS5jbG91ZC52MS5DcmVhdGVEaXJlY3RvcnlSZXNwb25zZRJUCglHZXRDb25maWcSIi5taXh0dXJlLmNsb3VkLnYxLkdldENvbmZpZ1JlcXVlc3QaIy5taXh0dXJlLmNsb3VkLnYxLkdldENvbmZpZ1Jlc3BvbnNlEl0KDFVwZGF0ZUNvbmZpZxIlLm1peHR1cmUuY2xvdWQudjEuVXBkYXRlQ29uZmlnUmVxdWVzdBomLm1peHR1cmUuY2xvdWQudjEuVXBkYXRlQ29uZmlnUmVzcG9uc2ViBnByb3RvMw");
 
 /**
  * @generated from message mixture.cloud.v1.Entry
@@ -327,6 +327,58 @@ export const ListEntriesResponseSchema: GenMessage<ListEntriesResponse> = /*@__P
   messageDesc(file_mixture_cloud_v1_cloud, 9);
 
 /**
+ * @generated from message mixture.cloud.v1.GetTreeRequest
+ */
+export type GetTreeRequest = Message<"mixture.cloud.v1.GetTreeRequest"> & {
+  /**
+   * only entries under this folder ("" for everything)
+   *
+   * @generated from field: string prefix = 1;
+   */
+  prefix: string;
+};
+
+/**
+ * Describes the message mixture.cloud.v1.GetTreeRequest.
+ * Use `create(GetTreeRequestSchema)` to create a new message.
+ */
+export const GetTreeRequestSchema: GenMessage<GetTreeRequest> = /*@__PURE__*/
+  messageDesc(file_mixture_cloud_v1_cloud, 10);
+
+/**
+ * @generated from message mixture.cloud.v1.GetTreeResponse
+ */
+export type GetTreeResponse = Message<"mixture.cloud.v1.GetTreeResponse"> & {
+  /**
+   * every visible file and folder under the prefix, recursively
+   *
+   * @generated from field: repeated mixture.cloud.v1.Entry entries = 1;
+   */
+  entries: Entry[];
+
+  /**
+   * true when the repository is too large for one listing
+   *
+   * @generated from field: bool truncated = 2;
+   */
+  truncated: boolean;
+
+  /**
+   * the commit sha the listing was taken from
+   *
+   * @generated from field: string sha = 3;
+   */
+  sha: string;
+};
+
+/**
+ * Describes the message mixture.cloud.v1.GetTreeResponse.
+ * Use `create(GetTreeResponseSchema)` to create a new message.
+ */
+export const GetTreeResponseSchema: GenMessage<GetTreeResponse> = /*@__PURE__*/
+  messageDesc(file_mixture_cloud_v1_cloud, 11);
+
+/**
  * @generated from message mixture.cloud.v1.ReadFileRequest
  */
 export type ReadFileRequest = Message<"mixture.cloud.v1.ReadFileRequest"> & {
@@ -341,7 +393,7 @@ export type ReadFileRequest = Message<"mixture.cloud.v1.ReadFileRequest"> & {
  * Use `create(ReadFileRequestSchema)` to create a new message.
  */
 export const ReadFileRequestSchema: GenMessage<ReadFileRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 10);
+  messageDesc(file_mixture_cloud_v1_cloud, 12);
 
 /**
  * @generated from message mixture.cloud.v1.ReadFileResponse
@@ -370,7 +422,7 @@ export type ReadFileResponse = Message<"mixture.cloud.v1.ReadFileResponse"> & {
  * Use `create(ReadFileResponseSchema)` to create a new message.
  */
 export const ReadFileResponseSchema: GenMessage<ReadFileResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 11);
+  messageDesc(file_mixture_cloud_v1_cloud, 13);
 
 /**
  * @generated from message mixture.cloud.v1.WriteFileRequest
@@ -404,7 +456,7 @@ export type WriteFileRequest = Message<"mixture.cloud.v1.WriteFileRequest"> & {
  * Use `create(WriteFileRequestSchema)` to create a new message.
  */
 export const WriteFileRequestSchema: GenMessage<WriteFileRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 12);
+  messageDesc(file_mixture_cloud_v1_cloud, 14);
 
 /**
  * @generated from message mixture.cloud.v1.WriteFileResponse
@@ -426,7 +478,7 @@ export type WriteFileResponse = Message<"mixture.cloud.v1.WriteFileResponse"> & 
  * Use `create(WriteFileResponseSchema)` to create a new message.
  */
 export const WriteFileResponseSchema: GenMessage<WriteFileResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 13);
+  messageDesc(file_mixture_cloud_v1_cloud, 15);
 
 /**
  * @generated from message mixture.cloud.v1.DeleteEntryRequest
@@ -448,7 +500,7 @@ export type DeleteEntryRequest = Message<"mixture.cloud.v1.DeleteEntryRequest"> 
  * Use `create(DeleteEntryRequestSchema)` to create a new message.
  */
 export const DeleteEntryRequestSchema: GenMessage<DeleteEntryRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 14);
+  messageDesc(file_mixture_cloud_v1_cloud, 16);
 
 /**
  * @generated from message mixture.cloud.v1.DeleteEntryResponse
@@ -465,7 +517,7 @@ export type DeleteEntryResponse = Message<"mixture.cloud.v1.DeleteEntryResponse"
  * Use `create(DeleteEntryResponseSchema)` to create a new message.
  */
 export const DeleteEntryResponseSchema: GenMessage<DeleteEntryResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 15);
+  messageDesc(file_mixture_cloud_v1_cloud, 17);
 
 /**
  * @generated from message mixture.cloud.v1.MoveEntryRequest
@@ -487,7 +539,7 @@ export type MoveEntryRequest = Message<"mixture.cloud.v1.MoveEntryRequest"> & {
  * Use `create(MoveEntryRequestSchema)` to create a new message.
  */
 export const MoveEntryRequestSchema: GenMessage<MoveEntryRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 16);
+  messageDesc(file_mixture_cloud_v1_cloud, 18);
 
 /**
  * @generated from message mixture.cloud.v1.MoveEntryResponse
@@ -504,7 +556,7 @@ export type MoveEntryResponse = Message<"mixture.cloud.v1.MoveEntryResponse"> & 
  * Use `create(MoveEntryResponseSchema)` to create a new message.
  */
 export const MoveEntryResponseSchema: GenMessage<MoveEntryResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 17);
+  messageDesc(file_mixture_cloud_v1_cloud, 19);
 
 /**
  * @generated from message mixture.cloud.v1.CreateDirectoryRequest
@@ -521,7 +573,7 @@ export type CreateDirectoryRequest = Message<"mixture.cloud.v1.CreateDirectoryRe
  * Use `create(CreateDirectoryRequestSchema)` to create a new message.
  */
 export const CreateDirectoryRequestSchema: GenMessage<CreateDirectoryRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 18);
+  messageDesc(file_mixture_cloud_v1_cloud, 20);
 
 /**
  * @generated from message mixture.cloud.v1.CreateDirectoryResponse
@@ -538,7 +590,7 @@ export type CreateDirectoryResponse = Message<"mixture.cloud.v1.CreateDirectoryR
  * Use `create(CreateDirectoryResponseSchema)` to create a new message.
  */
 export const CreateDirectoryResponseSchema: GenMessage<CreateDirectoryResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 19);
+  messageDesc(file_mixture_cloud_v1_cloud, 21);
 
 /**
  * @generated from message mixture.cloud.v1.InitRepositoryRequest
@@ -557,7 +609,7 @@ export type InitRepositoryRequest = Message<"mixture.cloud.v1.InitRepositoryRequ
  * Use `create(InitRepositoryRequestSchema)` to create a new message.
  */
 export const InitRepositoryRequestSchema: GenMessage<InitRepositoryRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 20);
+  messageDesc(file_mixture_cloud_v1_cloud, 22);
 
 /**
  * @generated from message mixture.cloud.v1.InitRepositoryResponse
@@ -586,7 +638,7 @@ export type InitRepositoryResponse = Message<"mixture.cloud.v1.InitRepositoryRes
  * Use `create(InitRepositoryResponseSchema)` to create a new message.
  */
 export const InitRepositoryResponseSchema: GenMessage<InitRepositoryResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 21);
+  messageDesc(file_mixture_cloud_v1_cloud, 23);
 
 /**
  * @generated from message mixture.cloud.v1.GetConfigRequest
@@ -599,7 +651,7 @@ export type GetConfigRequest = Message<"mixture.cloud.v1.GetConfigRequest"> & {
  * Use `create(GetConfigRequestSchema)` to create a new message.
  */
 export const GetConfigRequestSchema: GenMessage<GetConfigRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 22);
+  messageDesc(file_mixture_cloud_v1_cloud, 24);
 
 /**
  * @generated from message mixture.cloud.v1.GetConfigResponse
@@ -621,7 +673,7 @@ export type GetConfigResponse = Message<"mixture.cloud.v1.GetConfigResponse"> & 
  * Use `create(GetConfigResponseSchema)` to create a new message.
  */
 export const GetConfigResponseSchema: GenMessage<GetConfigResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 23);
+  messageDesc(file_mixture_cloud_v1_cloud, 25);
 
 /**
  * @generated from message mixture.cloud.v1.UpdateConfigRequest
@@ -643,7 +695,7 @@ export type UpdateConfigRequest = Message<"mixture.cloud.v1.UpdateConfigRequest"
  * Use `create(UpdateConfigRequestSchema)` to create a new message.
  */
 export const UpdateConfigRequestSchema: GenMessage<UpdateConfigRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 24);
+  messageDesc(file_mixture_cloud_v1_cloud, 26);
 
 /**
  * @generated from message mixture.cloud.v1.UpdateConfigResponse
@@ -665,7 +717,7 @@ export type UpdateConfigResponse = Message<"mixture.cloud.v1.UpdateConfigRespons
  * Use `create(UpdateConfigResponseSchema)` to create a new message.
  */
 export const UpdateConfigResponseSchema: GenMessage<UpdateConfigResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 25);
+  messageDesc(file_mixture_cloud_v1_cloud, 27);
 
 /**
  * @generated from enum mixture.cloud.v1.Visibility
@@ -803,6 +855,16 @@ export const CloudService: GenService<{
     methodKind: "unary";
     input: typeof ListEntriesRequestSchema;
     output: typeof ListEntriesResponseSchema;
+  },
+  /**
+   * recursive listing for search, the command palette and folder pickers
+   *
+   * @generated from rpc mixture.cloud.v1.CloudService.GetTree
+   */
+  getTree: {
+    methodKind: "unary";
+    input: typeof GetTreeRequestSchema;
+    output: typeof GetTreeResponseSchema;
   },
   /**
    * @generated from rpc mixture.cloud.v1.CloudService.ReadFile

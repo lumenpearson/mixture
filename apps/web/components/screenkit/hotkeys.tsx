@@ -7,6 +7,7 @@ import { useScreenkit, type Section } from "./store"
 /* ------------------------------------------------------------------ *
  * global keyboard shortcuts
  *
+ *   ctrl/⌘+k open the command palette
  *   /        search the library
  *   [ / ]    previous / next insert (preview + metadata)
  *   f        open the selected insert as a fullscreen screen-state
@@ -18,6 +19,13 @@ import { useScreenkit, type Section } from "./store"
  * ------------------------------------------------------------------ */
 
 export const SEARCH_INPUT_ID = "screenkit-library-search"
+
+/** window event that opens the ctrl/cmd+k command palette */
+export const COMMAND_PALETTE_EVENT = "screenkit:command-palette"
+
+export function openCommandPalette(detail?: { query?: string }) {
+  window.dispatchEvent(new CustomEvent(COMMAND_PALETTE_EVENT, { detail }))
+}
 
 const SECTION_KEYS: Record<string, Section> = {
   "1": "overview",
@@ -56,7 +64,14 @@ export function Hotkeys() {
 
   React.useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
+      if (event.defaultPrevented) return
+      // the palette works from anywhere, text fields included
+      if ((event.metaKey || event.ctrlKey) && !event.altKey && (event.key === "k" || event.key === "K")) {
+        event.preventDefault()
+        openCommandPalette()
+        return
+      }
+      if (event.metaKey || event.ctrlKey || event.altKey) return
       if (isEditable(event.target)) return
       // radix overlays trap focus on their own; leave them alone
       if (document.querySelector("[role='dialog'][data-state='open']")) return

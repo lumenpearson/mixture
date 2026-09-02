@@ -112,6 +112,8 @@ export function resolveInsert(insert: Insert, locale: Locale): ResolvedInsert {
     technicalNotes: pickList(insert.technicalNotes, locale),
     hasEnglish: hasEnglish(insert),
     custom: Boolean(insert.custom),
+    kind: insert.kind ?? "scene",
+    source: insert.source ?? {},
   };
 }
 

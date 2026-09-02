@@ -419,6 +419,36 @@ export const cloudServiceImpl: ServiceImpl<typeof CloudService> = {
     return { path, entries: sortEntries(entries), status: statusOf(session) }
   },
 
+  async getTree(req, ctx) {
+    const session = await resolveSession(ctx)
+    const repo = requireRepo(session)
+    const prefix = cleanPath(req.prefix, true)
+    try {
+      const { sha, entries, truncated } = await repo.tree()
+      const scope = prefix ? `${prefix}/` : ""
+      const visible = entries
+        .filter((e) => (e.type === "blob" || e.type === "tree") && (!scope || e.path.startsWith(scope)))
+        .filter((e) => !isSystemFile(e.path))
+        .map((e) =>
+          toEntry(
+            {
+              type: e.type === "tree" ? "dir" : "file",
+              name: e.path.split("/").pop() ?? e.path,
+              path: e.path,
+              sha: e.sha ?? "",
+              size: e.size ?? 0,
+              download_url: null,
+            },
+            session,
+          ),
+        )
+        .filter((entry): entry is Entry => entry !== null)
+      return { entries: sortEntries(visible), truncated, sha }
+    } catch (error) {
+      throw toConnectError(error)
+    }
+  },
+
   async readFile(req, ctx) {
     const session = await resolveSession(ctx)
     const repo = requireRepo(session)

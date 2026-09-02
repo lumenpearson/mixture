@@ -5,15 +5,25 @@ import type {
   InsertStatus,
   Locale,
   PlaybackMode,
+  UiLocale,
 } from "./types"
+import { FEATURE_DICTIONARIES } from "./i18n/index"
+import { SNARK } from "./i18n/snark"
 
+/** content locales: what inserts can be written in */
 export const LOCALES: Locale[] = ["ru", "en"]
-export const DEFAULT_LOCALE: Locale = "ru"
+/** interface locales: content locales plus the sarcastic russian voice */
+export const UI_LOCALES: UiLocale[] = ["ru", "en", "snark"]
+export const DEFAULT_LOCALE: UiLocale = "ru"
 export const LOCALE_STORAGE_KEY = "screenkit-locale"
 
-export const LANG_LABEL: Record<Locale, string> = {
+export const isUiLocale = (value: unknown): value is UiLocale =>
+  value === "ru" || value === "en" || value === "snark"
+
+export const LANG_LABEL: Record<UiLocale, string> = {
   ru: "русский",
   en: "english",
+  snark: "русский с сарказмом (¬‿¬)",
 }
 
 /* short tag used on compact toggles */
@@ -931,10 +941,20 @@ const EN: Dict = {
   "cloud.access.ownerOnly": "only an owner can change access",
 }
 
-const DICT: Record<Locale, Dict> = { ru: RU, en: EN }
+/* base dictionaries + every feature dictionary, merged once at module load */
+const RU_ALL: Dict = Object.assign({}, RU, ...FEATURE_DICTIONARIES.map((d) => d.ru))
+const EN_ALL: Dict = Object.assign({}, EN, ...FEATURE_DICTIONARIES.map((d) => d.en))
+const SNARK_ALL: Dict = Object.assign({}, SNARK, ...FEATURE_DICTIONARIES.map((d) => d.snark ?? {}))
 
-export function translate(locale: Locale, key: string): string {
+const DICT: Record<UiLocale, Dict> = { ru: RU_ALL, en: EN_ALL, snark: SNARK_ALL }
+
+export function translate(locale: UiLocale, key: string): string {
   return DICT[locale][key] ?? DICT.ru[key] ?? key
+}
+
+/** every key of the base + feature dictionaries for a locale (for tooling and tests) */
+export function dictionaryKeys(locale: UiLocale): string[] {
+  return Object.keys(DICT[locale])
 }
 
 /* ----------------------- localized entity labels ----------------------- */

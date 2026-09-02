@@ -273,7 +273,7 @@ const splitLines = (value: string) =>
     .filter(Boolean)
 
 function AddInsertDialog() {
-  const { addInsert, libraryBusy, persistent, categories, catLabel, locale, t } = useScreenkit()
+  const { addInsert, libraryBusy, persistent, categories, catLabel, contentLocale, t } = useScreenkit()
   const [open, setOpen] = React.useState(false)
   const [f, setF] = React.useState({ ...emptyInsert })
   const [category, setCategory] = React.useState(categories[0]?.id ?? "phones")
@@ -409,7 +409,7 @@ function AddInsertDialog() {
                 <SelectContent>
                   {DEVICES.map((d) => (
                     <SelectItem key={d.id} value={d.id} className="lowercase">
-                      {deviceLabel(d.id, locale)}
+                      {deviceLabel(d.id, contentLocale)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -443,7 +443,7 @@ function AddInsertDialog() {
                 <SelectContent>
                   {STATUSES.map((s) => (
                     <SelectItem key={s.id} value={s.id} className="lowercase">
-                      {statusLabel(s.id, locale)}
+                      {statusLabel(s.id, contentLocale)}
                     </SelectItem>
                   ))}
                 </SelectContent>

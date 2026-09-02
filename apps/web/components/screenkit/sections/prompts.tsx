@@ -65,7 +65,7 @@ function ToolbarButton({ onClick, children }: { onClick: () => void; children: R
 }
 
 export function PromptsSection() {
-  const { selectedId, setSelectedId, locale, insertLocaleFor, t, inserts, getInsert } =
+  const { selectedId, setSelectedId, contentLocale, insertLocaleFor, t, inserts, getInsert } =
     useScreenkit()
   const raw = getInsert(selectedId) ?? inserts[0]
   const insertLocale = insertLocaleFor(raw.id)
@@ -103,14 +103,14 @@ export function PromptsSection() {
             <SelectContent className="max-h-80 border-panel-border bg-popover font-mono">
               {inserts.map((i) => (
                 <SelectItem key={i.id} value={i.id} className="lowercase">
-                  {resolveInsert(i, locale).title}
+                  {resolveInsert(i, contentLocale).title}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <StatusBadge
             status={insert.status}
-            label={statusLabel(insert.status, locale)}
+            label={statusLabel(insert.status, contentLocale)}
           />
           <InsertLanguageToggle
             insertId={insert.id}
@@ -126,7 +126,7 @@ export function PromptsSection() {
           <ToolbarButton onClick={() => downloadText(`${insert.id}.prompts.txt`, buildPromptSheet(insert, insertLocale), "text/plain")}>
             <Download className="size-3.5" /> {t("prompts.exportSheet")}
           </ToolbarButton>
-          <ToolbarButton onClick={() => exportPromptSheets(inserts, locale)}>
+          <ToolbarButton onClick={() => exportPromptSheets(inserts, contentLocale)}>
             <FileJson className="size-3.5" /> {t("prompts.exportAll")}
           </ToolbarButton>
           <ToolbarButton onClick={shareLink}>
@@ -141,7 +141,7 @@ export function PromptsSection() {
           label={t("prompts.episodeScene")}
           value={`${insert.episode} · ${insert.scene}`}
         />
-        <KeyVal label={t("prompts.device")} value={deviceLabel(insert.device, locale)} />
+        <KeyVal label={t("prompts.device")} value={deviceLabel(insert.device, contentLocale)} />
         <KeyVal label={t("prompts.aspect")} value={insert.aspect} />
       </div>
 

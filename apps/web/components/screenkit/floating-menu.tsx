@@ -1,7 +1,7 @@
 "use client"
 
 import { DEFAULT_LOCALE, translate } from "@/lib/screenkit/i18n"
-import type { Locale } from "@/lib/screenkit/types"
+import type { UiLocale } from "@/lib/screenkit/types"
 import { cn } from "@/lib/utils"
 import {
   ArrowLeft,
@@ -30,7 +30,7 @@ export function FloatingMenu({
   onRevealModeChange,
   className,
 }: {
-  locale?: Locale
+  locale?: UiLocale
   insertId: string
   orientation: Orientation
   onOrientationChange: (o: Orientation) => void
