@@ -98,3 +98,6 @@ bun.lockb
 
 # Keep pnpm lockfile tracked
 !pnpm-lock.yaml
+
+# agent worktrees created by Claude Code inside the checkout
+.claude/worktrees/
