@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "defaultVisibility": "private",
+  "rules": [
+    { "pattern": "public/**", "visibility": "public" },
+    { "pattern": ".gitkeep", "visibility": "hidden" },
+    { "pattern": "renders/**/*.png", "visibility": "private" }
+  ],
+  "access": {
+    "owners": ["lumenpearson"],
+    "editors": [],
+    "viewers": [],
+    "allowAnonymousPublic": true,
+    "keys": [
+      {
+        "name": "crew-viewer",
+        "role": "viewer",
+        "keyHash": "sha256:<sha256 hex of the raw key — generate keys in the cloud tab>"
+      }
+    ]
+  }
+}
