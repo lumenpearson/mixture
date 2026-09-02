@@ -1,118 +1,151 @@
 # mixture · screenkit
 
-A bilingual (RU/EN) **screen-insert production library** — a workspace for
-planning, describing, and previewing the on-screen graphics ("inserts") that
-appear on phones, monitors, TVs, CCTV feeds, and trackers in film and video
-production.
+Двуязычная (RU/EN) **библиотека экранных вставок** для сериала «Гремучая смесь» —
+рабочее пространство художественного цеха, где экранная графика («вставки») для
+телефонов, мониторов, телевизоров, камер наблюдения и трекеров проектируется,
+описывается и просматривается на реквизитном устройстве.
 
-Each insert is a self-contained package with a live, rendered preview. The web
-app ties them together into a searchable, categorized library with a timeline,
-prompt sheets, and a fully personalizable interface.
-
----
-
-## Highlights
-
-- **Live insert previews** — every insert renders inside a real device frame
-  (phone, monitor, TV, tablet, projector, CCTV) with the correct aspect ratio.
-- **Categorized library** — filter inserts by category; add your own categories
-  with a **custom icon** and **accent color**. New inserts inherit the icon of
-  their target device and the color of their category.
-- **Personalization** — light / dark / system themes, swappable accent
-  palettes, adjustable gradient intensity, and a site-wide **scale (zoom)**
-  control. Every choice is remembered locally.
-- **Considered motion** — smooth crossfades on theme and palette changes,
-  eased resizing of preview frames and panels, and smooth scrolling. A motion
-  setting (auto / on / reduced) respects `prefers-reduced-motion` and
-  low-powered devices.
-- **Bilingual UI** — Russian and English throughout, including entity labels.
-- **Persistent data** — categories and inserts are stored in Postgres (Neon)
-  via Drizzle, with optimistic client updates.
+Каждая вставка — самостоятельный пакет с живым превью. Приложение собирает их в
+каталог с фильтрами, превью на устройстве, листами промптов, живым журналом изменений
+из GitHub, облачным хранилищем и полностью настраиваемым интерфейсом.
 
 ---
 
-## Tech stack
+## Возможности
 
-| Area        | Choice                                            |
-| ----------- | ------------------------------------------------- |
-| Framework   | Next.js (App Router) + React                      |
-| Language    | TypeScript                                        |
-| Styling     | Tailwind CSS v4 with semantic design tokens       |
-| UI          | shadcn/ui + lucide icons                          |
-| Database    | Neon Postgres                                     |
-| ORM         | Drizzle                                           |
-| Data layer  | Server Actions + SWR (optimistic updates)         |
-| Monorepo    | pnpm workspaces                                   |
+- **Живые превью** — каждая вставка рендерится в рамке устройства (телефон, монитор,
+  тв, планшет, проектор, cctv) с правильным соотношением сторон и тремя грейдами:
+  чистый источник, съёмка с экрана, грязное воспроизведение. Полноэкранный
+  скрин-стейт `/insert/[id]` для площадки.
+- **Библиотека** — фильтры по категории, устройству, статусу и избранному; поиск;
+  сортировка, вид и пагинация запоминаются; свои категории с иконкой и цветом; свои
+  вставки с промптами на двух языках; удаление и сброс добавленного.
+- **Промпты** — лист промптов каждой вставки с копированием, экспорт листа в текст,
+  всех промптов в JSON и ссылка на вставку.
+- **Журнал изменений** — коммиты всех веток, события, контрибьюторы, языки, релизы,
+  issue и pull request из GitHub, с кэшем и фоновым обновлением.
+- **Облако** — файловое хранилище поверх приватного репозитория GitHub: папки,
+  загрузка перетаскиванием, предпросмотр, скачивание, перемещение, удаление; видимость
+  файлов и доступ задаются конфигом `cloud.config.json` в самом репозитории
+  ([docs/cloud](docs/cloud/README.md)).
+- **Персонализация** — светлая / тёмная / системная тема, палитры, градиенты, glow,
+  масштаб, ширина контента, движение (авто / включено / уменьшено, с тонкой
+  настройкой), горячие клавиши. Всё запоминается локально.
+- **Двуязычность** — русский и английский во всём интерфейсе; язык внутри вставки
+  переключается независимо.
+- **Устойчивость** — приложение собирается и работает без базы данных (режим только
+  чтения) и без токенов (облако объясняет, как подключиться); страницы ошибок в
+  стиле приложения.
 
 ---
 
-## Project structure
+## Стек
+
+| Область        | Выбор                                                              |
+| -------------- | ------------------------------------------------------------------ |
+| Фреймворк      | Next.js 16 (App Router) + React 19                                 |
+| Язык           | TypeScript (strict)                                                |
+| Транспорт      | Protobuf + ConnectRPC поверх бинарного gRPC-Web из одного маршрута |
+| Стили          | Tailwind CSS v4 с семантическими токенами                          |
+| UI             | shadcn/ui (Radix) + lucide                                         |
+| База           | Neon Postgres через Drizzle (опционально)                          |
+| Облако         | GitHub REST (contents + git data API)                              |
+| Тесты / линт   | vitest, eslint-config-next, buf lint                               |
+| Монорепо       | pnpm workspaces + Turborepo                                        |
+
+---
+
+## Структура
 
 ```
 .
-├── apps/
-│   └── web/                     # the Next.js application
-│       ├── app/                 # routes, layout, server actions
-│       ├── components/
-│       │   └── screenkit/       # app shell, rail, category panel,
-│       │                        # theme + motion providers, sections
-│       └── lib/
-│           ├── db/              # Drizzle schema + client
-│           └── screenkit/       # data, i18n, server fetchers, types
-└── packages/
-    ├── screenkit-core/          # shared types (CategoryDef, Insert, …)
-    └── inserts/                 # one package per insert scene (live previews)
+├── apps/web/                    # приложение Next.js
+│   ├── app/                     # маршруты, /api/rpc/[...path], страницы ошибок, манифест
+│   ├── components/screenkit/    # оболочка, секции, store, тема, движение, примитивы
+│   ├── components/ui/           # вендоренные shadcn/ui
+│   └── lib/
+│       ├── rpc/                 # сервисы, роутер, клиент, кодеки, cloud/
+│       ├── screenkit/           # данные, i18n, загрузка библиотеки, экспорт
+│       └── db/                  # схема и клиент Drizzle
+├── packages/
+│   ├── protocol/                # контракты .proto (mixture.*.v1) и сгенерированные привязки
+│   ├── screenkit-core/          # общие типы вставок и манифестов
+│   └── inserts/*                # по пакету на сцену вставки
+├── docs/cloud/                  # конфиг облака: пример и описание
+├── .agents/, .claude/, AGENTS.md, CLAUDE.md   # правила для ИИ-агентов
+└── scripts/                     # проверка свежести protobuf-привязок
 ```
 
 ---
 
-## Getting started
+## Запуск
 
-> Requires **pnpm** and a **Neon** Postgres connection string.
+> Нужны **Node 22+** и **pnpm 10.34** (`corepack enable`).
 
 ```bash
-# 1. install dependencies
 pnpm install
-
-# 2. provide the database url (Neon)
-#    DATABASE_URL is wired up automatically by the Neon integration on Vercel.
-
-# 3. run the dev server
-pnpm dev
+cp .env.example .env.local   # все переменные необязательны
+pnpm dev                      # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the app.
+Проверки:
 
-### Database
+```bash
+pnpm typecheck && pnpm lint && pnpm test && pnpm build
+pnpm check                    # то же плюс свежесть protobuf-привязок
+```
 
-The library is backed by two tables — `screenkit_categories` and
-`screenkit_inserts`. The schema lives in
-[`apps/web/lib/db/schema.ts`](apps/web/lib/db/schema.ts). Categories carry an
-optional `icon` and an accent color that inserts inherit.
+### Переменные окружения
+
+| Переменная                    | Назначение                                                            |
+| ----------------------------- | --------------------------------------------------------------------- |
+| `DATABASE_URL`                | Postgres (Neon) для добавленных вставок и категорий; без неё — только чтение |
+| `MIXTURE_EDIT_TOKEN`          | если задан, изменения библиотеки требуют этот токен (вводится во вкладке библиотеки) |
+| `MIXTURE_GITHUB_REPO`         | репозиторий для журнала изменений (по умолчанию `lumenpearson/mixture`) |
+| `MIXTURE_GITHUB_TOKEN`        | токен для журнала, снимает лимит GitHub API                            |
+| `MIXTURE_CLOUD_REPO`          | репозиторий облака (по умолчанию `lumenpearson/mixture-cloud`)         |
+| `MIXTURE_CLOUD_GITHUB_TOKEN`  | серверный токен облака; без него посетитель подключает свой во вкладке |
+| `MIXTURE_CLOUD_OWNERS`        | дополнительные владельцы облака через запятую                          |
+| `NEXT_PUBLIC_SITE_URL`        | абсолютный адрес сайта для метаданных                                  |
+
+### База данных
+
+Библиотека опирается на две таблицы — `screenkit_categories` и `screenkit_inserts`
+(схема в [`apps/web/lib/db/schema.ts`](apps/web/lib/db/schema.ts)). Встроенные вставки
+и сцены живут в коде и в базе не хранятся.
 
 ---
 
-## Personalization
+## RPC
 
-All appearance controls live in the **Style** section (the palette icon in the
-left rail):
+Все операции — методы сервисов `mixture.library.v1.LibraryService`,
+`mixture.changelog.v1.ChangelogService` и `mixture.cloud.v1.CloudService`, описанных в
+[`packages/protocol`](packages/protocol/README.md). Браузер ходит по gRPC-Web, но тот же
+маршрут принимает и протокол Connect, поэтому вызов можно сделать с curl:
 
-- **Theme** — light, dark, or follow the system. Switching crossfades smoothly.
-- **Palette** — pick the interface accent set.
-- **Gradients** — off, soft, or vivid, applied to category tiles, icons, and
-  accents while staying minimal.
-- **Scale** — compact → huge. Scales text, padding, and elements together by
-  adjusting the root font size.
-- **Motion** — auto, on, or reduced. Auto defaults to reduced when the system
-  asks for it or the device looks underpowered.
+```bash
+curl -X POST http://localhost:3000/api/rpc/mixture.library.v1.LibraryService/GetLibrary \
+  -H 'Content-Type: application/json' -H 'Connect-Protocol-Version: 1' -d '{}'
+```
+
+После правки `.proto`: `pnpm generate`, затем закоммитьте `packages/protocol/src/gen`.
 
 ---
 
-## Built with v0
+## Вставки
 
-This repository is linked to a [v0](https://v0.app) project. Continue
-developing by visiting the link below — start new chats to make changes, and v0
-will push commits directly to this repo. Every merge to `main` deploys
-automatically.
+Как добавить свою вставку — нативный React-пакет или экспортированный Next-проект —
+описано в [`packages/inserts/README.md`](packages/inserts/README.md). Перед `dev` и
+`build` скрипт `sync-inserts` находит пакеты и подключает их автоматически.
 
-[Continue working on v0 →](https://v0.app/chat/projects/prj_bCVZAT6sHWAY7JAYp9dXXlJDV2PU)
+---
+
+## Деплой
+
+Проект деплоится на Vercel из этого репозитория; `pnpm build` проходит без переменных
+окружения. Переменные из таблицы выше задаются в настройках проекта Vercel.
+
+## Для ИИ-агентов
+
+Точка входа — [`AGENTS.md`](AGENTS.md); правила и границы — [`.agents/`](.agents/);
+карта репозитория — [`CLAUDE.md`](CLAUDE.md); политика — [`AI_USAGE_POLICY.md`](AI_USAGE_POLICY.md).
