@@ -132,7 +132,7 @@ async function main() {
     const pkgDir = await resolvePkgDir(name)
     const pkg = await readJSON(path.join(pkgDir, "package.json"))
     const license = readLicenseField(pkg)
-    const { file, text } = (await findLicenseText(pkgDir)) ?? {}
+    const { text } = (await findLicenseText(pkgDir)) ?? {}
 
     let licenseFile = null
     if (text) {

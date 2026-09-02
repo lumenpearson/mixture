@@ -5,11 +5,13 @@ import NumberFlow from "@number-flow/react"
 import * as React from "react"
 import { useMotion } from "./motion"
 
+type NumberFlowFormat = React.ComponentProps<typeof NumberFlow>["format"]
+
 type MotionNumberProps = {
   value: number
   className?: string
   locales?: string | string[]
-  format?: Intl.NumberFormatOptions
+  format?: NumberFlowFormat
   prefix?: React.ReactNode
   suffix?: React.ReactNode
   ariaLabel?: string

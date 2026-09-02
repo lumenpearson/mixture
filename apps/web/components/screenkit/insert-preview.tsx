@@ -6,6 +6,16 @@ import { DeviceFrame } from "./device-frame"
 import { InsertCanvas } from "./insert-canvas"
 import type { PreviewSettings } from "./store"
 
+/* a stable fake clock per insert: ids like "gs-cctv-grid" end in letters, so
+   derive digits from a tiny hash instead of slicing the id */
+function fakeClock(id: string): string {
+  let hash = 0
+  for (let i = 0; i < id.length; i += 1) hash = (hash * 31 + id.charCodeAt(i)) >>> 0
+  const minutes = String(40 + (hash % 20)).padStart(2, "0")
+  const seconds = String(hash % 60).padStart(2, "0")
+  return `23:${minutes}:${seconds}`
+}
+
 export function InsertPreview({
   insert,
   settings,
@@ -103,7 +113,7 @@ export function InsertPreview({
       {/* timestamp overlay */}
       {timestamp && (
         <div className="pointer-events-none absolute right-2 top-2 z-10 font-mono text-[10px] text-white/85 drop-shadow">
-          {insert.date.replaceAll("-", ".")} 23:4{insert.id.slice(-1)}:0{insert.id.slice(-1)}
+          {insert.date.replaceAll("-", ".")} {fakeClock(insert.id)}
         </div>
       )}
     </>

@@ -12,11 +12,25 @@ import './cursor.css'
 const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://mixture-codeilluminators.vercel.app'
+
 export const metadata: Metadata = {
-  title: 'screen inserts — гремучая смесь',
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: 'screen inserts — гремучая смесь',
+    template: '%s · screenkit',
+  },
   description:
     'prop playback system — design, preview, organize and export screen inserts for the crime series «Гремучая смесь».',
-  generator: 'v0.app',
+  applicationName: 'mixture · screenkit',
+  robots: { index: false, follow: false },
+  openGraph: {
+    title: 'screen inserts — гремучая смесь',
+    description: 'prop playback system for the crime series «Гремучая смесь»: library, device preview, prompts, cloud drive.',
+    siteName: 'mixture · screenkit',
+    type: 'website',
+    locale: 'ru_RU',
+  },
   icons: {
     icon: [
       { url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
@@ -42,7 +56,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="ru"
       suppressHydrationWarning
       className={`bg-background ${geistSans.variable} ${geistMono.variable}`}
     >

@@ -11,8 +11,11 @@ import {
   ChevronRight,
   Eye,
   Search,
+  Star,
+  X,
 } from "lucide-react"
 import * as React from "react"
+import { SEARCH_INPUT_ID } from "../hotkeys"
 import { iconForDevice } from "../icons"
 import { LibraryEditor } from "../library-editor"
 import { LibraryListControls } from "../library-list-controls"
@@ -45,6 +48,9 @@ export function LibrarySection() {
     catDef,
     catLabel,
     libraryListSettings,
+    favorites,
+    isFavorite,
+    toggleFavorite,
   } = useScreenkit()
 
   const labels = LIBRARY_LIST_UI[locale]
@@ -54,6 +60,7 @@ export function LibrarySection() {
   const filtered = React.useMemo(
     () =>
       inserts.filter((i) => {
+        if (filters.favoritesOnly && !favorites.has(i.id)) return false
         if (filters.category !== "all" && i.category !== filters.category) return false
         if (filters.device !== "all" && i.device !== filters.device) return false
         if (filters.status !== "all" && i.status !== filters.status) return false
@@ -66,8 +73,15 @@ export function LibrarySection() {
         }
         return true
       }),
-    [filters, inserts, locale],
+    [filters, inserts, locale, favorites],
   )
+
+  const hasActiveFilters =
+    filters.search !== "" ||
+    filters.category !== "all" ||
+    filters.device !== "all" ||
+    filters.status !== "all" ||
+    filters.favoritesOnly
 
   const sorted = React.useMemo(
     () =>
@@ -106,11 +120,32 @@ export function LibrarySection() {
       <div className="relative min-w-0">
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-faint" />
         <Input
+          id={SEARCH_INPUT_ID}
           value={filters.search}
           onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
           placeholder={t("library.search")}
-          className="h-11 rounded-2xl border-panel-border bg-control pl-9 font-mono text-sm text-foreground placeholder:text-text-faint focus-visible:ring-ring"
+          aria-label={t("library.search")}
+          className="h-11 rounded-2xl border-panel-border bg-control pl-9 pr-24 font-mono text-sm text-foreground placeholder:text-text-faint focus-visible:ring-ring"
         />
+        <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              onClick={() =>
+                setFilters({ search: "", category: "all", device: "all", status: "all", favoritesOnly: false })
+              }
+              className="inline-flex items-center gap-1 rounded-full border border-panel-border bg-panel-soft px-2 py-1 font-mono text-[10px] lowercase text-text-secondary transition-colors hover:bg-panel-hover hover:text-foreground"
+              aria-label={t("library.clearFilters")}
+              title={t("library.clearFilters")}
+            >
+              <X className="size-3" />
+              <span className="hidden sm:inline">{t("library.clearFilters")}</span>
+            </button>
+          ) : null}
+          <kbd className="hidden rounded-md border border-panel-border bg-panel-soft px-1.5 py-0.5 font-mono text-[10px] text-text-faint sm:block">
+            /
+          </kbd>
+        </div>
       </div>
 
       <div className="flex min-w-0 flex-col gap-3">
@@ -143,6 +178,18 @@ export function LibrarySection() {
               {deviceLabel(d.id, locale)}
             </Pill>
           ))}
+        </FilterRow>
+
+        <FilterRow label={t("library.favorites")}>
+          <Pill
+            active={filters.favoritesOnly}
+            accent={filters.favoritesOnly ? "var(--accent-orange)" : undefined}
+            onClick={() => setFilters((f) => ({ ...f, favoritesOnly: !f.favoritesOnly }))}
+          >
+            <Star className="size-3" />
+            {t("library.favoritesOnly")}
+            <MotionNumber value={favorites.size} className="text-text-faint" />
+          </Pill>
         </FilterRow>
 
         <FilterRow label={t("library.status")}>
@@ -196,6 +243,10 @@ export function LibrarySection() {
               previewLabel={t("library.preview")}
               ruOnlyLabel={t("common.ruOnly")}
               ruOnlyHint={t("common.ruOnlyHint")}
+              customLabel={t("common.custom")}
+              favorite={isFavorite(insert.id)}
+              favoriteLabel={isFavorite(insert.id) ? t("common.unfavorite") : t("common.favorite")}
+              onToggleFavorite={() => toggleFavorite(insert.id)}
             />
           </li>
         ))}
@@ -230,6 +281,10 @@ function InsertCard({
   previewLabel,
   ruOnlyLabel,
   ruOnlyHint,
+  customLabel,
+  favorite,
+  favoriteLabel,
+  onToggleFavorite,
 }: {
   insert: ResolvedInsert
   locale: Locale
@@ -241,11 +296,32 @@ function InsertCard({
   previewLabel: string
   ruOnlyLabel: string
   ruOnlyHint: string
+  customLabel: string
+  favorite: boolean
+  favoriteLabel: string
+  onToggleFavorite: () => void
 }) {
   const Icon = iconForDevice(insert.device)
 
   return (
-    <button type="button" onClick={onPreview} className={cardCls(viewMode)}>
+    <div className={cn(cardCls(viewMode), "relative")}>
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation()
+          onToggleFavorite()
+        }}
+        aria-pressed={favorite}
+        aria-label={favoriteLabel}
+        title={favoriteLabel}
+        className={cn(
+          "absolute right-2 top-2 z-10 inline-flex size-8 items-center justify-center rounded-full transition-colors",
+          favorite ? "text-accent-orange" : "text-text-faint opacity-0 hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100",
+        )}
+      >
+        <Star className="size-3.5" fill={favorite ? "currentColor" : "none"} />
+      </button>
+      <button type="button" onClick={onPreview} className={innerCls(viewMode)}>
       <IconTile
         icon={Icon}
         accent={categoryAccent}
@@ -261,6 +337,11 @@ function InsertCard({
           <StatusBadge status={insert.status} label={statusLabel(insert.status, locale)} />
           {!insert.hasEnglish && (
             <RuOnlyBadge label={ruOnlyLabel} title={ruOnlyHint} />
+          )}
+          {insert.custom && (
+            <span className="rounded-full border border-panel-border bg-control px-2 py-0.5 font-mono text-[10px] lowercase text-text-faint">
+              {customLabel}
+            </span>
           )}
         </div>
 
@@ -281,12 +362,13 @@ function InsertCard({
       </div>
 
       {viewMode !== "grid" && (
-        <span className="hidden shrink-0 items-center gap-1 self-center rounded-full bg-control px-3 py-1.5 font-mono text-[11px] lowercase text-text-secondary group-hover:bg-control-active group-hover:text-control-active-foreground sm:flex">
+        <span className="mr-8 hidden shrink-0 items-center gap-1 self-center rounded-full bg-control px-3 py-1.5 font-mono text-[11px] lowercase text-text-secondary group-hover:bg-control-active group-hover:text-control-active-foreground sm:flex">
           <Eye className="size-3.5" /> {previewLabel}
           <ArrowUpRight className="size-3" />
         </span>
       )}
-    </button>
+      </button>
+    </div>
   )
 }
 
@@ -406,14 +488,16 @@ function listCls(viewMode: LibraryViewMode) {
 function cardCls(viewMode: LibraryViewMode) {
   const base =
     "group w-full min-w-0 rounded-2xl border border-panel-border bg-panel-soft text-left transition-colors hover:border-ring hover:bg-panel-hover"
+  return cn(base, viewMode === "grid" ? "h-full" : "")
+}
 
+function innerCls(viewMode: LibraryViewMode) {
+  const base = "w-full min-w-0 text-left"
   if (viewMode === "compact") {
     return cn(base, "flex items-center gap-3 p-2.5")
   }
-
   if (viewMode === "grid") {
     return cn(base, "flex h-full flex-col gap-3 p-3")
   }
-
   return cn(base, "flex items-start gap-3 p-3")
 }

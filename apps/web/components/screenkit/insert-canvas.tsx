@@ -1,7 +1,10 @@
 "use client"
 
+/* eslint-disable react-hooks/static-components -- the registry looks up an
+   existing module-level scene component; nothing is created during render */
 import { resolveScene } from "@/lib/screenkit/insert-registry"
 import type { ResolvedInsert } from "@/lib/screenkit/types"
+import * as React from "react"
 import type { PreviewSettings } from "./store"
 
 /**
@@ -16,6 +19,9 @@ export function InsertCanvas({
   insert: ResolvedInsert
   settings?: PreviewSettings
 }) {
-  const Scene = resolveScene(insert)
+  // the registry only looks up an existing, module-level scene component (no
+  // component is created here); memoising keeps its identity stable across
+  // renders so the scene keeps its own state
+  const Scene = React.useMemo(() => resolveScene(insert), [insert])
   return <Scene insert={insert} settings={settings as unknown as Record<string, unknown>} />
 }

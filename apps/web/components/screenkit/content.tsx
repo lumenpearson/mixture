@@ -6,6 +6,7 @@ import * as React from "react"
 import { CategoryChips, CategoryPanel } from "./category-panel"
 import { useReveal } from "./motion"
 import { AboutSection } from "./sections/about"
+import { CloudSection } from "./sections/cloud"
 import { LibrarySection } from "./sections/library"
 import { NotFoundSection } from "./sections/not-found"
 import { OverviewSection } from "./sections/overview"
@@ -15,6 +16,7 @@ import { StyleSection } from "./sections/style"
 import { TimelineSection } from "./sections/timeline"
 import {
   AboutSkeleton,
+  CloudSkeleton,
   LibrarySkeleton,
   OverviewSkeleton,
   PreviewSkeleton,
@@ -31,6 +33,7 @@ const SECTION_CONTENT: Record<Section, React.ReactNode> = {
   timeline: <TimelineSection />,
   prompts: <PromptsSection />,
   style: <StyleSection />,
+  cloud: <CloudSection />,
   about: <AboutSection />,
 }
 
@@ -41,6 +44,7 @@ const SECTION_SKELETON: Record<Section, React.ReactNode> = {
   timeline: <TimelineSkeleton />,
   prompts: <PromptsSkeleton />,
   style: <StyleSkeleton />,
+  cloud: <CloudSkeleton />,
   about: <AboutSkeleton />,
 }
 

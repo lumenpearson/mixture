@@ -9,8 +9,10 @@ import {
 } from "@/components/ui/select"
 import { resolveInsert } from "@/lib/screenkit/data"
 import { deviceLabel, statusLabel } from "@/lib/screenkit/i18n"
-import { Check, Copy } from "lucide-react"
+import { buildPromptSheet, downloadText, exportPromptSheets } from "@/lib/screenkit/export"
+import { Check, Copy, Download, FileJson, Link2 } from "lucide-react"
 import * as React from "react"
+import { toast } from "sonner"
 import { InsertLanguageToggle } from "../insert-language-toggle"
 import { Explain, KeyVal, SectionHeading, StatusBadge } from "../primitives"
 import { useScreenkit } from "../store"
@@ -50,6 +52,18 @@ function CopyBlock({
   )
 }
 
+function ToolbarButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded-xl border border-panel-border bg-control px-3 py-2 font-mono text-xs lowercase text-text-secondary transition-colors hover:bg-panel-hover hover:text-foreground"
+    >
+      {children}
+    </button>
+  )
+}
+
 export function PromptsSection() {
   const { selectedId, setSelectedId, locale, insertLocaleFor, t, inserts, getInsert } =
     useScreenkit()
@@ -59,6 +73,21 @@ export function PromptsSection() {
 
   const copyLabel = t("common.copy")
   const copiedLabel = t("common.copied")
+  const [allCopied, setAllCopied] = React.useState(false)
+
+  const copyAll = () => {
+    void navigator.clipboard?.writeText(buildPromptSheet(insert, insertLocale))
+    setAllCopied(true)
+    window.setTimeout(() => setAllCopied(false), 1400)
+  }
+
+  const shareLink = () => {
+    const url = new URL(window.location.href)
+    url.search = `?view=metadata&insert=${encodeURIComponent(insert.id)}`
+    url.hash = ""
+    void navigator.clipboard?.writeText(url.toString())
+    toast.success(t("common.linkCopied"))
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -88,6 +117,21 @@ export function PromptsSection() {
             hasEnglish={insert.hasEnglish}
             compact
           />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <ToolbarButton onClick={copyAll}>
+            {allCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+            {allCopied ? copiedLabel : t("prompts.copyAll")}
+          </ToolbarButton>
+          <ToolbarButton onClick={() => downloadText(`${insert.id}.prompts.txt`, buildPromptSheet(insert, insertLocale), "text/plain")}>
+            <Download className="size-3.5" /> {t("prompts.exportSheet")}
+          </ToolbarButton>
+          <ToolbarButton onClick={() => exportPromptSheets(inserts, locale)}>
+            <FileJson className="size-3.5" /> {t("prompts.exportAll")}
+          </ToolbarButton>
+          <ToolbarButton onClick={shareLink}>
+            <Link2 className="size-3.5" /> {t("common.share")}
+          </ToolbarButton>
         </div>
       </header>
 

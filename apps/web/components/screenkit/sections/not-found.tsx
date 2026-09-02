@@ -3,8 +3,10 @@
 import { ArrowLeft, SearchX } from "lucide-react"
 import Link from "next/link"
 import { Explain, SectionHeading } from "../primitives"
+import { useScreenkit } from "../store"
 
 export function NotFoundSection() {
+  const { t } = useScreenkit()
   return (
     <div className="flex min-h-[62vh] min-w-0 items-center">
       <div className="relative w-full overflow-hidden rounded-[2rem] border border-panel-border bg-panel-soft p-6 shadow-[0_24px_80px_-48px_rgba(0,0,0,0.75)] sm:p-8 lg:p-10">
@@ -17,19 +19,17 @@ export function NotFoundSection() {
           </div>
           <div className="flex flex-col gap-3">
             <div className="font-mono text-[12px] uppercase tracking-[0.34em] text-text-faint">
-              404 / route not found
+              {t("notFound.kicker")}
             </div>
-            <SectionHeading title="страница не найдена" className="text-3xl sm:text-4xl" />
-            <Explain className="max-w-2xl">
-              такого адреса в screenkit нет. вернитесь на главную страницу библиотеки вставок или выберите нужный раздел в левой панели.
-            </Explain>
+            <SectionHeading title={t("notFound.title")} className="text-3xl sm:text-4xl" />
+            <Explain className="max-w-2xl">{t("notFound.desc")}</Explain>
           </div>
           <Link
             href="/"
             className="inline-flex w-fit items-center justify-center gap-2 rounded-2xl bg-control-active px-4 py-3 font-mono text-sm lowercase text-control-active-foreground transition-opacity hover:opacity-90"
           >
             <ArrowLeft className="size-4" />
-            на главную
+            {t("common.home")}
           </Link>
         </div>
       </div>

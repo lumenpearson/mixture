@@ -203,7 +203,6 @@ for (const entry of collectInsertDirectories()) {
   }
 
   const insertId = auto.id ?? `auto-${safeIdSlug(publicSlug)}`
-  const labelRu = auto.label?.ru ?? auto.title?.ru ?? title(slug)
   const labelEn = auto.label?.en ?? auto.title?.en ?? title(slug)
   const manifestLabel = auto.manifestLabel ?? labelEn
 

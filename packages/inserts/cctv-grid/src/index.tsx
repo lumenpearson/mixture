@@ -280,12 +280,10 @@ export function Scene({ insert, settings }: SceneProps) {
 
   // build exactly `cells` tiles, cycling the available feeds so the grid is
   // always completely filled (classic multiplexer behaviour, no empty gaps)
-  const tiles = React.useArray
-    ? []
-    : Array.from({ length: cells }, (_, i) => {
-        const feed = feeds.length ? feeds[i % feeds.length] : null
-        return { feed, index: i }
-      })
+  const tiles = Array.from({ length: cells }, (_, i) => {
+    const feed = feeds.length ? feeds[i % feeds.length] : null
+    return { feed, index: i }
+  })
 
   return (
     <div

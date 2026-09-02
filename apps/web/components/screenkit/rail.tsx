@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils"
 import {
+  Cloud,
   Eye,
   FileText,
   GitBranch,
@@ -21,6 +22,7 @@ const RAIL_ITEMS: RailItem[] = [
   { id: "timeline", icon: GitBranch },
   { id: "prompts", icon: FileText },
   { id: "style", icon: Palette },
+  { id: "cloud", icon: Cloud },
 ]
 
 const RAIL_ICON_SIZE: Record<ScaleLevel, string> = {
@@ -30,13 +32,13 @@ const RAIL_ICON_SIZE: Record<ScaleLevel, string> = {
   huge: "1.72rem",
 }
 
-function sectionLabel(id: Section, locale: string, t: (key: string) => string) {
-  if (id === "timeline") return locale === "en" ? "changelog" : "изменения"
+function sectionLabel(id: Section, t: (key: string) => string) {
+  if (id === "timeline") return t("nav.changelog")
   return t(`section.${id}`)
 }
 
 export function Rail({ onNavigate }: { onNavigate?: () => void }) {
-  const { section, setSection, t, locale } = useScreenkit()
+  const { section, setSection, t } = useScreenkit()
   const { scale } = usePalette()
   const iconStyle = {
     width: RAIL_ICON_SIZE[scale],
@@ -85,7 +87,7 @@ export function Rail({ onNavigate }: { onNavigate?: () => void }) {
             >
               <Icon className="shrink-0" strokeWidth={1.7} style={iconStyle} />
               <span className="font-mono text-[10px] lowercase leading-tight">
-                {sectionLabel(item.id, locale, t)}
+                {sectionLabel(item.id, t)}
               </span>
             </button>
           )

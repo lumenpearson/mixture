@@ -7,6 +7,7 @@ import { Menu } from "lucide-react"
 import * as React from "react"
 import { CategoryPanel } from "./category-panel"
 import { Content } from "./content"
+import { Hotkeys } from "./hotkeys"
 import { Rail } from "./rail"
 import { ScreenkitProvider, useScreenkit } from "./store"
 
@@ -92,6 +93,7 @@ function ShellInner({ notFound = false }: { notFound?: boolean }) {
       <style>{LOCALE_FLOW_CSS}</style>
       <div className="flex h-[100dvh] flex-col bg-sidebar text-foreground">
         <LocaleFlowEffect />
+        <Hotkeys />
         <MobileTopBar />
         <MobileNav />
         <div className="flex min-h-0 flex-1 bg-sidebar">
@@ -114,6 +116,8 @@ function ShellInner({ notFound = false }: { notFound?: boolean }) {
 export function AppShell({
   initialInserts,
   initialCategories,
+  initialPersistent,
+  initialEditLocked,
   initialSelectedId,
   initialView,
   initialCategory,
@@ -121,6 +125,8 @@ export function AppShell({
 }: {
   initialInserts?: Insert[]
   initialCategories?: CategoryDef[]
+  initialPersistent?: boolean
+  initialEditLocked?: boolean
   initialSelectedId?: string
   initialView?: string
   initialCategory?: string
@@ -130,6 +136,8 @@ export function AppShell({
     <ScreenkitProvider
       initialInserts={initialInserts}
       initialCategories={initialCategories}
+      initialPersistent={initialPersistent}
+      initialEditLocked={initialEditLocked}
       initialSelectedId={initialSelectedId}
       initialView={initialView}
       initialCategory={initialCategory}
