@@ -55,6 +55,8 @@ export type Insert = {
   shortPrompt: LocalizedText
   negativePrompt: LocalizedText
   technicalNotes: LocalizedList
+  /** true for rows stored in the database (user-added), absent for built-ins */
+  custom?: boolean
 }
 
 /* a fully resolved insert with all localized text flattened to strings */
@@ -74,4 +76,5 @@ export type ResolvedInsert = {
   negativePrompt: string
   technicalNotes: string[]
   hasEnglish: boolean
+  custom: boolean
 }

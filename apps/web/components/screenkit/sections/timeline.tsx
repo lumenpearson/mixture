@@ -20,126 +20,35 @@ import {
   Users,
 } from "lucide-react"
 import * as React from "react"
+import { changelogClient } from "@/lib/rpc/client"
+import {
+  changelogFromPb,
+  type BranchStats as BranchStats_,
+  type ChangelogCommit as ChangelogCommit_,
+  type ChangelogData as ChangelogData_,
+  type ChangelogItem as ChangelogItem_,
+  type ContributorStats as ContributorStats_,
+  type DayStat as DayStat_,
+  type LanguageStat as LanguageStat_,
+} from "@/lib/rpc/changelog.codec"
 import { MotionNumber } from "../motion-number"
 import { Explain } from "../primitives"
 import { useScreenkit } from "../store"
 
-type ChangelogCommit = {
-  id: string
-  slug: string
-  kind: "commit"
-  sha: string
-  shortSha: string
-  title: string
-  body: string
-  date: string
-  url: string | null
-  author: string
-  authorLogin: string | null
-  avatarUrl: string | null
-  branches: string[]
-  parentCount: number
-}
-
-type ChangelogEvent = {
-  id: string
-  slug: string
-  kind: "event"
-  eventType: string
-  title: string
-  description: string
-  date: string
-  actor: string
-  avatarUrl: string | null
-  branch: string | null
-  url: string | null
-}
-
-type ChangelogItem = ChangelogCommit | ChangelogEvent
-
-type ContributorStats = {
-  login: string
-  avatarUrl: string | null
-  url: string | null
-  contributions: number
-  commits: number
-  events: number
-  lastActiveAt: string | null
-  score: number
-}
-
-type BranchStats = {
-  name: string
-  sha: string | null
-  protected: boolean
-  commits: number
-  lastCommitAt: string | null
-}
-
-type LanguageStat = { name: string; bytes: number; percent: number }
-type DayStat = { day: string; commits: number; events: number; total: number }
-
-type RepoSmallItem = {
-  id: number
-  number: number | null
-  title: string
-  state: string
-  url: string | null
-  updatedAt: string | null
-  author: string
-  avatarUrl: string | null
-}
-
-type ChangelogData = {
-  repo: string
-  generatedAt: string
-  source: string
-  repository: {
-    name: string
-    url: string | null
-    description: string | null
-    defaultBranch: string
-    primaryLanguage: string | null
-    stars: number
-    watchers: number
-    forks: number
-    openIssues: number
-    size: number
-    createdAt: string | null
-    updatedAt: string | null
-    pushedAt: string | null
-    license: string | null
-  } | null
-  branches: BranchStats[]
-  contributors: ContributorStats[]
-  languages: LanguageStat[]
-  releases: {
-    id: number
-    name: string
-    tag: string | null
-    url: string | null
-    publishedAt: string | null
-  }[]
-  tags: { name: string; sha: string | null }[]
-  issues: { open: number; closed: number; recent: RepoSmallItem[] }
-  pulls: { open: number; closed: number; recent: RepoSmallItem[] }
-  stats: {
-    days: DayStat[]
-    eventTypes: { type: string; count: number }[]
-    totals: Record<string, number>
-  }
-  commits: ChangelogCommit[]
-  events: ChangelogEvent[]
-  items: ChangelogItem[]
-  error?: string
-}
+type ChangelogItem = ChangelogItem_
+type ChangelogCommit = ChangelogCommit_
+type ContributorStats = ContributorStats_
+type BranchStats = BranchStats_
+type LanguageStat = LanguageStat_
+type DayStat = DayStat_
+type ChangelogData = ChangelogData_
 
 type ItemFilter = "all" | "commits" | "events" | "merges"
 type SortKey = "newest" | "oldest" | "author" | "branch" | "type" | "title"
 type PageSize = 10 | 20 | 40 | 80
 
 const REFRESH_MS = 30_000
-const CACHE_KEY = "screenkit-changelog-cache-v2"
+const CACHE_KEY = "screenkit-changelog-cache-v3"
 const PAGE_SIZES: PageSize[] = [10, 20, 40, 80]
 
 const TEXT = {
@@ -380,17 +289,21 @@ export function TimelineSection() {
   const [page, setPage] = React.useState(1)
   const [copied, setCopied] = React.useState<string | null>(null)
 
-  const load = React.useCallback(async (silent = false) => {
+  const load = React.useCallback(async (silent = false, forceRefresh = false) => {
     if (!silent) setLoading(true)
     setRefreshing(true)
     try {
-      const res = await fetch("/api/changelog", {
-        cache: "default",
-        headers: { Accept: "application/json" },
-      })
-      const next = (await res.json()) as ChangelogData
+      const response = await changelogClient().getChangelog({ forceRefresh })
+      if (!response.changelog) return
+      const next = changelogFromPb(response.changelog)
       setData(next)
       writeCache(next)
+    } catch (error) {
+      setData((current) =>
+        current
+          ? { ...current, error: error instanceof Error ? error.message : "changelog unavailable" }
+          : current,
+      )
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -508,7 +421,7 @@ export function TimelineSection() {
             <Explain>{text.desc}</Explain>
           </div>
           <button
-            onClick={() => void load(false)}
+            onClick={() => void load(false, true)}
             className="inline-flex w-fit items-center gap-2 rounded-2xl border border-panel-border bg-control px-4 py-2.5 font-mono text-[12px] lowercase text-text-secondary transition-colors hover:bg-panel-hover hover:text-foreground"
           >
             <RefreshCw className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} />
@@ -725,7 +638,7 @@ function RepoCard({
     <article className="min-w-0 rounded-3xl border border-panel-border bg-panel-soft p-5">
       <CopyableTitle
         id="repository"
-        title={repo?.name ?? data?.repo ?? "program-perfect/mixture"}
+        title={repo?.name ?? data?.repo ?? "lumenpearson/mixture"}
         onCopy={onCopy}
         copied={copied === "repository"}
         copiedText={text.copied}

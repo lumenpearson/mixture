@@ -8,12 +8,14 @@ export default async function Page({
 }: {
   searchParams: Promise<{ insert?: string; view?: string; cat?: string }>
 }) {
-  const { inserts, categories } = await fetchLibrary()
+  const { inserts, categories, persistent, editLocked } = await fetchLibrary()
   const { insert, view, cat } = await searchParams
   return (
     <AppShell
       initialInserts={inserts}
       initialCategories={categories}
+      initialPersistent={persistent}
+      initialEditLocked={editLocked}
       initialSelectedId={insert}
       initialView={view}
       initialCategory={cat}

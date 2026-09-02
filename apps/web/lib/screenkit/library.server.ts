@@ -1,7 +1,8 @@
 import "server-only"
 import { asc } from "drizzle-orm"
-import { db } from "@/lib/db"
+import { getDb, isDatabaseConfigured } from "@/lib/db"
 import { screenkitCategories, screenkitInserts } from "@/lib/db/schema"
+import type { LibraryData } from "@/lib/rpc/codec"
 import { buildCategoryDefs, mergeInserts } from "./data"
 import {
   GENERATED_INSERT_CATEGORIES,
@@ -27,8 +28,13 @@ const list = (ru: unknown, en: unknown): LocalizedList => {
   return e && e.length ? { ru: r, en: e } : { ru: r }
 }
 
+/** true when the server requires `x-mixture-edit-token` for mutations */
+export function isEditLocked(): boolean {
+  return typeof process.env.MIXTURE_EDIT_TOKEN === "string" && process.env.MIXTURE_EDIT_TOKEN.length > 0
+}
+
 export async function fetchCustomCategories(): Promise<CategoryDef[]> {
-  const rows = await db
+  const rows = await getDb()
     .select()
     .from(screenkitCategories)
     .orderBy(asc(screenkitCategories.createdAt))
@@ -43,7 +49,7 @@ export async function fetchCustomCategories(): Promise<CategoryDef[]> {
 }
 
 export async function fetchCustomInserts(): Promise<Insert[]> {
-  const rows = await db
+  const rows = await getDb()
     .select()
     .from(screenkitInserts)
     .orderBy(asc(screenkitInserts.createdAt))
@@ -62,19 +68,48 @@ export async function fetchCustomInserts(): Promise<Insert[]> {
     shortPrompt: text(r.shortPromptRu, r.shortPromptEn),
     negativePrompt: text(r.negativePromptRu, r.negativePromptEn),
     technicalNotes: list(r.technicalNotesRu, r.technicalNotesEn),
+    custom: true,
   }))
 }
 
-export async function fetchLibrary(): Promise<{
-  categories: CategoryDef[]
-  inserts: Insert[]
-}> {
-  const [cats, ins] = await Promise.all([
-    fetchCustomCategories(),
-    fetchCustomInserts(),
-  ])
+/** the library that ships with the source tree (no database involved) */
+export function builtInLibrary(): LibraryData {
   return {
-    categories: buildCategoryDefs([...GENERATED_INSERT_CATEGORIES, ...cats]),
-    inserts: mergeInserts([...GENERATED_INSERTS, ...ins]),
+    categories: buildCategoryDefs([...GENERATED_INSERT_CATEGORIES]),
+    inserts: mergeInserts([...GENERATED_INSERTS]),
+    persistent: false,
+    editLocked: isEditLocked(),
+  }
+}
+
+let warned = false
+
+/**
+ * Built-ins + generated packages + custom rows. Never throws: without a
+ * database (or when it is unreachable) the built-in library is returned with
+ * `persistent: false`, so pages, prerendering and the RPC layer keep working.
+ */
+export async function fetchLibrary(): Promise<LibraryData> {
+  if (!isDatabaseConfigured()) return builtInLibrary()
+  try {
+    const [cats, ins] = await Promise.all([
+      fetchCustomCategories(),
+      fetchCustomInserts(),
+    ])
+    return {
+      categories: buildCategoryDefs([...GENERATED_INSERT_CATEGORIES, ...cats]),
+      inserts: mergeInserts([...GENERATED_INSERTS, ...ins]),
+      persistent: true,
+      editLocked: isEditLocked(),
+    }
+  } catch (error) {
+    if (!warned) {
+      warned = true
+      console.warn(
+        "[mixture] database unreachable, serving the built-in library only:",
+        error instanceof Error ? error.message : error,
+      )
+    }
+    return builtInLibrary()
   }
 }
