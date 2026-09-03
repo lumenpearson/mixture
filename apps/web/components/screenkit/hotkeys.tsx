@@ -7,7 +7,7 @@ import { useScreenkit, type Section } from "./store"
 /* ------------------------------------------------------------------ *
  * global keyboard shortcuts
  *
- *   ctrl/⌘+k open the command palette
+ *   ctrl/⌘+k open the command palette, or close it when it is already open
  *   /        search the library
  *   [ / ]    previous / next insert (preview + metadata)
  *   f        open the selected insert as a fullscreen screen-state
@@ -57,6 +57,28 @@ export function takePendingCloudAction(): CloudAction | null {
   return action
 }
 
+/** the open command palette dialog, or null when it is not on screen. cmdk
+ *  marks its root with `cmdk-root`, which no other dialog in the app has */
+function openPaletteDialog(): Element | null {
+  for (const dialog of document.querySelectorAll("[role='dialog'][data-state='open']")) {
+    if (dialog.querySelector("[cmdk-root]")) return dialog
+  }
+  return null
+}
+
+/**
+ * close the palette the way its own "esc" hint says it closes.
+ *
+ * The palette owns its `open` state and offers no close event, but it is a
+ * Radix dialog and Radix's dismissable layer listens for Escape on the
+ * document — so the chord is forwarded as one. Without this, ctrl/⌘+k over an
+ * open palette re-dispatched the open event and the handler reset the query,
+ * wiping what had just been typed.
+ */
+function closeCommandPalette() {
+  document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }))
+}
+
 const SECTION_KEYS: Record<string, Section> = {
   "1": "overview",
   "2": "library",
@@ -95,10 +117,12 @@ export function Hotkeys() {
   React.useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return
-      // the palette works from anywhere, text fields included
+      // the palette works from anywhere, text fields included, and the same
+      // chord closes it again
       if ((event.metaKey || event.ctrlKey) && !event.altKey && (event.key === "k" || event.key === "K")) {
         event.preventDefault()
-        openCommandPalette()
+        if (openPaletteDialog()) closeCommandPalette()
+        else openCommandPalette()
         return
       }
       if (event.metaKey || event.ctrlKey || event.altKey) return

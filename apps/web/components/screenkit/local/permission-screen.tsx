@@ -1,9 +1,9 @@
 "use client"
 
-import type { LocalFsBridge, LocalPermission, LocalScan } from "@/lib/local/bridge"
+import { localErrorCode, type LocalErrorCode, type LocalFsBridge, type LocalPermission, type LocalScan } from "@/lib/local/bridge"
 import { accentForKind, formatBytes, mediaKindOf } from "@/lib/media/kinds"
 import { cn } from "@/lib/utils"
-import { FolderOpen, FolderX, HardDrive, Loader2, RefreshCw, ShieldCheck } from "lucide-react"
+import { FolderOpen, FolderX, HardDrive, Loader2, RefreshCw, ShieldCheck, Unlock } from "lucide-react"
 import * as React from "react"
 import { MotionNumber } from "../motion-number"
 import { Explain, SectionHeading } from "../primitives"
@@ -18,6 +18,25 @@ import { useScreenkit } from "../store"
  * the cloud tab. The same component serves web, desktop and android
  * through the bridge.
  * ------------------------------------------------------------------ */
+
+const buttonFocus = "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+
+/** a bridge failure carries a code so the message can be translated; a
+ *  DOMException from the runtime carries an english sentence, which must not
+ *  reach the interface — it falls back to the generic key */
+const ERROR_KEYS: Record<LocalErrorCode, string> = {
+  "no-root": "local.error.noRoot",
+  denied: "local.error.denied",
+  path: "local.error.path",
+  "not-found": "local.error.notFound",
+  "move-into-self": "local.error.moveIntoSelf",
+  io: "local.error.io",
+}
+
+export function localErrorKey(error: unknown): string {
+  const code = localErrorCode(error)
+  return code ? ERROR_KEYS[code] : "local.error"
+}
 
 export function LocalPermissionScreen({
   bridge,
@@ -38,7 +57,9 @@ export function LocalPermissionScreen({
   const refresh = React.useCallback(async () => {
     const state = await bridge.permission()
     setPermission(state)
-    setRootName(state === "granted" || state === "prompt" ? await bridge.rootName() : null)
+    // "denied" keeps the remembered handle too: the re-grant button below
+    // needs to know the folder is still there before offering to unlock it
+    setRootName(state === "unsupported" ? null : await bridge.rootName())
   }, [bridge])
 
   React.useEffect(() => {
@@ -52,7 +73,7 @@ export function LocalPermissionScreen({
       setScan(await bridge.scan())
       setPermission("granted")
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : t("local.error"))
+      setError(t(localErrorKey(caught)))
     } finally {
       setScanning(false)
     }
@@ -68,6 +89,19 @@ export function LocalPermissionScreen({
     setRootName(name)
     setScan(null)
     setPermission("granted")
+  }
+
+  /* the handle is remembered but the browser downgraded it to "prompt" after
+     a reload; requestPermission inside this click is what restores it, so the
+     folder does not have to be picked again */
+  const regrant = async () => {
+    const ask = bridge.regrant?.bind(bridge)
+    if (!ask) return
+    setError(null)
+    const state = await ask()
+    setPermission(state)
+    if (state === "granted") setScan(null)
+    else setError(t("local.error.denied"))
   }
 
   const forget = async () => {
@@ -88,7 +122,7 @@ export function LocalPermissionScreen({
     <section className={cn("flex flex-col gap-5 rounded-3xl border border-panel-border bg-panel-soft p-5 sm:p-6", className)}>
       <div className="flex items-start gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-panel-border bg-control text-accent-cyan">
-          <HardDrive className="size-5" />
+          <HardDrive className="size-5" aria-hidden="true" />
         </span>
         <div className="flex min-w-0 flex-col gap-1.5">
           <SectionHeading title={t("local.title")} />
@@ -98,7 +132,7 @@ export function LocalPermissionScreen({
 
       {permission === "loading" ? (
         <span className="inline-flex items-center gap-2 font-mono text-[12px] text-text-muted">
-          <Loader2 className="size-4 animate-spin" /> {t("player.preview.loading")}
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" /> {t("player.preview.loading")}
         </span>
       ) : null}
 
@@ -113,23 +147,64 @@ export function LocalPermissionScreen({
           <ul className="flex flex-col gap-1.5 rounded-2xl border border-panel-border bg-control p-4 font-mono text-[12px] text-text-secondary">
             <li className="mb-1 text-[10px] uppercase tracking-wide text-text-faint">{t("local.prompt.what")}</li>
             <li className="flex items-center gap-2">
-              <ShieldCheck className="size-3.5 text-accent-green" /> {t("local.prompt.names")}
+              <ShieldCheck className="size-3.5 text-accent-green" aria-hidden="true" /> {t("local.prompt.names")}
             </li>
             <li className="flex items-center gap-2">
-              <ShieldCheck className="size-3.5 text-accent-green" /> {t("local.prompt.types")}
+              <ShieldCheck className="size-3.5 text-accent-green" aria-hidden="true" /> {t("local.prompt.types")}
             </li>
             <li className="flex items-center gap-2">
-              <ShieldCheck className="size-3.5 text-accent-green" /> {t("local.prompt.content")}
+              <ShieldCheck className="size-3.5 text-accent-green" aria-hidden="true" /> {t("local.prompt.content")}
             </li>
           </ul>
-          {permission === "denied" ? <span className="font-mono text-[12px] text-accent-orange">{t("local.denied")}</span> : null}
-          <button
-            type="button"
-            onClick={() => void choose()}
-            className="inline-flex w-fit items-center gap-2 rounded-xl bg-control-active px-4 py-2.5 font-mono text-sm lowercase text-control-active-foreground transition-opacity hover:opacity-90"
-          >
-            <FolderOpen className="size-4" /> {rootName ? t("local.change") : t("local.choose")}
-          </button>
+
+          <div aria-live="polite" className="font-mono text-[12px]">
+            {error ? (
+              <span className="text-accent-red">{error}</span>
+            ) : permission === "denied" ? (
+              <span className="text-accent-orange">{t("local.denied")}</span>
+            ) : null}
+          </div>
+
+          {/* the runtime still remembers the folder: offer to unlock it before
+              asking for a new pick, otherwise the stored handle is dead weight */}
+          {rootName && bridge.regrant ? (
+            <div className="flex flex-col gap-2">
+              <Explain>{t("local.remembered")}</Explain>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void regrant()}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-xl bg-control-active px-4 py-2.5 font-mono text-sm lowercase text-control-active-foreground transition-opacity hover:opacity-90",
+                    buttonFocus,
+                  )}
+                >
+                  <Unlock className="size-4" aria-hidden="true" /> {t("local.regrant")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void choose()}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-xl border border-panel-border bg-control px-3 py-2 font-mono text-xs lowercase text-foreground transition-colors hover:bg-panel-hover",
+                    buttonFocus,
+                  )}
+                >
+                  <FolderOpen className="size-3.5" aria-hidden="true" /> {t("local.change")}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void choose()}
+              className={cn(
+                "inline-flex w-fit items-center gap-2 rounded-xl bg-control-active px-4 py-2.5 font-mono text-sm lowercase text-control-active-foreground transition-opacity hover:opacity-90",
+                buttonFocus,
+              )}
+            >
+              <FolderOpen className="size-4" aria-hidden="true" /> {rootName ? t("local.change") : t("local.choose")}
+            </button>
+          )}
         </div>
       ) : null}
 
@@ -137,17 +212,20 @@ export function LocalPermissionScreen({
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2 font-mono text-[12px] lowercase">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-panel-border bg-control px-2.5 py-1 text-accent-green">
-              <ShieldCheck className="size-3.5" /> {t("local.granted")}
+              <ShieldCheck className="size-3.5" aria-hidden="true" /> {t("local.granted")}
             </span>
             <span className="text-foreground">{rootName ?? scan?.root ?? "—"}</span>
           </div>
 
-          {scanning ? (
-            <span className="inline-flex items-center gap-2 font-mono text-[12px] text-text-muted">
-              <Loader2 className="size-4 animate-spin" /> {t("local.scanning")}
-            </span>
-          ) : null}
-          {error ? <span className="font-mono text-[12px] text-accent-red">{error}</span> : null}
+          {/* scanning and failing are both async answers to a button press */}
+          <div aria-live="polite" className="font-mono text-[12px]">
+            {scanning ? (
+              <span className="inline-flex items-center gap-2 text-text-muted">
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" /> {t("local.scanning")}
+              </span>
+            ) : null}
+            {error ? <span className="text-accent-red">{error}</span> : null}
+          </div>
 
           {scan ? (
             <>
@@ -182,32 +260,44 @@ export function LocalPermissionScreen({
                 type="button"
                 onClick={onContinue}
                 disabled={!scan}
-                className="inline-flex items-center gap-2 rounded-xl bg-control-active px-4 py-2.5 font-mono text-sm lowercase text-control-active-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-xl bg-control-active px-4 py-2.5 font-mono text-sm lowercase text-control-active-foreground transition-opacity hover:opacity-90 disabled:opacity-60",
+                  buttonFocus,
+                )}
               >
-                <FolderOpen className="size-4" /> {t("local.continue")}
+                <FolderOpen className="size-4" aria-hidden="true" /> {t("local.continue")}
               </button>
             ) : null}
             <button
               type="button"
               onClick={() => void runScan()}
               disabled={scanning}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-panel-border bg-control px-3 py-2 font-mono text-xs lowercase text-foreground transition-colors hover:bg-panel-hover disabled:opacity-50"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-xl border border-panel-border bg-control px-3 py-2 font-mono text-xs lowercase text-foreground transition-colors hover:bg-panel-hover disabled:opacity-50",
+                buttonFocus,
+              )}
             >
-              <RefreshCw className={cn("size-3.5", scanning && "animate-spin")} /> {t("local.rescan")}
+              <RefreshCw className={cn("size-3.5", scanning && "animate-spin")} aria-hidden="true" /> {t("local.rescan")}
             </button>
             <button
               type="button"
               onClick={() => void choose()}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-panel-border bg-control px-3 py-2 font-mono text-xs lowercase text-foreground transition-colors hover:bg-panel-hover"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-xl border border-panel-border bg-control px-3 py-2 font-mono text-xs lowercase text-foreground transition-colors hover:bg-panel-hover",
+                buttonFocus,
+              )}
             >
-              <FolderOpen className="size-3.5" /> {t("local.change")}
+              <FolderOpen className="size-3.5" aria-hidden="true" /> {t("local.change")}
             </button>
             <button
               type="button"
               onClick={() => void forget()}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-panel-border bg-control px-3 py-2 font-mono text-xs lowercase text-text-secondary transition-colors hover:bg-panel-hover hover:text-accent-red"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-xl border border-panel-border bg-control px-3 py-2 font-mono text-xs lowercase text-text-secondary transition-colors hover:bg-panel-hover hover:text-accent-red",
+                buttonFocus,
+              )}
             >
-              <FolderX className="size-3.5" /> {t("local.forget")}
+              <FolderX className="size-3.5" aria-hidden="true" /> {t("local.forget")}
             </button>
           </div>
         </div>

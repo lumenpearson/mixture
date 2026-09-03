@@ -43,9 +43,23 @@ import { groupEntries, type MenuEntry, type MenuModel } from "./model"
  * cards offer. each returns a function that builds a model on demand.
  * ------------------------------------------------------------------ */
 
-function copy(text: string, done: string) {
-  void navigator.clipboard?.writeText(text)
-  toast.success(done)
+/**
+ * copy and say what actually happened.
+ *
+ * `navigator.clipboard` is undefined on a non-secure origin — the desktop
+ * shell's http dev target and any plain-http preview — and `writeText` also
+ * rejects when the document is not focused or the permission is refused.
+ * Announcing success regardless left the user with an empty clipboard and a
+ * green toast.
+ */
+async function copy(text: string, done: string, failed: string) {
+  try {
+    if (!navigator.clipboard) throw new Error("no clipboard api")
+    await navigator.clipboard.writeText(text)
+    toast.success(done)
+  } catch {
+    toast.error(failed)
+  }
 }
 
 export function useMenuLabels() {
@@ -118,13 +132,19 @@ export function useInsertMenuBuilder() {
           run: () => toggleFavorite(insert.id),
         },
         ...(options.extra ?? []),
-        { id: "copy-link", label: t("menu.copy.link"), icon: Link2, group: "share", run: () => copy(link(), t("common.linkCopied")) },
+        {
+          id: "copy-link",
+          label: t("menu.copy.link"),
+          icon: Link2,
+          group: "share",
+          run: () => void copy(link(), t("common.linkCopied"), t("menu.copyFailed")),
+        },
         {
           id: "copy-prompt",
           label: t("menu.copy.prompt"),
           icon: Copy,
           group: "share",
-          run: () => copy(buildPromptSheet(insert, contentLocale), t("menu.copied")),
+          run: () => void copy(buildPromptSheet(insert, contentLocale), t("menu.copied"), t("menu.copyFailed")),
         },
         {
           id: "export-sheet",

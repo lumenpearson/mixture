@@ -1,14 +1,21 @@
 import { Code } from "@connectrpc/connect"
+import { ChangelogService } from "@mixture/protocol/changelog"
+import { CloudService } from "@mixture/protocol/cloud"
+import { LibraryService } from "@mixture/protocol/library"
 import { describe, expect, it } from "vitest"
 import {
   DEFAULT_RPC_SETTINGS,
+  RPC_MUTATING_METHODS,
+  RPC_REPLAYABLE_METHODS,
   RPC_RETRIES_MAX,
   RPC_RETRY_BASE_MS,
   RPC_RETRY_CEILING_MS,
+  RPC_RETRYABLE_CODES,
   RPC_TIMEOUT_MAX_MS,
   RPC_TIMEOUT_MIN_MS,
   checkBaseUrl,
   decideRetry,
+  isReplayableMethod,
   isRetryableCode,
   normalizeRpcSettings,
   retryDelayMs,
@@ -112,8 +119,43 @@ describe("base url validation", () => {
   })
 })
 
+describe("which methods may be replayed", () => {
+  const SERVICES = [LibraryService, ChangelogService, CloudService]
+  const declared = SERVICES.flatMap((service) => service.methods.map((method) => `${service.typeName}/${method.name}`))
+
+  it("classifies every rpc of every service exactly once", () => {
+    const classified = [...RPC_REPLAYABLE_METHODS, ...RPC_MUTATING_METHODS]
+    // a new rpc must be put on one of the two lists before it can be called:
+    // an unclassified method is never replayed, but silence is not a decision
+    expect([...declared].sort()).toEqual([...classified].sort())
+  })
+
+  it("names only rpcs that exist", () => {
+    const known = new Set(declared)
+    expect([...RPC_REPLAYABLE_METHODS, ...RPC_MUTATING_METHODS].filter((name) => !known.has(name))).toEqual([])
+  })
+
+  it("replays reads and refuses every mutation", () => {
+    for (const name of RPC_REPLAYABLE_METHODS) {
+      const [service, method] = name.split("/") as [string, string]
+      expect(isReplayableMethod(service, method)).toBe(true)
+    }
+    for (const name of RPC_MUTATING_METHODS) {
+      const [service, method] = name.split("/") as [string, string]
+      expect(isReplayableMethod(service, method)).toBe(false)
+    }
+  })
+
+  it("refuses a method or a service it has never heard of", () => {
+    expect(isReplayableMethod("mixture.library.v1.LibraryService", "GetEverything")).toBe(false)
+    expect(isReplayableMethod("evil.v1.Service", "GetLibrary")).toBe(false)
+    // the pair is matched as a whole: a read of one service is not a read of another
+    expect(isReplayableMethod("mixture.cloud.v1.CloudService", "GetLibrary")).toBe(false)
+  })
+})
+
 describe("retry decision", () => {
-  const retryable = [Code.Unavailable, Code.DeadlineExceeded, Code.Internal]
+  const retryable = [Code.Unavailable, Code.Internal]
   const final = [
     Code.PermissionDenied,
     Code.InvalidArgument,
@@ -124,40 +166,56 @@ describe("retry decision", () => {
     Code.ResourceExhausted,
     Code.Canceled,
     Code.Unknown,
+    // the deadline is the budget of the whole call, so its own signal has
+    // already aborted the request by the time this code arrives
+    Code.DeadlineExceeded,
   ]
 
-  it("retries a lost connection, an expired deadline and a server fault", () => {
+  it("retries a lost connection and a server fault", () => {
     for (const code of retryable) {
       expect(isRetryableCode(code)).toBe(true)
-      expect(decideRetry({ code, attempt: 0, retries: 2, random: () => 0 }).retry).toBe(true)
+      expect(decideRetry({ code, replayable: true, attempt: 0, retries: 2, random: () => 0 }).retry).toBe(true)
     }
   })
 
-  it("never retries a permission or validation answer", () => {
+  it("never retries a permission, validation or deadline answer", () => {
     for (const code of final) {
       expect(isRetryableCode(code)).toBe(false)
-      expect(decideRetry({ code, attempt: 0, retries: 5, random: () => 0 })).toEqual({ retry: false, delayMs: 0 })
+      expect(decideRetry({ code, replayable: true, attempt: 0, retries: 5, random: () => 0 })).toEqual({
+        retry: false,
+        delayMs: 0,
+      })
     }
+    expect(RPC_RETRYABLE_CODES).not.toContain(Code.DeadlineExceeded)
   })
 
   it("ignores a code it does not recognise", () => {
     expect(isRetryableCode(undefined)).toBe(false)
     expect(isRetryableCode("unavailable")).toBe(false)
-    expect(decideRetry({ code: 999, attempt: 0, retries: 2 }).retry).toBe(false)
+    expect(decideRetry({ code: 999, replayable: true, attempt: 0, retries: 2 }).retry).toBe(false)
   })
 
   it("stops after the configured number of extra attempts", () => {
     const attempts = [0, 1, 2].map(
-      (attempt) => decideRetry({ code: Code.Unavailable, attempt, retries: 2, random: () => 0 }).retry,
+      (attempt) => decideRetry({ code: Code.Unavailable, replayable: true, attempt, retries: 2, random: () => 0 }).retry,
     )
     expect(attempts).toEqual([true, true, false])
-    expect(decideRetry({ code: Code.Unavailable, attempt: 0, retries: 0 }).retry).toBe(false)
-    expect(decideRetry({ code: Code.Unavailable, attempt: 5, retries: 99 }).retry).toBe(false)
+    expect(decideRetry({ code: Code.Unavailable, replayable: true, attempt: 0, retries: 0 }).retry).toBe(false)
+    expect(decideRetry({ code: Code.Unavailable, replayable: true, attempt: 5, retries: 99 }).retry).toBe(false)
   })
 
   it("does not replay a stream or a call the caller aborted", () => {
-    expect(decideRetry({ code: Code.Unavailable, attempt: 0, retries: 3, stream: true }).retry).toBe(false)
-    expect(decideRetry({ code: Code.Unavailable, attempt: 0, retries: 3, aborted: true }).retry).toBe(false)
+    expect(decideRetry({ code: Code.Unavailable, replayable: true, attempt: 0, retries: 3, stream: true }).retry).toBe(false)
+    expect(decideRetry({ code: Code.Unavailable, replayable: true, attempt: 0, retries: 3, aborted: true }).retry).toBe(false)
+  })
+
+  it("does not replay a mutation, however transient the failure looks", () => {
+    for (const code of retryable) {
+      expect(decideRetry({ code, replayable: false, attempt: 0, retries: 5, random: () => 0 })).toEqual({
+        retry: false,
+        delayMs: 0,
+      })
+    }
   })
 
   it("backs off exponentially and jitters inside the window", () => {

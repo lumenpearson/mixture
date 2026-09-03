@@ -28,6 +28,7 @@ const dictionary: FeatureDictionary = {
     "menu.preview.mode": "режим показа",
     "menu.preview.device": "устройство",
     "menu.copied": "скопировано",
+    "menu.copyFailed": "буфер обмена недоступен — скопируйте вручную",
   },
   en: {
     "menu.group.open": "open",
@@ -55,6 +56,7 @@ const dictionary: FeatureDictionary = {
     "menu.preview.mode": "playback mode",
     "menu.preview.device": "device",
     "menu.copied": "copied",
+    "menu.copyFailed": "the clipboard is unavailable — copy it by hand",
   },
   snark: {
     "menu.group.open": "открыть",
@@ -82,6 +84,7 @@ const dictionary: FeatureDictionary = {
     "menu.preview.mode": "режим показа",
     "menu.preview.device": "устройство",
     "menu.copied": "скопировано (っ◔◡◔)っ",
+    "menu.copyFailed": "буфер обмена не отдался — придётся руками",
   },
 }
 
