@@ -4,6 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import * as React from "react"
 import { CategoryChips, CategoryPanel } from "./category-panel"
+import { useLayout } from "./layout"
 import { useReveal } from "./motion"
 import { AboutSection } from "./sections/about"
 import { CloudSection } from "./sections/cloud"
@@ -56,11 +57,45 @@ const CONTENT_WIDTH_CLASS: Record<ContentWidth, string> = {
   wide: "md:mx-auto md:max-w-full 2xl:max-w-full",
 }
 
+/**
+ * Below `md`, the "hide the rail while scrolling down" preference (see
+ * layout-controls.tsx) drives the same show/hide state as the floating
+ * toggle button. Radix's ScrollArea does not forward the viewport ref or an
+ * onScroll prop, so this reads the viewport back off the DOM the same way
+ * category-panel.tsx measures label widths off its own subtree.
+ */
+function useAutoHideRailOnScroll(containerRef: React.RefObject<HTMLDivElement | null>) {
+  const { autoHideOnScroll, railVisible, hideRail, showRail } = useLayout()
+
+  React.useEffect(() => {
+    if (!autoHideOnScroll) return
+    const viewport = containerRef.current?.querySelector<HTMLElement>(
+      "[data-radix-scroll-area-viewport]",
+    )
+    if (!viewport) return
+
+    let lastTop = viewport.scrollTop
+    const onScroll = () => {
+      const top = viewport.scrollTop
+      const delta = top - lastTop
+      lastTop = top
+      if (Math.abs(delta) < 4) return
+      // ignore the small elastic bounce right at the top of a section
+      if (delta > 0 && top > 24 && railVisible) hideRail()
+      else if (delta < 0 && !railVisible) showRail()
+    }
+    viewport.addEventListener("scroll", onScroll, { passive: true })
+    return () => viewport.removeEventListener("scroll", onScroll)
+  }, [autoHideOnScroll, railVisible, hideRail, showRail, containerRef])
+}
+
 export function Content({ notFound = false }: { notFound?: boolean }) {
   const { section, contentWidth } = useScreenkit()
+  const scrollWrapRef = React.useRef<HTMLDivElement>(null)
+  useAutoHideRailOnScroll(scrollWrapRef)
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 overflow-hidden">
+    <div ref={scrollWrapRef} className="flex h-full min-h-0 min-w-0 overflow-hidden">
       {/* The side category panel needs enough room to share the main area.
           Keep chips on mobile/tablet/pre-desktop so the panel never consumes
           the whole content column around the narrow desktop breakpoint. */}
