@@ -36,6 +36,23 @@ const dictionary: FeatureDictionary = {
     "layout.showRail": "show the rail",
     "layout.swipeHint": "swipe up from the bottom edge to bring the rail back",
   },
+  snark: {
+    "layout.title": "рельса на маленьком экране",
+    "layout.desc":
+      "ниже md-ширины рельса перебирается вниз экрана. здесь решают, как её прятать и с какой стороны держать переключатель — большего от этого раздела не ждите.",
+    "layout.side": "сторона переключателя",
+    "layout.side.left": "слева",
+    "layout.side.right": "справа",
+    "layout.sideDesc": "на какой стороне сидит круглая кнопка, которая прячет и возвращает нижнюю рельсу. вопрос вкуса, а не удобства.",
+    "layout.autoHide": "прятать рельсу при прокрутке вниз",
+    "layout.autoHideDesc": "рельса уходит вниз, когда контент едет вниз, и возвращается, когда вверх. мысли читает не хуже, чем кажется.",
+    "layout.smoothScroll": "плавная прокрутка",
+    "layout.smoothScrollDesc":
+      "по умолчанию выключена на телефоне и планшете и включена на десктопе. переключатель тот же, что в разделе «движение», — щёлкайте откуда удобнее.",
+    "layout.hideRail": "скрыть рельсу",
+    "layout.showRail": "показать рельсу",
+    "layout.swipeHint": "смахните вверх от нижнего края — рельса вернётся (っ◔◡◔)っ",
+  },
 }
 
 export default dictionary
