@@ -35,7 +35,7 @@ import {
   type LibraryViewMode,
 } from "../library-list-settings"
 import { useScreenkit } from "../store"
-import { WIZARD_OPEN_EVENT } from "../wizard/insert-wizard"
+import { openInsertWizard } from "../wizard/button"
 import { groupEntries, type MenuEntry, type MenuModel } from "./model"
 
 /* ------------------------------------------------------------------ *
@@ -155,7 +155,7 @@ export function useLibraryMenuBuilder() {
         icon: Plus,
         group: "library",
         disabled: !persistent,
-        run: () => window.dispatchEvent(new CustomEvent(WIZARD_OPEN_EVENT)),
+        run: () => openInsertWizard(),
       },
       { id: "refresh", label: t("menu.library.refresh"), icon: RefreshCw, group: "library", run: () => void refreshLibrary() },
       {

@@ -35,7 +35,7 @@ import * as React from "react"
 import { toast } from "sonner"
 import { ICON_LIBRARY, ICON_NAMES } from "./icons"
 import { useScreenkit } from "./store"
-import { InsertWizardButton } from "./wizard/insert-wizard"
+import { InsertWizardButton } from "./wizard/button"
 
 /* accent colors offered when creating a category — inserts placed in the
    category inherit this color on their tiles */

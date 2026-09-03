@@ -2,7 +2,7 @@
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
-import { ArrowLeft, ArrowRight, Check, Loader2, Plus, X } from "lucide-react"
+import { ArrowLeft, ArrowRight, Check, Loader2, X } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
 import { useScreenkit } from "../store"
@@ -41,35 +41,6 @@ const STEP_COMPONENTS: Record<WizardStep, React.ComponentType<{ draft: WizardDra
 
 const fill = (template: string, values: Record<string, string | number>) =>
   template.replace(/\{(\w+)\}/g, (_, key: string) => String(values[key] ?? ""))
-
-/** window event that opens the wizard from menus and the palette */
-export const WIZARD_OPEN_EVENT = "screenkit:wizard-open"
-
-export function InsertWizardButton() {
-  const { persistent, t } = useScreenkit()
-  const [open, setOpen] = React.useState(false)
-  React.useEffect(() => {
-    const onOpen = () => {
-      if (persistent) setOpen(true)
-    }
-    window.addEventListener(WIZARD_OPEN_EVENT, onOpen)
-    return () => window.removeEventListener(WIZARD_OPEN_EVENT, onOpen)
-  }, [persistent])
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 rounded-xl bg-control-active px-3 py-2 font-mono text-xs lowercase text-control-active-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-        disabled={!persistent}
-        title={!persistent ? t("editor.noDatabase") : undefined}
-      >
-        <Plus className="size-3.5" /> {t("editor.addInsert")}
-      </button>
-      {open ? <InsertWizard open={open} onOpenChange={setOpen} /> : null}
-    </>
-  )
-}
 
 export function InsertWizard({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const { t, categories, addInsert, libraryBusy } = useScreenkit()

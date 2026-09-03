@@ -39,6 +39,7 @@ import {
   Sun,
   Upload,
   type LucideIcon,
+  Plus,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import * as React from "react"
@@ -46,6 +47,7 @@ import { toast } from "sonner"
 import { COMMAND_PALETTE_EVENT, focusLibrarySearch } from "./hotkeys"
 import { iconForDevice } from "./icons"
 import { useCloudTree } from "./media/use-cloud-tree"
+import { openInsertWizard } from "./wizard/button"
 import { useMotion } from "./motion"
 import { useScreenkit, type ContentWidth, type Section } from "./store"
 import {
@@ -476,6 +478,19 @@ export function CommandPalette() {
       icon: Download,
       run: () => exportPromptSheets(inserts, contentLocale),
     })
+    if (store.persistent) {
+      list.push({
+        id: "action:new-insert",
+        group: "actions",
+        label: t("palette.action.newInsert"),
+        keywords: "new insert create add wizard новая вставка",
+        icon: Plus,
+        run: () => {
+          store.setSection("library")
+          window.setTimeout(openInsertWizard, 50)
+        },
+      })
+    }
     return list
   }, [
     t, inserts, contentLocale, favorites, selectedId, tree, theme, setTheme, transition,
