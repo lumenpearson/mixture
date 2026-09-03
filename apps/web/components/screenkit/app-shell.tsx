@@ -8,7 +8,9 @@ import { toast } from "sonner"
 import { Content } from "./content"
 import { CommandPalette } from "./command-palette"
 import { ContextMenuGuard } from "./context-menu/guard"
+import { DesktopTitlebar } from "./desktop/titlebar"
 import { Hotkeys } from "./hotkeys"
+import { OfflineScreen } from "./offline-screen"
 import { LayoutProvider, useLayout } from "./layout"
 import { BottomRail, Rail } from "./rail"
 import { ScreenkitProvider, useScreenkit } from "./store"
@@ -154,8 +156,15 @@ function ShellInner({ notFound = false }: { notFound?: boolean }) {
       <div className="flex h-[100dvh] flex-col bg-sidebar text-foreground">
         <LocaleFlowEffect />
         <Hotkeys />
+        <OfflineScreen />
         <CommandPalette />
         <ContextMenuGuard />
+
+        {/* the desktop shell's own title bar. It renders nothing outside
+            Tauri; inside it, being a flex sibling above the row below is what
+            makes the shell start under the bar without any offsets. */}
+        <DesktopTitlebar />
+
         <div className="flex min-h-0 flex-1 flex-col bg-sidebar md:flex-row">
           {/* desktop icon rail — sits behind the main area; the rounded left
               corners of main reveal the rail color so it appears to tuck under */}

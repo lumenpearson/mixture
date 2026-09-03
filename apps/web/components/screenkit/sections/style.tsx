@@ -7,6 +7,7 @@ import * as React from "react"
 import { LibraryListControls } from "../library-list-controls"
 import { DEFAULT_MOTION_FEATURES, useMotion, type MotionFeature } from "../motion"
 import { Explain, SectionHeading, SegmentedControl } from "../primitives"
+import { DesktopSettings } from "../settings/desktop-settings"
 import { GlassControls } from "../settings/glass-controls"
 import { LayoutControls } from "../settings/layout-controls"
 import { PlayerSettingsPanel } from "../settings/player-settings"
@@ -321,6 +322,7 @@ export function StyleSection() {
       <GlassControls />
       <RpcSettings />
       <PlayerSettingsPanel />
+      <DesktopSettings />
       <HotkeysCard />
 
       <div className="flex flex-col gap-4">

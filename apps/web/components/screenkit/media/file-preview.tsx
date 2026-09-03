@@ -454,14 +454,6 @@ function Toolbar({ children }: { children: React.ReactNode }) {
  * `logo.svg` with a <script> inside would execute there. `/api/cloud/stream`
  * already neutralises the same list on its way out.
  */
-const ACTIVE_TYPES = new Set([
-  "image/svg+xml",
-  "text/html",
-  "application/xhtml+xml",
-  "text/xml",
-  "application/xml",
-])
-
 
 /**
  * "open in a new tab". A remote https url belongs to someone else's origin and

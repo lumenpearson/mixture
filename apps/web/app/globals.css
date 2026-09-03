@@ -245,6 +245,19 @@
      SCALE_VALUE[DEFAULT_SCALE] in lib/screenkit/appearance.ts, otherwise every
      first load reflows the whole rem-based layout once the providers hydrate. */
   --app-scale: 1.08;
+
+  /* height of the desktop title bar. Zero here and overwritten on <html> only
+     inside the Tauri shell, so an overlay that starts below the bar (the
+     offline screen) starts at the top of the viewport on the web. */
+  --sk-titlebar-h: 0px;
+}
+
+/* the title bar is a window handle: nothing inside it may start a text
+   selection or a native drag, and the pointer stays an arrow over it. */
+[data-tauri-drag-region] {
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
 }
 
 @layer utilities {
