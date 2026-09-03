@@ -21,11 +21,10 @@ describe("dictionaries", () => {
   })
 
   it("keep every snark block complete for the key prefixes it opens", () => {
-    /* A module may voice only part of its strings — cloud-manager translates the
-       four server-sent cloud.status.* messages and leaves cloudfm.* alone — but a
-       prefix it does open it has to finish, so no panel ends up half sarcastic and
-       half plain russian through the runtime fallback. For glass and layout, whose
-       snark blocks open their only prefix, this is plain ru/snark parity. */
+    /* A module may voice only part of its strings, but a prefix it does open it
+       has to finish, so no panel ends up half sarcastic and half plain russian
+       through the runtime fallback. Today every feature dictionary voices all of
+       its prefixes, so this is plain ru/snark parity for each of them. */
     const prefix = (key: string) => (key.includes(".") ? key.slice(0, key.indexOf(".")) : key)
     for (const dictionary of FEATURE_DICTIONARIES) {
       if (!dictionary.snark) continue
