@@ -137,6 +137,18 @@ message ReadFileResponse {
   bool truncated = 3;
 }
 
+message CreateStreamTicketRequest {
+  string path = 1;
+}
+
+message CreateStreamTicketResponse {
+  // same-origin url the browser may put into <video src>; it carries a signed
+  // ticket, never a github token and never an access key
+  string url = 1;
+  // when the ticket stops being accepted (unix milliseconds)
+  int64 expires_at_unix_ms = 2;
+}
+
 message WriteFileRequest {
   string path = 1;
   bytes content = 2;
@@ -221,6 +233,11 @@ service CloudService {
   // for anything the caller may not see, exactly like ReadFile
   rpc StatEntry(StatEntryRequest) returns (StatEntryResponse);
   rpc ReadFile(ReadFileRequest) returns (ReadFileResponse);
+  // mint a short-lived, signed url for byte-range playback of one file.
+  // Resolves the caller's role and visibility exactly like ReadFile, then
+  // signs a ticket the /api/cloud/stream route can verify without the
+  // caller's credentials — a <video> element cannot send request headers.
+  rpc CreateStreamTicket(CreateStreamTicketRequest) returns (CreateStreamTicketResponse);
   rpc WriteFile(WriteFileRequest) returns (WriteFileResponse);
   rpc DeleteEntry(DeleteEntryRequest) returns (DeleteEntryResponse);
   rpc MoveEntry(MoveEntryRequest) returns (MoveEntryResponse);

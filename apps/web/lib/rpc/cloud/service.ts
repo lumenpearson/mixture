@@ -35,6 +35,7 @@ import {
 } from "./config"
 import { normalizeCloudPath } from "./glob"
 import { GitHubRepo, toConnectError, viewerLogin, type GitHubFile } from "./github"
+import { STREAM_TICKET_TTL_MS, buildStreamUrl, streamSecret } from "./stream"
 
 /* ------------------------------------------------------------------ *
  * CloudService — a cloud drive over a private GitHub repository
@@ -44,6 +45,10 @@ import { GitHubRepo, toConnectError, viewerLogin, type GitHubFile } from "./gith
  * repository operations for callers who bring no token of their own; a caller
  * with a GitHub token is identified through it, a caller with a shared access
  * key is identified through the key's sha256 in the config.
+ *
+ * One operation leaves the RPC: media playback. CreateStreamTicket does the
+ * access work here and signs a short-lived url that `/api/cloud/stream` can
+ * serve to a <video> element, which cannot send our headers. See `stream.ts`.
  * ------------------------------------------------------------------ */
 
 const DEFAULT_REPO = "lumenpearson/mixture-cloud"
@@ -133,6 +138,19 @@ async function loadRepo(repo: GitHubRepo, ownerFallback: string, bust = false): 
 
 function invalidateRepoCache() {
   repoCache.clear()
+}
+
+/**
+ * The cloud repository as seen by the *server* token, or null when none is
+ * configured. Only `/api/cloud/stream` uses it: a <video> element sends no
+ * custom headers, so the caller's token cannot reach that request — the
+ * signed ticket is the authorization and the server token does the fetching.
+ * Never call this from an RPC; there the caller's own session decides.
+ */
+export function serverCloudRepo(): GitHubRepo | null {
+  const cfg = settings()
+  if (!cfg.serverToken) return null
+  return new GitHubRepo(cfg.serverToken, cfg.owner, cfg.repo, cfg.branch)
 }
 
 async function resolveSession(ctx: HandlerContext): Promise<Session> {
@@ -502,6 +520,44 @@ export const cloudServiceImpl: ServiceImpl<typeof CloudService> = {
       return { entry, content, truncated: false }
     } catch (error) {
       throw toConnectError(error)
+    }
+  },
+
+  async createStreamTicket(req, ctx) {
+    const session = await resolveSession(ctx)
+    const repo = requireRepo(session)
+    const path = cleanPath(req.path, false)
+    assertUserPath(path)
+
+    const secret = streamSecret()
+    // the route fetches with the server token, so without one a ticket would
+    // mint a url nobody can serve. Answered before the file is looked up: the
+    // reason has nothing to do with the path, and a deployment without
+    // streaming should not spend a github call per preview. The client falls
+    // back to reading the bytes through ReadFile.
+    if (!secret || !settings().serverToken) {
+      throw new ConnectError(
+        "byte streaming is off: set MIXTURE_CLOUD_GITHUB_TOKEN (and optionally MIXTURE_STREAM_SECRET) on the server",
+        Code.FailedPrecondition,
+      )
+    }
+
+    let file: GitHubFile | null
+    try {
+      file = await repo.file(path)
+    } catch (error) {
+      throw toConnectError(error)
+    }
+    // the same answer ReadFile gives: an entry the caller may not see is
+    // indistinguishable from one that does not exist, so a ticket request
+    // cannot be used to probe for hidden paths
+    const entry = file ? toEntry(file, session) : null
+    if (!file || !entry) throw new ConnectError("file not found", Code.NotFound)
+
+    const expires = Date.now() + STREAM_TICKET_TTL_MS
+    return {
+      url: buildStreamUrl({ path, expires, sha: file.sha }, secret),
+      expiresAtUnixMs: BigInt(expires),
     }
   },
 

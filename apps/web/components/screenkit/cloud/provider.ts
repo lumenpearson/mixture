@@ -1,6 +1,7 @@
 "use client"
 
 import { cloudClient } from "@/lib/rpc/client"
+import { Code, ConnectError } from "@connectrpc/connect"
 import type { Entry, Status } from "@mixture/protocol/cloud"
 import { Github, type LucideIcon } from "lucide-react"
 import * as React from "react"
@@ -128,11 +129,60 @@ const githubProvider: CloudProvider = {
     return response.entry ?? null
   },
 
-  // GitHub hands out a signed download url for private content; when it is
-  // missing the caller falls back to reading the bytes through the provider
-  async streamUrl(entry) {
-    return entry.downloadUrl || null
+  // A private repository has no public download url, so `entry.downloadUrl` is
+  // usually empty and video used to arrive as one 4 MiB rpc message with no
+  // seeking. CreateStreamTicket mints a signed, same-origin url instead; it
+  // carries no token, so it is safe to hand to <video src>.
+  async streamUrl(entry, options) {
+    const key = `${entry.path}#${entry.sha}`
+    const cached = readTicket(key)
+    if (cached) return cached
+    try {
+      const response = await cloudClient().createStreamTicket({ path: entry.path }, options)
+      if (!response.url) return entry.downloadUrl || null
+      rememberTicket(key, response.url, Number(response.expiresAtUnixMs))
+      return response.url
+    } catch (error) {
+      // failed_precondition means the server has no streaming secret at all;
+      // answering null lets the previewer fall back to the ReadFile rpc
+      if (error instanceof ConnectError && error.code === Code.FailedPrecondition) return null
+      // anything else (offline, not found, an aborted request) keeps the old
+      // behaviour: the direct download url when GitHub gave us one
+      return entry.downloadUrl || null
+    }
   },
+}
+
+/* --------------------------- stream tickets --------------------------- */
+
+/** stop reusing a ticket a minute before it expires, so a seek mid-playback
+ *  never lands on a url the route has just started refusing */
+const TICKET_MARGIN_MS = 60_000
+const TICKET_CACHE_LIMIT = 32
+
+const tickets = new Map<string, { url: string; expiresAt: number }>()
+
+function readTicket(key: string): string | null {
+  const found = tickets.get(key)
+  if (!found) return null
+  if (found.expiresAt - TICKET_MARGIN_MS <= Date.now()) {
+    tickets.delete(key)
+    return null
+  }
+  return found.url
+}
+
+function rememberTicket(key: string, url: string, expiresAt: number) {
+  if (!Number.isFinite(expiresAt)) return
+  tickets.set(key, { url, expiresAt })
+  // the key is path + blob sha, so an overwritten file mints a new ticket;
+  // the map is bounded because a long session browsing a big drive would
+  // otherwise keep every url it ever asked for
+  while (tickets.size > TICKET_CACHE_LIMIT) {
+    const oldest = tickets.keys().next().value
+    if (oldest === undefined) break
+    tickets.delete(oldest)
+  }
 }
 
 /* ------------------------------ registry ------------------------------ */

@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file mixture/cloud/v1/cloud.proto.
  */
 export const file_mixture_cloud_v1_cloud: GenFile = /*@__PURE__*/
-  fileDesc("ChxtaXh0dXJlL2Nsb3VkL3YxL2Nsb3VkLnByb3RvEhBtaXh0dXJlLmNsb3VkLnYxItkBCgVFbnRyeRIMCgRwYXRoGAEgASgJEgwKBG5hbWUYAiABKAkSKQoEa2luZBgDIAEoDjIbLm1peHR1cmUuY2xvdWQudjEuRW50cnlLaW5kEgwKBHNpemUYBCABKAMSCwoDc2hhGAUgASgJEjAKCnZpc2liaWxpdHkYBiABKA4yHC5taXh0dXJlLmNsb3VkLnYxLlZpc2liaWxpdHkSEAoIZWRpdGFibGUYByABKAgSFAoMY29udGVudF90eXBlGAggASgJEhQKDGRvd25sb2FkX3VybBgJIAEoCSKTAQoGU3RhdHVzEhIKCmNvbmZpZ3VyZWQYASABKAgSDAoEcmVwbxgCIAEoCRIOCgZicmFuY2gYAyABKAkSDQoFbG9naW4YBCABKAkSJAoEcm9sZRgFIAEoDjIWLm1peHR1cmUuY2xvdWQudjEuUm9sZRIPCgdtZXNzYWdlGAYgASgJEhEKCXJlYWNoYWJsZRgHIAEoCCJTCg5WaXNpYmlsaXR5UnVsZRIPCgdwYXR0ZXJuGAEgASgJEjAKCnZpc2liaWxpdHkYAiABKA4yHC5taXh0dXJlLmNsb3VkLnYxLlZpc2liaWxpdHkiUQoJQWNjZXNzS2V5EgwKBG5hbWUYASABKAkSJAoEcm9sZRgCIAEoDjIWLm1peHR1cmUuY2xvdWQudjEuUm9sZRIQCghrZXlfaGFzaBgDIAEoCSKFAQoGQWNjZXNzEg4KBm93bmVycxgBIAMoCRIPCgdlZGl0b3JzGAIgAygJEg8KB3ZpZXdlcnMYAyADKAkSHgoWYWxsb3dfYW5vbnltb3VzX3B1YmxpYxgEIAEoCBIpCgRrZXlzGAUgAygLMhsubWl4dHVyZS5jbG91ZC52MS5BY2Nlc3NLZXkirgEKBkNvbmZpZxIPCgd2ZXJzaW9uGAEgASgFEjgKEmRlZmF1bHRfdmlzaWJpbGl0eRgCIAEoDjIcLm1peHR1cmUuY2xvdWQudjEuVmlzaWJpbGl0eRIvCgVydWxlcxgDIAMoCzIgLm1peHR1cmUuY2xvdWQudjEuVmlzaWJpbGl0eVJ1bGUSKAoGYWNjZXNzGAQgASgLMhgubWl4dHVyZS5jbG91ZC52MS5BY2Nlc3MiEgoQR2V0U3RhdHVzUmVxdWVzdCI9ChFHZXRTdGF0dXNSZXNwb25zZRIoCgZzdGF0dXMYASABKAsyGC5taXh0dXJlLmNsb3VkLnYxLlN0YXR1cyIiChJMaXN0RW50cmllc1JlcXVlc3QSDAoEcGF0aBgBIAEoCSJ3ChNMaXN0RW50cmllc1Jlc3BvbnNlEgwKBHBhdGgYASABKAkSKAoHZW50cmllcxgCIAMoCzIXLm1peHR1cmUuY2xvdWQudjEuRW50cnkSKAoGc3RhdHVzGAMgASgLMhgubWl4dHVyZS5jbG91ZC52MS5TdGF0dXMiIAoOR2V0VHJlZVJlcXVlc3QSDgoGcHJlZml4GAEgASgJIlsKD0dldFRyZWVSZXNwb25zZRIoCgdlbnRyaWVzGAEgAygLMhcubWl4dHVyZS5jbG91ZC52MS5FbnRyeRIRCgl0cnVuY2F0ZWQYAiABKAgSCwoDc2hhGAMgASgJIiAKEFN0YXRFbnRyeVJlcXVlc3QSDAoEcGF0aBgBIAEoCSI7ChFTdGF0RW50cnlSZXNwb25zZRImCgVlbnRyeRgBIAEoCzIXLm1peHR1cmUuY2xvdWQudjEuRW50cnkiHwoPUmVhZEZpbGVSZXF1ZXN0EgwKBHBhdGgYASABKAkiXgoQUmVhZEZpbGVSZXNwb25zZRImCgVlbnRyeRgBIAEoCzIXLm1peHR1cmUuY2xvdWQudjEuRW50cnkSDwoHY29udGVudBgCIAEoDBIRCgl0cnVuY2F0ZWQYAyABKAgiTwoQV3JpdGVGaWxlUmVxdWVzdBIMCgRwYXRoGAEgASgJEg8KB2NvbnRlbnQYAiABKAwSCwoDc2hhGAMgASgJEg8KB21lc3NhZ2UYBCABKAkiTwoRV3JpdGVGaWxlUmVzcG9uc2USJgoFZW50cnkYASABKAsyFy5taXh0dXJlLmNsb3VkLnYxLkVudHJ5EhIKCmNvbW1pdF9zaGEYAiABKAkiLwoSRGVsZXRlRW50cnlSZXF1ZXN0EgwKBHBhdGgYASABKAkSCwoDc2hhGAIgASgJIikKE0RlbGV0ZUVudHJ5UmVzcG9uc2USEgoKY29tbWl0X3NoYRgBIAEoCSIsChBNb3ZlRW50cnlSZXF1ZXN0EgwKBGZyb20YASABKAkSCgoCdG8YAiABKAkiOwoRTW92ZUVudHJ5UmVzcG9uc2USJgoFZW50cnkYASABKAsyFy5taXh0dXJlLmNsb3VkLnYxLkVudHJ5IiYKFkNyZWF0ZURpcmVjdG9yeVJlcXVlc3QSDAoEcGF0aBgBIAEoCSJBChdDcmVhdGVEaXJlY3RvcnlSZXNwb25zZRImCgVlbnRyeRgBIAEoCzIXLm1peHR1cmUuY2xvdWQudjEuRW50cnkiKAoVSW5pdFJlcG9zaXRvcnlSZXF1ZXN0Eg8KB3ByaXZhdGUYASABKAgiZQoWSW5pdFJlcG9zaXRvcnlSZXNwb25zZRIoCgZzdGF0dXMYASABKAsyGC5taXh0dXJlLmNsb3VkLnYxLlN0YXR1cxIPCgdjcmVhdGVkGAIgASgIEhAKCGh0bWxfdXJsGAMgASgJIhIKEEdldENvbmZpZ1JlcXVlc3QiSgoRR2V0Q29uZmlnUmVzcG9uc2USKAoGY29uZmlnGAEgASgLMhgubWl4dHVyZS5jbG91ZC52MS5Db25maWcSCwoDc2hhGAIgASgJIkwKE1VwZGF0ZUNvbmZpZ1JlcXVlc3QSKAoGY29uZmlnGAEgASgLMhgubWl4dHVyZS5jbG91ZC52MS5Db25maWcSCwoDc2hhGAIgASgJIk0KFFVwZGF0ZUNvbmZpZ1Jlc3BvbnNlEigKBmNvbmZpZxgBIAEoCzIYLm1peHR1cmUuY2xvdWQudjEuQ29uZmlnEgsKA3NoYRgCIAEoCSpuCgpWaXNpYmlsaXR5EhoKFlZJU0lCSUxJVFlfVU5TUEVDSUZJRUQQABIWChJWSVNJQklMSVRZX1BSSVZBVEUQARIVChFWSVNJQklMSVRZX1BVQkxJQxACEhUKEVZJU0lCSUxJVFlfSElEREVOEAMqVgoJRW50cnlLaW5kEhoKFkVOVFJZX0tJTkRfVU5TUEVDSUZJRUQQABITCg9FTlRSWV9LSU5EX0ZJTEUQARIYChRFTlRSWV9LSU5EX0RJUkVDVE9SWRACKmIKBFJvbGUSFAoQUk9MRV9VTlNQRUNJRklFRBAAEhIKDlJPTEVfQU5PTllNT1VTEAESDwoLUk9MRV9WSUVXRVIQAhIPCgtST0xFX0VESVRPUhADEg4KClJPTEVfT1dORVIQBDLDCAoMQ2xvdWRTZXJ2aWNlElQKCUdldFN0YXR1cxIiLm1peHR1cmUuY2xvdWQudjEuR2V0U3RhdHVzUmVxdWVzdBojLm1peHR1cmUuY2xvdWQudjEuR2V0U3RhdHVzUmVzcG9uc2USYwoOSW5pdFJlcG9zaXRvcnkSJy5taXh0dXJlLmNsb3VkLnYxLkluaXRSZXBvc2l0b3J5UmVxdWVzdBooLm1peHR1cmUuY2xvdWQudjEuSW5pdFJlcG9zaXRvcnlSZXNwb25zZRJaCgtMaXN0RW50cmllcxIkLm1peHR1cmUuY2xvdWQudjEuTGlzdEVudHJpZXNSZXF1ZXN0GiUubWl4dHVyZS5jbG91ZC52MS5MaXN0RW50cmllc1Jlc3BvbnNlEk4KB0dldFRyZWUSIC5taXh0dXJlLmNsb3VkLnYxLkdldFRyZWVSZXF1ZXN0GiEubWl4dHVyZS5jbG91ZC52MS5HZXRUcmVlUmVzcG9uc2USVAoJU3RhdEVudHJ5EiIubWl4dHVyZS5jbG91ZC52MS5TdGF0RW50cnlSZXF1ZXN0GiMubWl4dHVyZS5jbG91ZC52MS5TdGF0RW50cnlSZXNwb25zZRJRCghSZWFkRmlsZRIhLm1peHR1cmUuY2xvdWQudjEuUmVhZEZpbGVSZXF1ZXN0GiIubWl4dHVyZS5jbG91ZC52MS5SZWFkRmlsZVJlc3BvbnNlElQKCVdyaXRlRmlsZRIiLm1peHR1cmUuY2xvdWQudjEuV3JpdGVGaWxlUmVxdWVzdBojLm1peHR1cmUuY2xvdWQudjEuV3JpdGVGaWxlUmVzcG9uc2USWgoLRGVsZXRlRW50cnkSJC5taXh0dXJlLmNsb3VkLnYxLkRlbGV0ZUVudHJ5UmVxdWVzdBolLm1peHR1cmUuY2xvdWQudjEuRGVsZXRlRW50cnlSZXNwb25zZRJUCglNb3ZlRW50cnkSIi5taXh0dXJlLmNsb3VkLnYxLk1vdmVFbnRyeVJlcXVlc3QaIy5taXh0dXJlLmNsb3VkLnYxLk1vdmVFbnRyeVJlc3BvbnNlEmYKD0NyZWF0ZURpcmVjdG9yeRIoLm1peHR1cmUuY2xvdWQudjEuQ3JlYXRlRGlyZWN0b3J5UmVxdWVzdBopLm1peHR1cmUuY2xvdWQudjEuQ3JlYXRlRGlyZWN0b3J5UmVzcG9uc2USVAoJR2V0Q29uZmlnEiIubWl4dHVyZS5jbG91ZC52MS5HZXRDb25maWdSZXF1ZXN0GiMubWl4dHVyZS5jbG91ZC52MS5HZXRDb25maWdSZXNwb25zZRJdCgxVcGRhdGVDb25maWcSJS5taXh0dXJlLmNsb3VkLnYxLlVwZGF0ZUNvbmZpZ1JlcXVlc3QaJi5taXh0dXJlLmNsb3VkLnYxLlVwZGF0ZUNvbmZpZ1Jlc3BvbnNlYgZwcm90bzM");
+  fileDesc("ChxtaXh0dXJlL2Nsb3VkL3YxL2Nsb3VkLnByb3RvEhBtaXh0dXJlLmNsb3VkLnYxItkBCgVFbnRyeRIMCgRwYXRoGAEgASgJEgwKBG5hbWUYAiABKAkSKQoEa2luZBgDIAEoDjIbLm1peHR1cmUuY2xvdWQudjEuRW50cnlLaW5kEgwKBHNpemUYBCABKAMSCwoDc2hhGAUgASgJEjAKCnZpc2liaWxpdHkYBiABKA4yHC5taXh0dXJlLmNsb3VkLnYxLlZpc2liaWxpdHkSEAoIZWRpdGFibGUYByABKAgSFAoMY29udGVudF90eXBlGAggASgJEhQKDGRvd25sb2FkX3VybBgJIAEoCSKTAQoGU3RhdHVzEhIKCmNvbmZpZ3VyZWQYASABKAgSDAoEcmVwbxgCIAEoCRIOCgZicmFuY2gYAyABKAkSDQoFbG9naW4YBCABKAkSJAoEcm9sZRgFIAEoDjIWLm1peHR1cmUuY2xvdWQudjEuUm9sZRIPCgdtZXNzYWdlGAYgASgJEhEKCXJlYWNoYWJsZRgHIAEoCCJTCg5WaXNpYmlsaXR5UnVsZRIPCgdwYXR0ZXJuGAEgASgJEjAKCnZpc2liaWxpdHkYAiABKA4yHC5taXh0dXJlLmNsb3VkLnYxLlZpc2liaWxpdHkiUQoJQWNjZXNzS2V5EgwKBG5hbWUYASABKAkSJAoEcm9sZRgCIAEoDjIWLm1peHR1cmUuY2xvdWQudjEuUm9sZRIQCghrZXlfaGFzaBgDIAEoCSKFAQoGQWNjZXNzEg4KBm93bmVycxgBIAMoCRIPCgdlZGl0b3JzGAIgAygJEg8KB3ZpZXdlcnMYAyADKAkSHgoWYWxsb3dfYW5vbnltb3VzX3B1YmxpYxgEIAEoCBIpCgRrZXlzGAUgAygLMhsubWl4dHVyZS5jbG91ZC52MS5BY2Nlc3NLZXkirgEKBkNvbmZpZxIPCgd2ZXJzaW9uGAEgASgFEjgKEmRlZmF1bHRfdmlzaWJpbGl0eRgCIAEoDjIcLm1peHR1cmUuY2xvdWQudjEuVmlzaWJpbGl0eRIvCgVydWxlcxgDIAMoCzIgLm1peHR1cmUuY2xvdWQudjEuVmlzaWJpbGl0eVJ1bGUSKAoGYWNjZXNzGAQgASgLMhgubWl4dHVyZS5jbG91ZC52MS5BY2Nlc3MiEgoQR2V0U3RhdHVzUmVxdWVzdCI9ChFHZXRTdGF0dXNSZXNwb25zZRIoCgZzdGF0dXMYASABKAsyGC5taXh0dXJlLmNsb3VkLnYxLlN0YXR1cyIiChJMaXN0RW50cmllc1JlcXVlc3QSDAoEcGF0aBgBIAEoCSJ3ChNMaXN0RW50cmllc1Jlc3BvbnNlEgwKBHBhdGgYASABKAkSKAoHZW50cmllcxgCIAMoCzIXLm1peHR1cmUuY2xvdWQudjEuRW50cnkSKAoGc3RhdHVzGAMgASgLMhgubWl4dHVyZS5jbG91ZC52MS5TdGF0dXMiIAoOR2V0VHJlZVJlcXVlc3QSDgoGcHJlZml4GAEgASgJIlsKD0dldFRyZWVSZXNwb25zZRIoCgdlbnRyaWVzGAEgAygLMhcubWl4dHVyZS5jbG91ZC52MS5FbnRyeRIRCgl0cnVuY2F0ZWQYAiABKAgSCwoDc2hhGAMgASgJIiAKEFN0YXRFbnRyeVJlcXVlc3QSDAoEcGF0aBgBIAEoCSI7ChFTdGF0RW50cnlSZXNwb25zZRImCgVlbnRyeRgBIAEoCzIXLm1peHR1cmUuY2xvdWQudjEuRW50cnkiHwoPUmVhZEZpbGVSZXF1ZXN0EgwKBHBhdGgYASABKAkiXgoQUmVhZEZpbGVSZXNwb25zZRImCgVlbnRyeRgBIAEoCzIXLm1peHR1cmUuY2xvdWQudjEuRW50cnkSDwoHY29udGVudBgCIAEoDBIRCgl0cnVuY2F0ZWQYAyABKAgiKQoZQ3JlYXRlU3RyZWFtVGlja2V0UmVxdWVzdBIMCgRwYXRoGAEgASgJIkUKGkNyZWF0ZVN0cmVhbVRpY2tldFJlc3BvbnNlEgsKA3VybBgBIAEoCRIaChJleHBpcmVzX2F0X3VuaXhfbXMYAiABKAMiTwoQV3JpdGVGaWxlUmVxdWVzdBIMCgRwYXRoGAEgASgJEg8KB2NvbnRlbnQYAiABKAwSCwoDc2hhGAMgASgJEg8KB21lc3NhZ2UYBCABKAkiTwoRV3JpdGVGaWxlUmVzcG9uc2USJgoFZW50cnkYASABKAsyFy5taXh0dXJlLmNsb3VkLnYxLkVudHJ5EhIKCmNvbW1pdF9zaGEYAiABKAkiLwoSRGVsZXRlRW50cnlSZXF1ZXN0EgwKBHBhdGgYASABKAkSCwoDc2hhGAIgASgJIikKE0RlbGV0ZUVudHJ5UmVzcG9uc2USEgoKY29tbWl0X3NoYRgBIAEoCSIsChBNb3ZlRW50cnlSZXF1ZXN0EgwKBGZyb20YASABKAkSCgoCdG8YAiABKAkiOwoRTW92ZUVudHJ5UmVzcG9uc2USJgoFZW50cnkYASABKAsyFy5taXh0dXJlLmNsb3VkLnYxLkVudHJ5IiYKFkNyZWF0ZURpcmVjdG9yeVJlcXVlc3QSDAoEcGF0aBgBIAEoCSJBChdDcmVhdGVEaXJlY3RvcnlSZXNwb25zZRImCgVlbnRyeRgBIAEoCzIXLm1peHR1cmUuY2xvdWQudjEuRW50cnkiKAoVSW5pdFJlcG9zaXRvcnlSZXF1ZXN0Eg8KB3ByaXZhdGUYASABKAgiZQoWSW5pdFJlcG9zaXRvcnlSZXNwb25zZRIoCgZzdGF0dXMYASABKAsyGC5taXh0dXJlLmNsb3VkLnYxLlN0YXR1cxIPCgdjcmVhdGVkGAIgASgIEhAKCGh0bWxfdXJsGAMgASgJIhIKEEdldENvbmZpZ1JlcXVlc3QiSgoRR2V0Q29uZmlnUmVzcG9uc2USKAoGY29uZmlnGAEgASgLMhgubWl4dHVyZS5jbG91ZC52MS5Db25maWcSCwoDc2hhGAIgASgJIkwKE1VwZGF0ZUNvbmZpZ1JlcXVlc3QSKAoGY29uZmlnGAEgASgLMhgubWl4dHVyZS5jbG91ZC52MS5Db25maWcSCwoDc2hhGAIgASgJIk0KFFVwZGF0ZUNvbmZpZ1Jlc3BvbnNlEigKBmNvbmZpZxgBIAEoCzIYLm1peHR1cmUuY2xvdWQudjEuQ29uZmlnEgsKA3NoYRgCIAEoCSpuCgpWaXNpYmlsaXR5EhoKFlZJU0lCSUxJVFlfVU5TUEVDSUZJRUQQABIWChJWSVNJQklMSVRZX1BSSVZBVEUQARIVChFWSVNJQklMSVRZX1BVQkxJQxACEhUKEVZJU0lCSUxJVFlfSElEREVOEAMqVgoJRW50cnlLaW5kEhoKFkVOVFJZX0tJTkRfVU5TUEVDSUZJRUQQABITCg9FTlRSWV9LSU5EX0ZJTEUQARIYChRFTlRSWV9LSU5EX0RJUkVDVE9SWRACKmIKBFJvbGUSFAoQUk9MRV9VTlNQRUNJRklFRBAAEhIKDlJPTEVfQU5PTllNT1VTEAESDwoLUk9MRV9WSUVXRVIQAhIPCgtST0xFX0VESVRPUhADEg4KClJPTEVfT1dORVIQBDK0CQoMQ2xvdWRTZXJ2aWNlElQKCUdldFN0YXR1cxIiLm1peHR1cmUuY2xvdWQudjEuR2V0U3RhdHVzUmVxdWVzdBojLm1peHR1cmUuY2xvdWQudjEuR2V0U3RhdHVzUmVzcG9uc2USYwoOSW5pdFJlcG9zaXRvcnkSJy5taXh0dXJlLmNsb3VkLnYxLkluaXRSZXBvc2l0b3J5UmVxdWVzdBooLm1peHR1cmUuY2xvdWQudjEuSW5pdFJlcG9zaXRvcnlSZXNwb25zZRJaCgtMaXN0RW50cmllcxIkLm1peHR1cmUuY2xvdWQudjEuTGlzdEVudHJpZXNSZXF1ZXN0GiUubWl4dHVyZS5jbG91ZC52MS5MaXN0RW50cmllc1Jlc3BvbnNlEk4KB0dldFRyZWUSIC5taXh0dXJlLmNsb3VkLnYxLkdldFRyZWVSZXF1ZXN0GiEubWl4dHVyZS5jbG91ZC52MS5HZXRUcmVlUmVzcG9uc2USVAoJU3RhdEVudHJ5EiIubWl4dHVyZS5jbG91ZC52MS5TdGF0RW50cnlSZXF1ZXN0GiMubWl4dHVyZS5jbG91ZC52MS5TdGF0RW50cnlSZXNwb25zZRJRCghSZWFkRmlsZRIhLm1peHR1cmUuY2xvdWQudjEuUmVhZEZpbGVSZXF1ZXN0GiIubWl4dHVyZS5jbG91ZC52MS5SZWFkRmlsZVJlc3BvbnNlEm8KEkNyZWF0ZVN0cmVhbVRpY2tldBIrLm1peHR1cmUuY2xvdWQudjEuQ3JlYXRlU3RyZWFtVGlja2V0UmVxdWVzdBosLm1peHR1cmUuY2xvdWQudjEuQ3JlYXRlU3RyZWFtVGlja2V0UmVzcG9uc2USVAoJV3JpdGVGaWxlEiIubWl4dHVyZS5jbG91ZC52MS5Xcml0ZUZpbGVSZXF1ZXN0GiMubWl4dHVyZS5jbG91ZC52MS5Xcml0ZUZpbGVSZXNwb25zZRJaCgtEZWxldGVFbnRyeRIkLm1peHR1cmUuY2xvdWQudjEuRGVsZXRlRW50cnlSZXF1ZXN0GiUubWl4dHVyZS5jbG91ZC52MS5EZWxldGVFbnRyeVJlc3BvbnNlElQKCU1vdmVFbnRyeRIiLm1peHR1cmUuY2xvdWQudjEuTW92ZUVudHJ5UmVxdWVzdBojLm1peHR1cmUuY2xvdWQudjEuTW92ZUVudHJ5UmVzcG9uc2USZgoPQ3JlYXRlRGlyZWN0b3J5EigubWl4dHVyZS5jbG91ZC52MS5DcmVhdGVEaXJlY3RvcnlSZXF1ZXN0GikubWl4dHVyZS5jbG91ZC52MS5DcmVhdGVEaXJlY3RvcnlSZXNwb25zZRJUCglHZXRDb25maWcSIi5taXh0dXJlLmNsb3VkLnYxLkdldENvbmZpZ1JlcXVlc3QaIy5taXh0dXJlLmNsb3VkLnYxLkdldENvbmZpZ1Jlc3BvbnNlEl0KDFVwZGF0ZUNvbmZpZxIlLm1peHR1cmUuY2xvdWQudjEuVXBkYXRlQ29uZmlnUmVxdWVzdBomLm1peHR1cmUuY2xvdWQudjEuVXBkYXRlQ29uZmlnUmVzcG9uc2ViBnByb3RvMw");
 
 /**
  * @generated from message mixture.cloud.v1.Entry
@@ -459,6 +459,50 @@ export const ReadFileResponseSchema: GenMessage<ReadFileResponse> = /*@__PURE__*
   messageDesc(file_mixture_cloud_v1_cloud, 15);
 
 /**
+ * @generated from message mixture.cloud.v1.CreateStreamTicketRequest
+ */
+export type CreateStreamTicketRequest = Message<"mixture.cloud.v1.CreateStreamTicketRequest"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+};
+
+/**
+ * Describes the message mixture.cloud.v1.CreateStreamTicketRequest.
+ * Use `create(CreateStreamTicketRequestSchema)` to create a new message.
+ */
+export const CreateStreamTicketRequestSchema: GenMessage<CreateStreamTicketRequest> = /*@__PURE__*/
+  messageDesc(file_mixture_cloud_v1_cloud, 16);
+
+/**
+ * @generated from message mixture.cloud.v1.CreateStreamTicketResponse
+ */
+export type CreateStreamTicketResponse = Message<"mixture.cloud.v1.CreateStreamTicketResponse"> & {
+  /**
+   * same-origin url the browser may put into <video src>; it carries a signed
+   * ticket, never a github token and never an access key
+   *
+   * @generated from field: string url = 1;
+   */
+  url: string;
+
+  /**
+   * when the ticket stops being accepted (unix milliseconds)
+   *
+   * @generated from field: int64 expires_at_unix_ms = 2;
+   */
+  expiresAtUnixMs: bigint;
+};
+
+/**
+ * Describes the message mixture.cloud.v1.CreateStreamTicketResponse.
+ * Use `create(CreateStreamTicketResponseSchema)` to create a new message.
+ */
+export const CreateStreamTicketResponseSchema: GenMessage<CreateStreamTicketResponse> = /*@__PURE__*/
+  messageDesc(file_mixture_cloud_v1_cloud, 17);
+
+/**
  * @generated from message mixture.cloud.v1.WriteFileRequest
  */
 export type WriteFileRequest = Message<"mixture.cloud.v1.WriteFileRequest"> & {
@@ -490,7 +534,7 @@ export type WriteFileRequest = Message<"mixture.cloud.v1.WriteFileRequest"> & {
  * Use `create(WriteFileRequestSchema)` to create a new message.
  */
 export const WriteFileRequestSchema: GenMessage<WriteFileRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 16);
+  messageDesc(file_mixture_cloud_v1_cloud, 18);
 
 /**
  * @generated from message mixture.cloud.v1.WriteFileResponse
@@ -512,7 +556,7 @@ export type WriteFileResponse = Message<"mixture.cloud.v1.WriteFileResponse"> & 
  * Use `create(WriteFileResponseSchema)` to create a new message.
  */
 export const WriteFileResponseSchema: GenMessage<WriteFileResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 17);
+  messageDesc(file_mixture_cloud_v1_cloud, 19);
 
 /**
  * @generated from message mixture.cloud.v1.DeleteEntryRequest
@@ -534,7 +578,7 @@ export type DeleteEntryRequest = Message<"mixture.cloud.v1.DeleteEntryRequest"> 
  * Use `create(DeleteEntryRequestSchema)` to create a new message.
  */
 export const DeleteEntryRequestSchema: GenMessage<DeleteEntryRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 18);
+  messageDesc(file_mixture_cloud_v1_cloud, 20);
 
 /**
  * @generated from message mixture.cloud.v1.DeleteEntryResponse
@@ -551,7 +595,7 @@ export type DeleteEntryResponse = Message<"mixture.cloud.v1.DeleteEntryResponse"
  * Use `create(DeleteEntryResponseSchema)` to create a new message.
  */
 export const DeleteEntryResponseSchema: GenMessage<DeleteEntryResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 19);
+  messageDesc(file_mixture_cloud_v1_cloud, 21);
 
 /**
  * @generated from message mixture.cloud.v1.MoveEntryRequest
@@ -573,7 +617,7 @@ export type MoveEntryRequest = Message<"mixture.cloud.v1.MoveEntryRequest"> & {
  * Use `create(MoveEntryRequestSchema)` to create a new message.
  */
 export const MoveEntryRequestSchema: GenMessage<MoveEntryRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 20);
+  messageDesc(file_mixture_cloud_v1_cloud, 22);
 
 /**
  * @generated from message mixture.cloud.v1.MoveEntryResponse
@@ -590,7 +634,7 @@ export type MoveEntryResponse = Message<"mixture.cloud.v1.MoveEntryResponse"> & 
  * Use `create(MoveEntryResponseSchema)` to create a new message.
  */
 export const MoveEntryResponseSchema: GenMessage<MoveEntryResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 21);
+  messageDesc(file_mixture_cloud_v1_cloud, 23);
 
 /**
  * @generated from message mixture.cloud.v1.CreateDirectoryRequest
@@ -607,7 +651,7 @@ export type CreateDirectoryRequest = Message<"mixture.cloud.v1.CreateDirectoryRe
  * Use `create(CreateDirectoryRequestSchema)` to create a new message.
  */
 export const CreateDirectoryRequestSchema: GenMessage<CreateDirectoryRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 22);
+  messageDesc(file_mixture_cloud_v1_cloud, 24);
 
 /**
  * @generated from message mixture.cloud.v1.CreateDirectoryResponse
@@ -624,7 +668,7 @@ export type CreateDirectoryResponse = Message<"mixture.cloud.v1.CreateDirectoryR
  * Use `create(CreateDirectoryResponseSchema)` to create a new message.
  */
 export const CreateDirectoryResponseSchema: GenMessage<CreateDirectoryResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 23);
+  messageDesc(file_mixture_cloud_v1_cloud, 25);
 
 /**
  * @generated from message mixture.cloud.v1.InitRepositoryRequest
@@ -643,7 +687,7 @@ export type InitRepositoryRequest = Message<"mixture.cloud.v1.InitRepositoryRequ
  * Use `create(InitRepositoryRequestSchema)` to create a new message.
  */
 export const InitRepositoryRequestSchema: GenMessage<InitRepositoryRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 24);
+  messageDesc(file_mixture_cloud_v1_cloud, 26);
 
 /**
  * @generated from message mixture.cloud.v1.InitRepositoryResponse
@@ -672,7 +716,7 @@ export type InitRepositoryResponse = Message<"mixture.cloud.v1.InitRepositoryRes
  * Use `create(InitRepositoryResponseSchema)` to create a new message.
  */
 export const InitRepositoryResponseSchema: GenMessage<InitRepositoryResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 25);
+  messageDesc(file_mixture_cloud_v1_cloud, 27);
 
 /**
  * @generated from message mixture.cloud.v1.GetConfigRequest
@@ -685,7 +729,7 @@ export type GetConfigRequest = Message<"mixture.cloud.v1.GetConfigRequest"> & {
  * Use `create(GetConfigRequestSchema)` to create a new message.
  */
 export const GetConfigRequestSchema: GenMessage<GetConfigRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 26);
+  messageDesc(file_mixture_cloud_v1_cloud, 28);
 
 /**
  * @generated from message mixture.cloud.v1.GetConfigResponse
@@ -707,7 +751,7 @@ export type GetConfigResponse = Message<"mixture.cloud.v1.GetConfigResponse"> & 
  * Use `create(GetConfigResponseSchema)` to create a new message.
  */
 export const GetConfigResponseSchema: GenMessage<GetConfigResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 27);
+  messageDesc(file_mixture_cloud_v1_cloud, 29);
 
 /**
  * @generated from message mixture.cloud.v1.UpdateConfigRequest
@@ -729,7 +773,7 @@ export type UpdateConfigRequest = Message<"mixture.cloud.v1.UpdateConfigRequest"
  * Use `create(UpdateConfigRequestSchema)` to create a new message.
  */
 export const UpdateConfigRequestSchema: GenMessage<UpdateConfigRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 28);
+  messageDesc(file_mixture_cloud_v1_cloud, 30);
 
 /**
  * @generated from message mixture.cloud.v1.UpdateConfigResponse
@@ -751,7 +795,7 @@ export type UpdateConfigResponse = Message<"mixture.cloud.v1.UpdateConfigRespons
  * Use `create(UpdateConfigResponseSchema)` to create a new message.
  */
 export const UpdateConfigResponseSchema: GenMessage<UpdateConfigResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_cloud_v1_cloud, 29);
+  messageDesc(file_mixture_cloud_v1_cloud, 31);
 
 /**
  * @generated from enum mixture.cloud.v1.Visibility
@@ -918,6 +962,19 @@ export const CloudService: GenService<{
     methodKind: "unary";
     input: typeof ReadFileRequestSchema;
     output: typeof ReadFileResponseSchema;
+  },
+  /**
+   * mint a short-lived, signed url for byte-range playback of one file.
+   * Resolves the caller's role and visibility exactly like ReadFile, then
+   * signs a ticket the /api/cloud/stream route can verify without the
+   * caller's credentials — a <video> element cannot send request headers.
+   *
+   * @generated from rpc mixture.cloud.v1.CloudService.CreateStreamTicket
+   */
+  createStreamTicket: {
+    methodKind: "unary";
+    input: typeof CreateStreamTicketRequestSchema;
+    output: typeof CreateStreamTicketResponseSchema;
   },
   /**
    * @generated from rpc mixture.cloud.v1.CloudService.WriteFile

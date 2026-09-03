@@ -153,6 +153,32 @@ export class GitHubRepo {
     return new Uint8Array(Buffer.from(result.content, "base64"))
   }
 
+  /**
+   * The raw bytes of a file as an un-parsed `Response`, so the byte-streaming
+   * route can hand the body straight to the browser instead of buffering it.
+   *
+   * `Accept: application/vnd.github.raw` makes the contents endpoint answer
+   * with the file itself (and redirect to a signed cdn url for larger blobs)
+   * rather than the 1 MB base64 envelope. `extra` carries the caller's
+   * `Range`; GitHub answers 206 when it honours it and 200 when it does not,
+   * so the caller must handle both. Errors are left to the caller as well —
+   * a media request needs an http status, not a thrown GitHubError.
+   */
+  async rawContents(path: string, extra: Record<string, string> = {}): Promise<Response> {
+    return fetch(`${API}${this.contentsUrl(path)}`, {
+      method: "GET",
+      headers: {
+        Accept: "application/vnd.github.raw",
+        Authorization: `Bearer ${this.token}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "mixture-cloud",
+        ...extra,
+      },
+      redirect: "follow",
+      cache: "no-store",
+    })
+  }
+
   async putFile(
     path: string,
     content: Uint8Array,
