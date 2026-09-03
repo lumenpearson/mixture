@@ -10,10 +10,14 @@ import {
 } from "@mixture/protocol/common"
 import {
   CategoryDefSchema,
+  InsertFit as PbInsertFit,
+  InsertKind as PbInsertKind,
   InsertSchema,
+  InsertSourceSchema,
   LibrarySchema,
   type CategoryDef as PbCategoryDef,
   type Insert as PbInsert,
+  type InsertSource as PbInsertSource,
   type Library as PbLibrary,
 } from "@mixture/protocol/library"
 import type {
@@ -22,6 +26,8 @@ import type {
   CategoryId,
   DeviceType,
   Insert,
+  InsertKind,
+  InsertSource,
   InsertStatus,
   LocalizedList,
   LocalizedText,
@@ -68,6 +74,19 @@ const STATUS_TO_PB: Record<InsertStatus, PbInsertStatus> = {
   shooting: PbInsertStatus.SHOOTING,
 }
 
+const KIND_TO_PB: Record<InsertKind, PbInsertKind> = {
+  scene: PbInsertKind.SCENE,
+  site: PbInsertKind.SITE,
+  file: PbInsertKind.FILE,
+}
+
+type SourceFit = NonNullable<InsertSource["fit"]>
+
+const FIT_TO_PB: Record<SourceFit, PbInsertFit> = {
+  contain: PbInsertFit.CONTAIN,
+  cover: PbInsertFit.COVER,
+}
+
 const invert = <K extends string, V extends number>(table: Record<K, V>) => {
   const out = new Map<V, K>()
   for (const key of Object.keys(table) as K[]) out.set(table[key], key)
@@ -77,15 +96,55 @@ const invert = <K extends string, V extends number>(table: Record<K, V>) => {
 const DEVICE_FROM_PB = invert(DEVICE_TO_PB)
 const ASPECT_FROM_PB = invert(ASPECT_TO_PB)
 const STATUS_FROM_PB = invert(STATUS_TO_PB)
+const KIND_FROM_PB = invert(KIND_TO_PB)
+const FIT_FROM_PB = invert(FIT_TO_PB)
 
 export const deviceToPb = (d: DeviceType) => DEVICE_TO_PB[d]
 export const aspectToPb = (a: AspectRatio) => ASPECT_TO_PB[a]
 export const statusToPb = (s: InsertStatus) => STATUS_TO_PB[s]
+/** an insert without an explicit kind goes on the wire as a packaged scene */
+export const kindToPb = (k: InsertKind | undefined) => (k ? KIND_TO_PB[k] : PbInsertKind.SCENE)
 
 /** null when the wire value is unknown / unspecified */
 export const deviceFromPb = (d: PbDeviceType): DeviceType | null => DEVICE_FROM_PB.get(d) ?? null
 export const aspectFromPb = (a: PbAspectRatio): AspectRatio | null => ASPECT_FROM_PB.get(a) ?? null
 export const statusFromPb = (s: PbInsertStatus): InsertStatus | null => STATUS_FROM_PB.get(s) ?? null
+export const kindFromPb = (k: PbInsertKind): InsertKind | null => KIND_FROM_PB.get(k) ?? null
+
+export function sourceToPb(s: InsertSource): PbInsertSource {
+  return create(InsertSourceSchema, {
+    url: s.url,
+    path: s.path,
+    fit: s.fit ? FIT_TO_PB[s.fit] : PbInsertFit.UNSPECIFIED,
+    zoom: s.zoom,
+    scroll: s.scroll,
+    autoplay: s.autoplay,
+    loop: s.loop,
+    muted: s.muted,
+    background: s.background,
+  })
+}
+
+/**
+ * Every scalar of InsertSource carries explicit presence on the wire, so a
+ * flag the author switched off survives as `false` while one never touched
+ * stays absent — the per-kind defaults are `true` and would otherwise win.
+ */
+export function sourceFromPb(s: PbInsertSource | undefined): InsertSource {
+  if (!s) return {}
+  const out: InsertSource = {}
+  if (s.url !== undefined) out.url = s.url
+  if (s.path !== undefined) out.path = s.path
+  const fit = FIT_FROM_PB.get(s.fit)
+  if (fit) out.fit = fit
+  if (s.zoom !== undefined) out.zoom = s.zoom
+  if (s.scroll !== undefined) out.scroll = s.scroll
+  if (s.autoplay !== undefined) out.autoplay = s.autoplay
+  if (s.loop !== undefined) out.loop = s.loop
+  if (s.muted !== undefined) out.muted = s.muted
+  if (s.background !== undefined) out.background = s.background
+  return out
+}
 
 export function textToPb(t: LocalizedText): PbLocalizedText {
   const hasEn = typeof t.en === "string"
@@ -146,6 +205,8 @@ export function insertToPb(i: Insert): PbInsert {
     negativePrompt: textToPb(i.negativePrompt),
     technicalNotes: listToPb(i.technicalNotes),
     custom: Boolean(i.custom),
+    kind: kindToPb(i.kind),
+    source: i.source ? sourceToPb(i.source) : undefined,
   })
 }
 
@@ -166,6 +227,10 @@ export function insertFromPb(i: PbInsert): Insert {
     negativePrompt: textFromPb(i.negativePrompt),
     technicalNotes: listFromPb(i.technicalNotes),
     custom: i.custom ? true : undefined,
+    // an unspecified kind is what inserts written before this field looked
+    // like: a packaged scene
+    kind: kindFromPb(i.kind) ?? "scene",
+    source: i.source ? sourceFromPb(i.source) : undefined,
   }
 }
 

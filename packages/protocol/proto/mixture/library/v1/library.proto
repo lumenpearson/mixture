@@ -15,6 +15,46 @@ message CategoryDef {
   bool custom = 6;
 }
 
+// What an insert renders inside the device frame: a packaged scene (the
+// historical and default case), a live website, or a file from the cloud
+// drive. UNSPECIFIED is read as SCENE so inserts written before this field
+// existed keep their meaning.
+enum InsertKind {
+  INSERT_KIND_UNSPECIFIED = 0;
+  INSERT_KIND_SCENE = 1;
+  INSERT_KIND_SITE = 2;
+  INSERT_KIND_FILE = 3;
+}
+
+// How content fills the screen. UNSPECIFIED means "not chosen"; the client
+// falls back to its own per-kind default.
+enum InsertFit {
+  INSERT_FIT_UNSPECIFIED = 0;
+  INSERT_FIT_CONTAIN = 1;
+  INSERT_FIT_COVER = 2;
+}
+
+// Where a `site` / `file` insert takes its content from and how it is framed.
+// Every field carries explicit presence: an author who switches a flag off
+// must be distinguishable from one who never touched it, because the per-kind
+// defaults are `true`.
+message InsertSource {
+  // website url for `site` inserts, a direct https file url for `file` ones
+  optional string url = 1;
+  // cloud-drive path for `file` inserts
+  optional string path = 2;
+  InsertFit fit = 3;
+  // zoom factor (1 = natural), validated to 0.25 .. 4 by the server
+  optional double zoom = 4;
+  // allow scrolling inside a site insert
+  optional bool scroll = 5;
+  optional bool autoplay = 6;
+  optional bool loop = 7;
+  optional bool muted = 8;
+  // background behind letterboxed content; a css color, validated server-side
+  optional string background = 9;
+}
+
 // A screen insert: the library card plus its generation prompts.
 message Insert {
   string id = 1;
@@ -34,6 +74,9 @@ message Insert {
   // true for rows stored in the database (as opposed to built-in / generated
   // inserts that ship with the source tree).
   bool custom = 15;
+  InsertKind kind = 16;
+  // absent for scene inserts
+  InsertSource source = 17;
 }
 
 // The full merged library: built-ins, generated packages and custom rows.
@@ -87,6 +130,9 @@ message AddInsertRequest {
   string negative_prompt_en = 18;
   repeated string technical_notes_ru = 19;
   repeated string technical_notes_en = 20;
+  InsertKind kind = 21;
+  // must be absent for scene inserts
+  InsertSource source = 22;
 }
 
 message AddInsertResponse {
