@@ -1,0 +1,234 @@
+/* -------------------------------------------------------------------------
+ * glass-muted-glow — a global translucent-glass surface treatment with a
+ * soft glowing border highlight. superseded the plain boolean glow.css.
+ *
+ * driven entirely by <html> attributes and custom properties written by
+ * `components/screenkit/theme.tsx` (the GlassProvider / useGlass()):
+ *
+ *   data-glass="on|off"                 master switch
+ *   data-glass-panels="on|off"          .bg-panel-soft / .bg-panel / .bg-control
+ *   data-glass-cards="on|off"           .rounded-2xl / .rounded-3xl surfaces
+ *   data-glass-rail="on|off"            the primary nav rail + category panel
+ *   data-glass-menus="on|off"           popovers, selects, dropdown/context menus, toasts
+ *   data-glass-dialogs="on|off"         dialog / alert-dialog / sheet / drawer content
+ *   --glass-blur                        backdrop-filter blur radius (px)
+ *   --glass-alpha                       surface translucency, 0–1
+ *   --glass-saturate                    backdrop-filter saturate(), unitless
+ *   --glass-border-glow                 border/halo strength, 0–1
+ *   --glass-glow-color                  a color-producing value: var(--ring),
+ *                                       var(--foreground) or currentColor
+ *   --glass-noise                       "0" | "1", informational
+ *   --glass-noise-image                 the actual grain layer, or "none"
+ * ------------------------------------------------------------------------- */
+
+:root,
+html[data-glass="on"] {
+  --glass-blur: 14px;
+  --glass-alpha: 0.72;
+  --glass-saturate: 1.15;
+  --glass-border-glow: 0.35;
+  --glass-glow-color: var(--ring);
+  --glass-noise: 0;
+  --glass-noise-image: none;
+  --glass-alpha-floor: 0;
+}
+
+/* white-ish glass reads thinner in the light scheme; floor the opacity so text
+   over it keeps enough contrast instead of washing out. */
+.light[data-glass="on"] {
+  --glass-alpha-floor: 0.78;
+}
+
+html[data-glass="on"] {
+  --glass-alpha-effective: max(var(--glass-alpha), var(--glass-alpha-floor));
+  --glass-ring: color-mix(in srgb, var(--glass-glow-color) calc(var(--glass-border-glow) * 70%), transparent);
+  --glass-halo: color-mix(in srgb, var(--glass-glow-color) calc(var(--glass-border-glow) * 45%), transparent);
+  --glass-ring-hover: color-mix(in srgb, var(--glass-glow-color) calc(var(--glass-border-glow) * 100%), transparent);
+  --glass-halo-hover: color-mix(in srgb, var(--glass-glow-color) calc(var(--glass-border-glow) * 70%), transparent);
+}
+
+@layer utilities {
+  /* ---------------------------- panels ---------------------------- */
+  html[data-glass="on"][data-glass-panels="on"] :where(.bg-panel-soft, .bg-panel, .bg-control) {
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    background-image: var(--glass-noise-image);
+    background-blend-mode: overlay;
+    box-shadow: inset 0 0 0 1px var(--glass-ring), 0 0 12px var(--glass-halo);
+  }
+  html[data-glass="on"][data-glass-panels="on"] .bg-panel-soft {
+    background-color: color-mix(in srgb, var(--panel-soft) calc(var(--glass-alpha-effective) * 100%), transparent);
+  }
+  html[data-glass="on"][data-glass-panels="on"] .bg-panel {
+    background-color: color-mix(in srgb, var(--panel) calc(var(--glass-alpha-effective) * 100%), transparent);
+  }
+  html[data-glass="on"][data-glass-panels="on"] .bg-control {
+    background-color: color-mix(in srgb, var(--control) calc(var(--glass-alpha-effective) * 100%), transparent);
+  }
+
+  /* ----------------------------- cards ----------------------------- */
+  html[data-glass="on"][data-glass-cards="on"] :where(.rounded-2xl, .rounded-3xl):not(aside):not(nav) {
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    background-image: var(--glass-noise-image);
+    background-blend-mode: overlay;
+    box-shadow: inset 0 0 0 1px var(--glass-ring), 0 0 12px var(--glass-halo);
+  }
+
+  /* ------------------------ rail + category panel ------------------------ */
+  html[data-glass="on"][data-glass-rail="on"] :where(nav[aria-label="primary"], aside) {
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    background-color: color-mix(in srgb, var(--sidebar) calc(var(--glass-alpha-effective) * 100%), transparent);
+    background-image: var(--glass-noise-image);
+    background-blend-mode: overlay;
+    box-shadow: inset -1px 0 0 var(--glass-ring), 0 0 16px var(--glass-halo);
+  }
+
+  /* ------------------------- menus / overlays ------------------------- */
+  html[data-glass="on"][data-glass-menus="on"] :where(
+    [data-slot="context-menu-content"],
+    [data-slot="context-menu-sub-content"],
+    [data-slot="dropdown-menu-content"],
+    [data-slot="dropdown-menu-sub-content"],
+    [data-slot="popover-content"],
+    [data-slot="select-content"],
+    [data-slot="tooltip-content"],
+    [data-slot="hover-card-content"],
+    [data-slot="menubar-content"],
+    [data-slot="menubar-sub-content"],
+    [data-slot="navigation-menu-content"],
+    [data-radix-popper-content-wrapper] > *,
+    [data-sonner-toast]
+  ) {
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    background-color: color-mix(in srgb, var(--popover) calc(var(--glass-alpha-effective) * 100%), transparent);
+    background-image: var(--glass-noise-image);
+    background-blend-mode: overlay;
+    box-shadow: inset 0 0 0 1px var(--glass-ring), 0 0 12px var(--glass-halo);
+  }
+
+  /* ------------------------------ dialogs ------------------------------ */
+  html[data-glass="on"][data-glass-dialogs="on"] :where(
+    [data-slot="dialog-content"],
+    [data-slot="alert-dialog-content"],
+    [data-slot="sheet-content"],
+    [data-slot="drawer-content"]
+  ) {
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    background-color: color-mix(in srgb, var(--background) calc(var(--glass-alpha-effective) * 100%), transparent);
+    background-image: var(--glass-noise-image);
+    background-blend-mode: overlay;
+    box-shadow: inset 0 0 0 1px var(--glass-ring), 0 0 18px var(--glass-halo);
+  }
+
+  /* --------------------------- hover / focus --------------------------- */
+  /* any glass surface reads a touch brighter under the pointer or keyboard
+     focus — same two-layer shadow, a stronger mix of the same glow color. */
+  html[data-glass="on"] :where(
+    .bg-panel-soft, .bg-panel, .bg-control,
+    .rounded-2xl, .rounded-3xl,
+    nav[aria-label="primary"], aside,
+    [data-slot="context-menu-content"], [data-slot="dropdown-menu-content"],
+    [data-slot="popover-content"], [data-slot="select-content"],
+    [data-slot="tooltip-content"], [data-slot="hover-card-content"],
+    [data-slot="menubar-content"], [data-slot="navigation-menu-content"],
+    [data-slot="dialog-content"], [data-slot="alert-dialog-content"],
+    [data-slot="sheet-content"], [data-slot="drawer-content"]
+  ):is(:hover, :focus-within) {
+    box-shadow: inset 0 0 0 1px var(--glass-ring-hover), 0 0 16px var(--glass-halo-hover) !important;
+  }
+
+  /* --------------------------- nested surfaces --------------------------- *
+   * backdrop-filter is expensive and blur-inside-blur reads muddy. any glass
+   * surface that sits inside ANOTHER glass surface (e.g. a rounded-2xl button
+   * inside a bg-panel-soft card) keeps its border highlight only — no blur,
+   * no second translucent layer. degrades gracefully: browsers without
+   * :has() simply skip this rule and every surface gets full glass. */
+  html[data-glass="on"] :where(
+    .bg-panel-soft, .bg-panel, .bg-control,
+    .rounded-2xl, .rounded-3xl,
+    nav[aria-label="primary"], aside,
+    [data-slot="context-menu-content"], [data-slot="dropdown-menu-content"],
+    [data-slot="popover-content"], [data-slot="select-content"],
+    [data-slot="tooltip-content"], [data-slot="hover-card-content"],
+    [data-slot="menubar-content"], [data-slot="navigation-menu-content"],
+    [data-slot="dialog-content"], [data-slot="alert-dialog-content"],
+    [data-slot="sheet-content"], [data-slot="drawer-content"]
+  ):has(:where(
+    .bg-panel-soft, .bg-panel, .bg-control,
+    .rounded-2xl, .rounded-3xl
+  ))
+  :where(.bg-panel-soft, .bg-panel, .bg-control, .rounded-2xl, .rounded-3xl) {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: transparent !important;
+    background-image: none !important;
+  }
+
+  /* weak devices and reduce-motion already share one heuristic (see
+     motion.tsx's isSlowDevice) — piggyback on data-motion="reduced" instead
+     of re-detecting hardware here, and drop the blur layer but keep the
+     cheap translucent color + border glow. */
+  html[data-motion="reduced"] :where(
+    .bg-panel-soft, .bg-panel, .bg-control,
+    .rounded-2xl, .rounded-3xl,
+    nav[aria-label="primary"], aside,
+    [data-slot="context-menu-content"], [data-slot="dropdown-menu-content"],
+    [data-slot="popover-content"], [data-slot="select-content"],
+    [data-slot="tooltip-content"], [data-slot="hover-card-content"],
+    [data-slot="menubar-content"], [data-slot="navigation-menu-content"],
+    [data-slot="dialog-content"], [data-slot="alert-dialog-content"],
+    [data-slot="sheet-content"], [data-slot="drawer-content"],
+    [data-radix-popper-content-wrapper] > *,
+    [data-sonner-toast]
+  ) {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* OS-level "reduce transparency" — fall back to fully opaque surfaces. kept
+     inside this same @layer, after every rule above, on purpose: cascade
+     layers invert !important priority (an unlayered !important loses to a
+     layered one), so this has to live in `utilities` too and win on normal
+     same-layer source order, not on being "the last unlayered rule". */
+  @media (prefers-reduced-transparency: reduce) {
+    html[data-glass="on"] :where(.bg-panel-soft, .bg-panel, .bg-control, .rounded-2xl, .rounded-3xl) {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      background-image: none !important;
+    }
+    html[data-glass="on"][data-glass-panels="on"] .bg-panel-soft { background-color: var(--panel-soft) !important; }
+    html[data-glass="on"][data-glass-panels="on"] .bg-panel { background-color: var(--panel) !important; }
+    html[data-glass="on"][data-glass-panels="on"] .bg-control { background-color: var(--control) !important; }
+    html[data-glass="on"][data-glass-rail="on"] :where(nav[aria-label="primary"], aside) {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      background-color: var(--sidebar) !important;
+      background-image: none !important;
+    }
+    html[data-glass="on"][data-glass-menus="on"] :where(
+      [data-slot="context-menu-content"], [data-slot="dropdown-menu-content"],
+      [data-slot="popover-content"], [data-slot="select-content"],
+      [data-slot="tooltip-content"], [data-slot="hover-card-content"],
+      [data-slot="menubar-content"], [data-slot="navigation-menu-content"],
+      [data-radix-popper-content-wrapper] > *, [data-sonner-toast]
+    ) {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      background-color: var(--popover) !important;
+      background-image: none !important;
+    }
+    html[data-glass="on"][data-glass-dialogs="on"] :where(
+      [data-slot="dialog-content"], [data-slot="alert-dialog-content"],
+      [data-slot="sheet-content"], [data-slot="drawer-content"]
+    ) {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      background-color: var(--background) !important;
+      background-image: none !important;
+    }
+  }
+}
