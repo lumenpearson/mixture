@@ -1,15 +1,14 @@
 "use client"
 
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
-import { PROJECT_VERSION } from "@/lib/screenkit/data"
+import { cn } from "@/lib/utils"
 import type { CategoryDef, Insert } from "@/lib/screenkit/types"
-import { Menu } from "lucide-react"
+import { ChevronDown } from "lucide-react"
 import * as React from "react"
-import { CategoryPanel } from "./category-panel"
 import { Content } from "./content"
 import { CommandPalette } from "./command-palette"
 import { Hotkeys } from "./hotkeys"
-import { Rail } from "./rail"
+import { LayoutProvider, useLayout } from "./layout"
+import { BottomRail, Rail } from "./rail"
 import { ScreenkitProvider, useScreenkit } from "./store"
 
 const LOCALE_FLOW_CSS = `
@@ -23,43 +22,70 @@ html[data-locale-flow="on"][data-motion="full"] :where(h1,h2,h3,h4,p,span,button
 }
 `
 
-function MobileTopBar() {
-  const { setMobileNavOpen, t } = useScreenkit()
+/**
+ * Round toggle for the bottom rail (below `md`). Sits just above the rail on
+ * the user's chosen edge; while the rail is hidden the button hugs the
+ * bottom edge instead and its chevron flips, so it is always reachable.
+ * The vertical shift is a transform (not `bottom`) so it rides the same
+ * `sk-resize` transition as the rail's own collapse and main's rounding.
+ */
+function RailToggleButton() {
+  const { side, railVisible, toggleRail } = useLayout()
+  const { t } = useScreenkit()
+
   return (
-    <header className="flex items-center justify-between border-b border-sidebar-border bg-sidebar px-4 py-3 md:hidden">
-      <button
-        onClick={() => setMobileNavOpen(true)}
-        className="flex items-center gap-2 rounded-lg border border-panel-border bg-panel-soft px-3 py-2 font-mono text-sm lowercase text-foreground"
-        aria-label={t("nav.openMenu")}
-      >
-        <Menu className="size-4" />
-        {t("nav.menu")}
-      </button>
-      <span className="font-mono text-xs lowercase text-text-faint">
-        {PROJECT_VERSION}
-      </span>
-    </header>
+    <button
+      type="button"
+      onClick={toggleRail}
+      aria-label={railVisible ? t("layout.hideRail") : t("layout.showRail")}
+      aria-pressed={!railVisible}
+      className={cn(
+        "sk-resize fixed z-30 flex size-11 items-center justify-center rounded-full border border-transparent bg-control-active/90 text-control-active-foreground shadow-lg backdrop-blur-md md:hidden",
+        side === "right" ? "right-4" : "left-4",
+      )}
+      style={{
+        bottom: "calc(max(1rem, env(safe-area-inset-bottom)) + 0.5rem)",
+        transform: railVisible
+          ? "translateY(calc(-1 * (var(--sk-bottom-rail-h) + 0.5rem)))"
+          : "translateY(0)",
+      }}
+    >
+      <ChevronDown className={cn("size-4 transition-transform", !railVisible && "rotate-180")} />
+    </button>
   )
 }
 
-function MobileNav() {
-  const { mobileNavOpen, setMobileNavOpen, t } = useScreenkit()
+/**
+ * Thin, invisible strip at the very bottom edge, present only while the rail
+ * is hidden: a swipe up from there brings it back without hunting for the
+ * toggle button. Purely additive — it never calls preventDefault, so normal
+ * scrolling is unaffected.
+ */
+function SwipeRevealHandle() {
+  const { railVisible, showRail } = useLayout()
+  const startY = React.useRef<number | null>(null)
+
+  if (railVisible) return null
+
   return (
-    <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-      <SheetContent
-        side="left"
-        className="w-[92vw] max-w-[440px] border-sidebar-border bg-background p-0 sm:w-[420px]"
-      >
-        <SheetTitle className="sr-only">{t("nav.navigation")}</SheetTitle>
-        <div className="flex h-full min-w-0">
-          <Rail onNavigate={() => setMobileNavOpen(false)} />
-          <CategoryPanel
-            className="flex min-w-0 flex-1"
-            onNavigate={() => setMobileNavOpen(false)}
-          />
-        </div>
-      </SheetContent>
-    </Sheet>
+    <div
+      aria-hidden="true"
+      className="fixed inset-x-0 bottom-0 z-20 h-6 md:hidden"
+      onTouchStart={(event) => {
+        startY.current = event.touches[0]?.clientY ?? null
+      }}
+      onTouchMove={(event) => {
+        if (startY.current == null) return
+        const y = event.touches[0]?.clientY ?? startY.current
+        if (startY.current - y > 28) {
+          showRail()
+          startY.current = null
+        }
+      }}
+      onTouchEnd={() => {
+        startY.current = null
+      }}
+    />
   )
 }
 
@@ -89,6 +115,8 @@ function LocaleFlowEffect() {
 }
 
 function ShellInner({ notFound = false }: { notFound?: boolean }) {
+  const { railVisible } = useLayout()
+
   return (
     <>
       <style>{LOCALE_FLOW_CSS}</style>
@@ -96,20 +124,42 @@ function ShellInner({ notFound = false }: { notFound?: boolean }) {
         <LocaleFlowEffect />
         <Hotkeys />
         <CommandPalette />
-        <MobileTopBar />
-        <MobileNav />
-        <div className="flex min-h-0 flex-1 bg-sidebar">
+        <div className="flex min-h-0 flex-1 flex-col bg-sidebar md:flex-row">
           {/* desktop icon rail — sits behind the main area; the rounded left
               corners of main reveal the rail color so it appears to tuck under */}
           <div className="hidden md:block">
             <Rail />
           </div>
-          {/* main area — no top/bottom/right margins. only the left edge is
-              rounded and pulled over the rail so the rail tucks beneath it. */}
-          <main className="relative z-10 min-w-0 flex-1 overflow-hidden bg-background md:-ml-3 md:rounded-l-[1.5rem]">
+
+          {/* main area. desktop: only the left edge is rounded and pulled over
+              the rail. below md: only the bottom edge is rounded and pulled
+              over the bottom rail — same trick, other axis — unless the rail
+              is hidden, in which case main simply fills the screen. */}
+          <main
+            className={cn(
+              "relative z-10 min-w-0 flex-1 overflow-hidden bg-background sk-resize",
+              "md:-ml-3 md:mb-0 md:rounded-b-none md:rounded-l-[1.5rem]",
+              railVisible ? "-mb-3 rounded-b-[1.5rem]" : "mb-0 rounded-b-none",
+            )}
+          >
             <Content notFound={notFound} />
           </main>
+
+          {/* bottom rail (below md) — a real flex sibling, not an overlay, so
+              main's available height already excludes it; collapsing its
+              max-height to 0 hides it and lets main grow to fill the screen. */}
+          <div
+            className={cn(
+              "sk-resize overflow-hidden md:hidden",
+              railVisible ? "sk-bottom-rail-collapse" : "max-h-0",
+            )}
+          >
+            <BottomRail />
+          </div>
         </div>
+
+        <RailToggleButton />
+        <SwipeRevealHandle />
       </div>
     </>
   )
@@ -144,7 +194,9 @@ export function AppShell({
       initialView={initialView}
       initialCategory={initialCategory}
     >
-      <ShellInner notFound={notFound} />
+      <LayoutProvider>
+        <ShellInner notFound={notFound} />
+      </LayoutProvider>
     </ScreenkitProvider>
   )
 }

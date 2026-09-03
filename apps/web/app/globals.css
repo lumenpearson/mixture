@@ -237,7 +237,20 @@
   }
 }
 
+:root {
+  /* narrow-screen bottom rail: one height so the rail's own row, the content's
+     reserved scroll padding and the collapse animation all agree on it. */
+  --sk-bottom-rail-h: 4.5rem;
+}
+
 @layer utilities {
+  /* The bottom rail below `md` is a real flex sibling of main (not an
+     overlay), so main's height already excludes it — collapsing this to
+     `max-h-0` both hides the rail and lets main grow to fill the screen. */
+  .sk-bottom-rail-collapse {
+    max-height: calc(var(--sk-bottom-rail-h) + max(1rem, env(safe-area-inset-bottom)));
+  }
+
   .sk-resize {
     transition-property:
       width, min-width, max-width, height, max-height, min-height, aspect-ratio, flex-basis, padding, margin, gap,
