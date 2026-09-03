@@ -260,6 +260,7 @@ function LayoutWidthControls() {
 }
 
 const HOTKEYS: { keys: string[]; labelKey: string }[] = [
+  { keys: ["ctrl", "k"], labelKey: "hotkeys.palette" },
   { keys: ["/"], labelKey: "hotkeys.search" },
   { keys: ["[", "]"], labelKey: "hotkeys.prevNext" },
   { keys: ["f"], labelKey: "hotkeys.fullscreen" },
