@@ -449,6 +449,33 @@ export const cloudServiceImpl: ServiceImpl<typeof CloudService> = {
     }
   },
 
+  async statEntry(req, ctx) {
+    const session = await resolveSession(ctx)
+    const repo = requireRepo(session)
+    const path = cleanPath(req.path, false)
+    assertUserPath(path)
+    let found: GitHubFile | GitHubFile[] | null
+    try {
+      found = await repo.contents(path)
+    } catch (error) {
+      throw toConnectError(error)
+    }
+    // a directory listing means the path is a folder: describe it from the
+    // config rules instead of the (arbitrary) first child record
+    if (Array.isArray(found)) {
+      const entry = directoryEntry(path, session)
+      if (!canSee(session.role, directoryVisibility(path, session.config), session.config)) {
+        throw new ConnectError("not found in the cloud repository", Code.NotFound)
+      }
+      return { entry }
+    }
+    // an entry the caller may not see answers exactly like a missing one, so
+    // stat cannot be used to probe for hidden paths
+    const entry = found && !isSystemFile(found.path) ? toEntry(found, session) : null
+    if (!entry) throw new ConnectError("not found in the cloud repository", Code.NotFound)
+    return { entry }
+  },
+
   async readFile(req, ctx) {
     const session = await resolveSession(ctx)
     const repo = requireRepo(session)
