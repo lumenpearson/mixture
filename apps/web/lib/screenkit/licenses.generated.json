@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-02T19:46:14.515Z",
-  "count": 68,
+  "generatedAt": "2026-09-03T11:43:36.191Z",
+  "count": 69,
   "packages": [
     {
       "name": "@bufbuild/protobuf",
@@ -364,6 +364,17 @@
       "homepage": "https://tailwindcss.com",
       "licenseFile": "tailwindcss__postcss.txt",
       "hasText": true
+    },
+    {
+      "name": "@tauri-apps/api",
+      "version": "2.11.1",
+      "declared": "^2.9.0",
+      "license": "Apache-2.0 OR MIT",
+      "author": null,
+      "repository": "https://github.com/tauri-apps/tauri",
+      "homepage": "https://github.com/tauri-apps/tauri#readme",
+      "licenseFile": null,
+      "hasText": false
     },
     {
       "name": "@types/node",
