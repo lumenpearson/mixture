@@ -8,13 +8,12 @@ import {
   CommandList,
 } from "@/components/ui/command"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
-import { cloudClient } from "@/lib/rpc/client"
 import { resolveInsert } from "@/lib/screenkit/data"
 import { buildPromptSheet, downloadText, exportPromptSheets } from "@/lib/screenkit/export"
 import { LANG_LABEL, UI_LOCALES } from "@/lib/screenkit/i18n"
 import type { UiLocale } from "@/lib/screenkit/types"
 import { cn } from "@/lib/utils"
-import { EntryKind, type Entry } from "@mixture/protocol/cloud"
+import { EntryKind } from "@mixture/protocol/cloud"
 import {
   Cloud,
   Copy,
@@ -46,6 +45,7 @@ import * as React from "react"
 import { toast } from "sonner"
 import { COMMAND_PALETTE_EVENT, focusLibrarySearch } from "./hotkeys"
 import { iconForDevice } from "./icons"
+import { useCloudTree } from "./media/use-cloud-tree"
 import { useMotion } from "./motion"
 import { useScreenkit, type ContentWidth, type Section } from "./store"
 import {
@@ -72,7 +72,6 @@ const RECENT_KEY = "screenkit-palette-recent-v1"
 const RECENT_LIMIT = 8
 const GROUP_LIMIT = 8
 const CLOUD_LIMIT = 10
-const TREE_TTL_MS = 60_000
 
 /** window events the cloud section may listen to when the palette opens things */
 export const CLOUD_OPEN_EVENT = "screenkit:cloud-open"
@@ -146,38 +145,6 @@ export function paletteScore(query: string, text: string): number {
   return total
 }
 
-let treeCache: { at: number; entries: Entry[] } | null = null
-
-function useCloudTree(open: boolean) {
-  const [entries, setEntries] = React.useState<Entry[] | null>(treeCache?.entries ?? null)
-  const [state, setState] = React.useState<"idle" | "loading" | "unavailable">("idle")
-  React.useEffect(() => {
-    if (!open) return
-    if (treeCache && Date.now() - treeCache.at < TREE_TTL_MS) {
-      setEntries(treeCache.entries)
-      return
-    }
-    let cancelled = false
-    setState("loading")
-    cloudClient()
-      .getTree({ prefix: "" })
-      .then((response) => {
-        if (cancelled) return
-        treeCache = { at: Date.now(), entries: response.entries }
-        setEntries(response.entries)
-        setState("idle")
-      })
-      .catch(() => {
-        if (cancelled) return
-        setEntries([])
-        setState("unavailable")
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [open])
-  return { entries, state }
-}
 
 export function CommandPalette() {
   const store = useScreenkit()
