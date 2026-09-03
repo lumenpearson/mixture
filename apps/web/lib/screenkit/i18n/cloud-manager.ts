@@ -304,6 +304,151 @@ const dictionary: FeatureDictionary = {
     "cloud.status.signIn": "sign in with a github token or an access key to see files",
   },
   snark: {
+    /* sources */
+    "cloudfm.source.label": "источник",
+    "cloudfm.source.github": "github",
+
+    /* file types */
+    "cloudfm.type.image": "изображения",
+    "cloudfm.type.video": "видео",
+    "cloudfm.type.audio": "аудио",
+    "cloudfm.type.document": "документы",
+    "cloudfm.type.archive": "архивы",
+    "cloudfm.type.code": "код",
+    "cloudfm.type.other": "прочее",
+
+    /* search */
+    "cloudfm.search.placeholder": "поиск в этой папке…",
+    "cloudfm.search.placeholderAll": "поиск по всему облаку…",
+    "cloudfm.search.scopeFolder": "в папке",
+    "cloudfm.search.scopeAll": "везде",
+    "cloudfm.search.clear": "очистить поиск",
+    "cloudfm.search.searching": "рыщем…",
+    "cloudfm.search.results": "найдено",
+    "cloudfm.search.empty": "ничего не нашлось. возможно, его тут и не было (¬_¬)",
+    "cloudfm.search.truncated": "репозиторий больше одного обхода: показали, сколько успели",
+
+    /* sorting */
+    "cloudfm.sort.label": "сортировка",
+    "cloudfm.sort.name": "по имени",
+    "cloudfm.sort.size": "по размеру",
+    "cloudfm.sort.type": "по расширению",
+    "cloudfm.sort.kind": "по типу",
+    "cloudfm.sort.asc": "по возрастанию",
+    "cloudfm.sort.desc": "по убыванию",
+    "cloudfm.sort.foldersFirst": "папки сверху",
+
+    /* filters */
+    "cloudfm.filter.label": "фильтры",
+    "cloudfm.filter.type": "тип файла",
+    "cloudfm.filter.visibility": "видимость",
+    "cloudfm.filter.any": "любая",
+    "cloudfm.filter.clear": "сбросить фильтры",
+
+    /* view */
+    "cloudfm.view.label": "вид",
+    "cloudfm.view.list": "список",
+    "cloudfm.view.grid": "плитка",
+    "cloudfm.density.label": "плотность",
+    "cloudfm.density.comfortable": "свободно",
+    "cloudfm.density.compact": "плотно",
+
+    /* uploads */
+    "cloudfm.upload.files": "файлы",
+    "cloudfm.upload.folder": "папку",
+    "cloudfm.upload.queue": "очередь загрузки",
+    "cloudfm.upload.retry": "повторить",
+    "cloudfm.upload.cancelOne": "отменить",
+    "cloudfm.upload.clear": "очистить очередь",
+    "cloudfm.upload.statusPending": "в очереди",
+    "cloudfm.upload.statusUploading": "загружается…",
+    "cloudfm.upload.statusDone": "готово",
+    "cloudfm.upload.statusError": "ошибка",
+    "cloudfm.upload.statusSkipped": "пропущено",
+    "cloudfm.upload.statusCancelled": "отменено",
+    "cloudfm.upload.statusConflict": "такой уже есть",
+    "cloudfm.upload.overwrite": "заменить",
+    "cloudfm.upload.keepBoth": "оба",
+    "cloudfm.upload.skip": "пропустить",
+    "cloudfm.upload.overwriteAll": "заменить все",
+    "cloudfm.upload.skipAll": "пропустить все",
+    "cloudfm.upload.direct": "напрямую в github",
+    "cloudfm.upload.capServer": "через сервер — 4 МиБ на файл, и ни байтом больше",
+    "cloudfm.upload.capNote":
+      "без своего github-токена файл идёт через сервер, а тело запроса на vercel заканчивается на 4 МиБ — не мы это придумали. подключите токен, и большие файлы поедут в github прямо из браузера, минуя посредника.",
+    "cloudfm.upload.capNoteToken":
+      "большие файлы уходят из браузера прямо в github, до 90 МБ. дальше вопросы уже к вашему каналу (¬‿¬).",
+    "cloudfm.upload.tooLargeItem": "не влезает",
+    "cloudfm.upload.rejected": "такой путь мы не берём",
+    "cloudfm.upload.dropHint": "бросайте файлы или папки сюда, не стесняйтесь (っ◔◡◔)っ",
+    "cloudfm.upload.here": "загрузить сюда",
+
+    /* context menu */
+    "cloudfm.menu.label": "меню файла",
+    "cloudfm.menu.open": "открыть",
+    "cloudfm.menu.copyLink": "скопировать ссылку",
+    "cloudfm.menu.copyPath": "скопировать путь",
+    "cloudfm.menu.moveTo": "переместить…",
+    "cloudfm.menu.duplicate": "дублировать",
+    "cloudfm.menu.favorite": "в избранное",
+    "cloudfm.menu.unfavorite": "убрать из избранного",
+    "cloudfm.menu.properties": "свойства",
+    "cloudfm.menu.folderProperties": "свойства папки",
+    "cloudfm.menu.newFolderHere": "новая папка внутри",
+    "cloudfm.menu.cut": "вырезать",
+    "cloudfm.menu.copy": "копировать",
+    "cloudfm.menu.paste": "вставить",
+    "cloudfm.menu.selectAll": "выделить всё",
+    "cloudfm.menu.sort": "сортировка",
+    "cloudfm.menu.view": "вид",
+
+    /* selection */
+    "cloudfm.select.selected": "выбрано",
+    "cloudfm.select.clear": "снять выделение",
+    "cloudfm.select.delete": "удалить выбранные",
+    "cloudfm.select.move": "переместить выбранные",
+    "cloudfm.select.moveDesc": "папка, в которую всё это переедет",
+
+    /* properties */
+    "cloudfm.props.title": "свойства",
+    "cloudfm.props.path": "путь",
+    "cloudfm.props.category": "тип",
+    "cloudfm.props.contentType": "content-type",
+    "cloudfm.props.sha": "sha",
+    "cloudfm.props.downloadUrl": "прямая ссылка",
+    "cloudfm.props.none": "—",
+
+    /* rename and move */
+    "cloudfm.rename.hint": "enter — сохранить, esc — передумать",
+    "cloudfm.rename.exists": "имя занято, придумайте другое",
+    "cloudfm.rename.done": "переименовано",
+    "cloudfm.move.title": "переместить",
+    "cloudfm.move.target": "новый путь",
+    "cloudfm.duplicate.done": "копия создана, теперь их две",
+
+    /* delete */
+    "cloudfm.delete.many": "удалить выбранное без права на возврат?",
+
+    /* listing */
+    "cloudfm.back": "назад",
+    "cloudfm.emptyFiltered": "под такие фильтры не подошло ничего ¯\\_(ツ)_/¯",
+    "cloudfm.showing": "показано",
+    "cloudfm.loadMore": "показать ещё",
+    "cloudfm.rowHint": "стрелки — навигация, enter — открыть, f2 — переименовать, delete — прощаться",
+    "cloudfm.kbdMenu": "shift+f10 — меню",
+
+    /* settings */
+    "cloudfm.settings.title": "файловый менеджер",
+    "cloudfm.settings.desc":
+      "как выглядит список облака: цвета по типу, плотность, вид по умолчанию. на скорость github не влияет ни одна из них.",
+    "cloudfm.settings.colors": "цвет по типу файла",
+    "cloudfm.settings.colorsDesc": "иконка каждого типа получает свой акцент палитры — глазу проще, чем вчитываться в расширения",
+    "cloudfm.settings.accents": "акценты по типам",
+    "cloudfm.settings.thumbnails": "миниатюры изображений",
+    "cloudfm.settings.reset": "вернуть по умолчанию",
+    "cloudfm.settings.saved": "настройки облака сохранены",
+
+    /* status: the server sends these keys in Status.message, never a sentence */
     "cloud.status.noToken": "облако молчит: токена или ключа не завезли",
     "cloud.status.unreachable": "репозиторий облака не отвечает — с таким доступом его как бы и нет",
     "cloud.status.configInvalid": "настройки доступа сломаны, работают значения по умолчанию",
