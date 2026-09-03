@@ -35,7 +35,9 @@ import {
 import {
   aspectToPb,
   deviceToPb,
+  kindToPb,
   libraryFromPb,
+  sourceToPb,
   statusToPb,
   type LibraryData,
 } from "@/lib/rpc/codec"
@@ -537,6 +539,9 @@ export function ScreenkitProvider({
             negativePromptEn: input.negativePromptEn ?? "",
             technicalNotesRu: input.technicalNotesRu ?? [],
             technicalNotesEn: input.technicalNotesEn ?? [],
+            kind: kindToPb(input.kind),
+            // scene inserts send no source at all; the server rejects one
+            source: input.source ? sourceToPb(input.source) : undefined,
           }),
         "could not add the insert",
       ),

@@ -2,8 +2,8 @@
 // @generated from file mixture/library/v1/library.proto (package mixture.library.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { AspectRatio, DeviceType, InsertStatus, LocalizedList, LocalizedText } from "../../common/v1/common_pb";
 import { file_mixture_common_v1_common } from "../../common/v1/common_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file mixture/library/v1/library.proto.
  */
 export const file_mixture_library_v1_library: GenFile = /*@__PURE__*/
-  fileDesc("CiBtaXh0dXJlL2xpYnJhcnkvdjEvbGlicmFyeS5wcm90bxISbWl4dHVyZS5saWJyYXJ5LnYxIoYBCgtDYXRlZ29yeURlZhIKCgJpZBgBIAEoCRIOCgZhY2NlbnQYAiABKAkSDAoEdGludBgDIAEoCRIMCgRpY29uGAQgASgJEi8KBWxhYmVsGAUgASgLMiAubWl4dHVyZS5jb21tb24udjEuTG9jYWxpemVkVGV4dBIOCgZjdXN0b20YBiABKAgivAQKBkluc2VydBIKCgJpZBgBIAEoCRIMCgRkYXRlGAIgASgJEg8KB2VwaXNvZGUYAyABKAkSDQoFc2NlbmUYBCABKAkSEAoIY2F0ZWdvcnkYBSABKAkSLQoGZGV2aWNlGAYgASgOMh0ubWl4dHVyZS5jb21tb24udjEuRGV2aWNlVHlwZRIuCgZhc3BlY3QYByABKA4yHi5taXh0dXJlLmNvbW1vbi52MS5Bc3BlY3RSYXRpbxIvCgZzdGF0dXMYCCABKA4yHy5taXh0dXJlLmNvbW1vbi52MS5JbnNlcnRTdGF0dXMSLwoFdGl0bGUYCSABKAsyIC5taXh0dXJlLmNvbW1vbi52MS5Mb2NhbGl6ZWRUZXh0EjUKC2Rlc2NyaXB0aW9uGAogASgLMiAubWl4dHVyZS5jb21tb24udjEuTG9jYWxpemVkVGV4dBIwCgZwcm9tcHQYCyABKAsyIC5taXh0dXJlLmNvbW1vbi52MS5Mb2NhbGl6ZWRUZXh0EjYKDHNob3J0X3Byb21wdBgMIAEoCzIgLm1peHR1cmUuY29tbW9uLnYxLkxvY2FsaXplZFRleHQSOQoPbmVnYXRpdmVfcHJvbXB0GA0gASgLMiAubWl4dHVyZS5jb21tb24udjEuTG9jYWxpemVkVGV4dBI5Cg90ZWNobmljYWxfbm90ZXMYDiABKAsyIC5taXh0dXJlLmNvbW1vbi52MS5Mb2NhbGl6ZWRMaXN0Eg4KBmN1c3RvbRgPIAEoCCKUAQoHTGlicmFyeRIzCgpjYXRlZ29yaWVzGAEgAygLMh8ubWl4dHVyZS5saWJyYXJ5LnYxLkNhdGVnb3J5RGVmEisKB2luc2VydHMYAiADKAsyGi5taXh0dXJlLmxpYnJhcnkudjEuSW5zZXJ0EhIKCnBlcnNpc3RlbnQYAyABKAgSEwoLZWRpdF9sb2NrZWQYBCABKAgiEwoRR2V0TGlicmFyeVJlcXVlc3QiQgoSR2V0TGlicmFyeVJlc3BvbnNlEiwKB2xpYnJhcnkYASABKAsyGy5taXh0dXJlLmxpYnJhcnkudjEuTGlicmFyeSJyChJBZGRDYXRlZ29yeVJlcXVlc3QSEAoIbGFiZWxfcnUYASABKAkSEAoIbGFiZWxfZW4YAiABKAkSDAoEc2x1ZxgDIAEoCRIOCgZhY2NlbnQYBCABKAkSDAoEdGludBgFIAEoCRIMCgRpY29uGAYgASgJIk8KE0FkZENhdGVnb3J5UmVzcG9uc2USLAoHbGlicmFyeRgBIAEoCzIbLm1peHR1cmUubGlicmFyeS52MS5MaWJyYXJ5EgoKAmlkGAIgASgJIowEChBBZGRJbnNlcnRSZXF1ZXN0EgwKBHNsdWcYASABKAkSEAoIY2F0ZWdvcnkYAiABKAkSLQoGZGV2aWNlGAMgASgOMh0ubWl4dHVyZS5jb21tb24udjEuRGV2aWNlVHlwZRIuCgZhc3BlY3QYBCABKA4yHi5taXh0dXJlLmNvbW1vbi52MS5Bc3BlY3RSYXRpbxIvCgZzdGF0dXMYBSABKA4yHy5taXh0dXJlLmNvbW1vbi52MS5JbnNlcnRTdGF0dXMSDwoHZXBpc29kZRgGIAEoCRINCgVzY2VuZRgHIAEoCRIMCgRkYXRlGAggASgJEhAKCHRpdGxlX3J1GAkgASgJEhAKCHRpdGxlX2VuGAogASgJEhYKDmRlc2NyaXB0aW9uX3J1GAsgASgJEhYKDmRlc2NyaXB0aW9uX2VuGAwgASgJEhEKCXByb21wdF9ydRgNIAEoCRIRCglwcm9tcHRfZW4YDiABKAkSFwoPc2hvcnRfcHJvbXB0X3J1GA8gASgJEhcKD3Nob3J0X3Byb21wdF9lbhgQIAEoCRIaChJuZWdhdGl2ZV9wcm9tcHRfcnUYESABKAkSGgoSbmVnYXRpdmVfcHJvbXB0X2VuGBIgASgJEhoKEnRlY2huaWNhbF9ub3Rlc19ydRgTIAMoCRIaChJ0ZWNobmljYWxfbm90ZXNfZW4YFCADKAkiTQoRQWRkSW5zZXJ0UmVzcG9uc2USLAoHbGlicmFyeRgBIAEoCzIbLm1peHR1cmUubGlicmFyeS52MS5MaWJyYXJ5EgoKAmlkGAIgASgJIiEKE0RlbGV0ZUluc2VydFJlcXVlc3QSCgoCaWQYASABKAkiRAoURGVsZXRlSW5zZXJ0UmVzcG9uc2USLAoHbGlicmFyeRgBIAEoCzIbLm1peHR1cmUubGlicmFyeS52MS5MaWJyYXJ5IiMKFURlbGV0ZUNhdGVnb3J5UmVxdWVzdBIKCgJpZBgBIAEoCSJGChZEZWxldGVDYXRlZ29yeVJlc3BvbnNlEiwKB2xpYnJhcnkYASABKAsyGy5taXh0dXJlLmxpYnJhcnkudjEuTGlicmFyeSIVChNSZXNldExpYnJhcnlSZXF1ZXN0IkQKFFJlc2V0TGlicmFyeVJlc3BvbnNlEiwKB2xpYnJhcnkYASABKAsyGy5taXh0dXJlLmxpYnJhcnkudjEuTGlicmFyeTLWBAoOTGlicmFyeVNlcnZpY2USWwoKR2V0TGlicmFyeRIlLm1peHR1cmUubGlicmFyeS52MS5HZXRMaWJyYXJ5UmVxdWVzdBomLm1peHR1cmUubGlicmFyeS52MS5HZXRMaWJyYXJ5UmVzcG9uc2USXgoLQWRkQ2F0ZWdvcnkSJi5taXh0dXJlLmxpYnJhcnkudjEuQWRkQ2F0ZWdvcnlSZXF1ZXN0GicubWl4dHVyZS5saWJyYXJ5LnYxLkFkZENhdGVnb3J5UmVzcG9uc2USWAoJQWRkSW5zZXJ0EiQubWl4dHVyZS5saWJyYXJ5LnYxLkFkZEluc2VydFJlcXVlc3QaJS5taXh0dXJlLmxpYnJhcnkudjEuQWRkSW5zZXJ0UmVzcG9uc2USYQoMRGVsZXRlSW5zZXJ0EicubWl4dHVyZS5saWJyYXJ5LnYxLkRlbGV0ZUluc2VydFJlcXVlc3QaKC5taXh0dXJlLmxpYnJhcnkudjEuRGVsZXRlSW5zZXJ0UmVzcG9uc2USZwoORGVsZXRlQ2F0ZWdvcnkSKS5taXh0dXJlLmxpYnJhcnkudjEuRGVsZXRlQ2F0ZWdvcnlSZXF1ZXN0GioubWl4dHVyZS5saWJyYXJ5LnYxLkRlbGV0ZUNhdGVnb3J5UmVzcG9uc2USYQoMUmVzZXRMaWJyYXJ5EicubWl4dHVyZS5saWJyYXJ5LnYxLlJlc2V0TGlicmFyeVJlcXVlc3QaKC5taXh0dXJlLmxpYnJhcnkudjEuUmVzZXRMaWJyYXJ5UmVzcG9uc2ViBnByb3RvMw", [file_mixture_common_v1_common]);
+  fileDesc("CiBtaXh0dXJlL2xpYnJhcnkvdjEvbGlicmFyeS5wcm90bxISbWl4dHVyZS5saWJyYXJ5LnYxIoYBCgtDYXRlZ29yeURlZhIKCgJpZBgBIAEoCRIOCgZhY2NlbnQYAiABKAkSDAoEdGludBgDIAEoCRIMCgRpY29uGAQgASgJEi8KBWxhYmVsGAUgASgLMiAubWl4dHVyZS5jb21tb24udjEuTG9jYWxpemVkVGV4dBIOCgZjdXN0b20YBiABKAgisgIKDEluc2VydFNvdXJjZRIQCgN1cmwYASABKAlIAIgBARIRCgRwYXRoGAIgASgJSAGIAQESKgoDZml0GAMgASgOMh0ubWl4dHVyZS5saWJyYXJ5LnYxLkluc2VydEZpdBIRCgR6b29tGAQgASgBSAKIAQESEwoGc2Nyb2xsGAUgASgISAOIAQESFQoIYXV0b3BsYXkYBiABKAhIBIgBARIRCgRsb29wGAcgASgISAWIAQESEgoFbXV0ZWQYCCABKAhIBogBARIXCgpiYWNrZ3JvdW5kGAkgASgJSAeIAQFCBgoEX3VybEIHCgVfcGF0aEIHCgVfem9vbUIJCgdfc2Nyb2xsQgsKCV9hdXRvcGxheUIHCgVfbG9vcEIICgZfbXV0ZWRCDQoLX2JhY2tncm91bmQinAUKBkluc2VydBIKCgJpZBgBIAEoCRIMCgRkYXRlGAIgASgJEg8KB2VwaXNvZGUYAyABKAkSDQoFc2NlbmUYBCABKAkSEAoIY2F0ZWdvcnkYBSABKAkSLQoGZGV2aWNlGAYgASgOMh0ubWl4dHVyZS5jb21tb24udjEuRGV2aWNlVHlwZRIuCgZhc3BlY3QYByABKA4yHi5taXh0dXJlLmNvbW1vbi52MS5Bc3BlY3RSYXRpbxIvCgZzdGF0dXMYCCABKA4yHy5taXh0dXJlLmNvbW1vbi52MS5JbnNlcnRTdGF0dXMSLwoFdGl0bGUYCSABKAsyIC5taXh0dXJlLmNvbW1vbi52MS5Mb2NhbGl6ZWRUZXh0EjUKC2Rlc2NyaXB0aW9uGAogASgLMiAubWl4dHVyZS5jb21tb24udjEuTG9jYWxpemVkVGV4dBIwCgZwcm9tcHQYCyABKAsyIC5taXh0dXJlLmNvbW1vbi52MS5Mb2NhbGl6ZWRUZXh0EjYKDHNob3J0X3Byb21wdBgMIAEoCzIgLm1peHR1cmUuY29tbW9uLnYxLkxvY2FsaXplZFRleHQSOQoPbmVnYXRpdmVfcHJvbXB0GA0gASgLMiAubWl4dHVyZS5jb21tb24udjEuTG9jYWxpemVkVGV4dBI5Cg90ZWNobmljYWxfbm90ZXMYDiABKAsyIC5taXh0dXJlLmNvbW1vbi52MS5Mb2NhbGl6ZWRMaXN0Eg4KBmN1c3RvbRgPIAEoCBIsCgRraW5kGBAgASgOMh4ubWl4dHVyZS5saWJyYXJ5LnYxLkluc2VydEtpbmQSMAoGc291cmNlGBEgASgLMiAubWl4dHVyZS5saWJyYXJ5LnYxLkluc2VydFNvdXJjZSKUAQoHTGlicmFyeRIzCgpjYXRlZ29yaWVzGAEgAygLMh8ubWl4dHVyZS5saWJyYXJ5LnYxLkNhdGVnb3J5RGVmEisKB2luc2VydHMYAiADKAsyGi5taXh0dXJlLmxpYnJhcnkudjEuSW5zZXJ0EhIKCnBlcnNpc3RlbnQYAyABKAgSEwoLZWRpdF9sb2NrZWQYBCABKAgiEwoRR2V0TGlicmFyeVJlcXVlc3QiQgoSR2V0TGlicmFyeVJlc3BvbnNlEiwKB2xpYnJhcnkYASABKAsyGy5taXh0dXJlLmxpYnJhcnkudjEuTGlicmFyeSJyChJBZGRDYXRlZ29yeVJlcXVlc3QSEAoIbGFiZWxfcnUYASABKAkSEAoIbGFiZWxfZW4YAiABKAkSDAoEc2x1ZxgDIAEoCRIOCgZhY2NlbnQYBCABKAkSDAoEdGludBgFIAEoCRIMCgRpY29uGAYgASgJIk8KE0FkZENhdGVnb3J5UmVzcG9uc2USLAoHbGlicmFyeRgBIAEoCzIbLm1peHR1cmUubGlicmFyeS52MS5MaWJyYXJ5EgoKAmlkGAIgASgJIuwEChBBZGRJbnNlcnRSZXF1ZXN0EgwKBHNsdWcYASABKAkSEAoIY2F0ZWdvcnkYAiABKAkSLQoGZGV2aWNlGAMgASgOMh0ubWl4dHVyZS5jb21tb24udjEuRGV2aWNlVHlwZRIuCgZhc3BlY3QYBCABKA4yHi5taXh0dXJlLmNvbW1vbi52MS5Bc3BlY3RSYXRpbxIvCgZzdGF0dXMYBSABKA4yHy5taXh0dXJlLmNvbW1vbi52MS5JbnNlcnRTdGF0dXMSDwoHZXBpc29kZRgGIAEoCRINCgVzY2VuZRgHIAEoCRIMCgRkYXRlGAggASgJEhAKCHRpdGxlX3J1GAkgASgJEhAKCHRpdGxlX2VuGAogASgJEhYKDmRlc2NyaXB0aW9uX3J1GAsgASgJEhYKDmRlc2NyaXB0aW9uX2VuGAwgASgJEhEKCXByb21wdF9ydRgNIAEoCRIRCglwcm9tcHRfZW4YDiABKAkSFwoPc2hvcnRfcHJvbXB0X3J1GA8gASgJEhcKD3Nob3J0X3Byb21wdF9lbhgQIAEoCRIaChJuZWdhdGl2ZV9wcm9tcHRfcnUYESABKAkSGgoSbmVnYXRpdmVfcHJvbXB0X2VuGBIgASgJEhoKEnRlY2huaWNhbF9ub3Rlc19ydRgTIAMoCRIaChJ0ZWNobmljYWxfbm90ZXNfZW4YFCADKAkSLAoEa2luZBgVIAEoDjIeLm1peHR1cmUubGlicmFyeS52MS5JbnNlcnRLaW5kEjAKBnNvdXJjZRgWIAEoCzIgLm1peHR1cmUubGlicmFyeS52MS5JbnNlcnRTb3VyY2UiTQoRQWRkSW5zZXJ0UmVzcG9uc2USLAoHbGlicmFyeRgBIAEoCzIbLm1peHR1cmUubGlicmFyeS52MS5MaWJyYXJ5EgoKAmlkGAIgASgJIiEKE0RlbGV0ZUluc2VydFJlcXVlc3QSCgoCaWQYASABKAkiRAoURGVsZXRlSW5zZXJ0UmVzcG9uc2USLAoHbGlicmFyeRgBIAEoCzIbLm1peHR1cmUubGlicmFyeS52MS5MaWJyYXJ5IiMKFURlbGV0ZUNhdGVnb3J5UmVxdWVzdBIKCgJpZBgBIAEoCSJGChZEZWxldGVDYXRlZ29yeVJlc3BvbnNlEiwKB2xpYnJhcnkYASABKAsyGy5taXh0dXJlLmxpYnJhcnkudjEuTGlicmFyeSIVChNSZXNldExpYnJhcnlSZXF1ZXN0IkQKFFJlc2V0TGlicmFyeVJlc3BvbnNlEiwKB2xpYnJhcnkYASABKAsyGy5taXh0dXJlLmxpYnJhcnkudjEuTGlicmFyeSpsCgpJbnNlcnRLaW5kEhsKF0lOU0VSVF9LSU5EX1VOU1BFQ0lGSUVEEAASFQoRSU5TRVJUX0tJTkRfU0NFTkUQARIUChBJTlNFUlRfS0lORF9TSVRFEAISFAoQSU5TRVJUX0tJTkRfRklMRRADKlUKCUluc2VydEZpdBIaChZJTlNFUlRfRklUX1VOU1BFQ0lGSUVEEAASFgoSSU5TRVJUX0ZJVF9DT05UQUlOEAESFAoQSU5TRVJUX0ZJVF9DT1ZFUhACMtYECg5MaWJyYXJ5U2VydmljZRJbCgpHZXRMaWJyYXJ5EiUubWl4dHVyZS5saWJyYXJ5LnYxLkdldExpYnJhcnlSZXF1ZXN0GiYubWl4dHVyZS5saWJyYXJ5LnYxLkdldExpYnJhcnlSZXNwb25zZRJeCgtBZGRDYXRlZ29yeRImLm1peHR1cmUubGlicmFyeS52MS5BZGRDYXRlZ29yeVJlcXVlc3QaJy5taXh0dXJlLmxpYnJhcnkudjEuQWRkQ2F0ZWdvcnlSZXNwb25zZRJYCglBZGRJbnNlcnQSJC5taXh0dXJlLmxpYnJhcnkudjEuQWRkSW5zZXJ0UmVxdWVzdBolLm1peHR1cmUubGlicmFyeS52MS5BZGRJbnNlcnRSZXNwb25zZRJhCgxEZWxldGVJbnNlcnQSJy5taXh0dXJlLmxpYnJhcnkudjEuRGVsZXRlSW5zZXJ0UmVxdWVzdBooLm1peHR1cmUubGlicmFyeS52MS5EZWxldGVJbnNlcnRSZXNwb25zZRJnCg5EZWxldGVDYXRlZ29yeRIpLm1peHR1cmUubGlicmFyeS52MS5EZWxldGVDYXRlZ29yeVJlcXVlc3QaKi5taXh0dXJlLmxpYnJhcnkudjEuRGVsZXRlQ2F0ZWdvcnlSZXNwb25zZRJhCgxSZXNldExpYnJhcnkSJy5taXh0dXJlLmxpYnJhcnkudjEuUmVzZXRMaWJyYXJ5UmVxdWVzdBooLm1peHR1cmUubGlicmFyeS52MS5SZXNldExpYnJhcnlSZXNwb25zZWIGcHJvdG8z", [file_mixture_common_v1_common]);
 
 /**
  * A library category. Built-in categories are shipped with the app; custom
@@ -58,6 +58,78 @@ export type CategoryDef = Message<"mixture.library.v1.CategoryDef"> & {
  */
 export const CategoryDefSchema: GenMessage<CategoryDef> = /*@__PURE__*/
   messageDesc(file_mixture_library_v1_library, 0);
+
+/**
+ * Where a `site` / `file` insert takes its content from and how it is framed.
+ * Every field carries explicit presence: an author who switches a flag off
+ * must be distinguishable from one who never touched it, because the per-kind
+ * defaults are `true`.
+ *
+ * @generated from message mixture.library.v1.InsertSource
+ */
+export type InsertSource = Message<"mixture.library.v1.InsertSource"> & {
+  /**
+   * website url for `site` inserts, a direct https file url for `file` ones
+   *
+   * @generated from field: optional string url = 1;
+   */
+  url?: string | undefined;
+
+  /**
+   * cloud-drive path for `file` inserts
+   *
+   * @generated from field: optional string path = 2;
+   */
+  path?: string | undefined;
+
+  /**
+   * @generated from field: mixture.library.v1.InsertFit fit = 3;
+   */
+  fit: InsertFit;
+
+  /**
+   * zoom factor (1 = natural), validated to 0.25 .. 4 by the server
+   *
+   * @generated from field: optional double zoom = 4;
+   */
+  zoom?: number | undefined;
+
+  /**
+   * allow scrolling inside a site insert
+   *
+   * @generated from field: optional bool scroll = 5;
+   */
+  scroll?: boolean | undefined;
+
+  /**
+   * @generated from field: optional bool autoplay = 6;
+   */
+  autoplay?: boolean | undefined;
+
+  /**
+   * @generated from field: optional bool loop = 7;
+   */
+  loop?: boolean | undefined;
+
+  /**
+   * @generated from field: optional bool muted = 8;
+   */
+  muted?: boolean | undefined;
+
+  /**
+   * background behind letterboxed content; a css color, validated server-side
+   *
+   * @generated from field: optional string background = 9;
+   */
+  background?: string | undefined;
+};
+
+/**
+ * Describes the message mixture.library.v1.InsertSource.
+ * Use `create(InsertSourceSchema)` to create a new message.
+ */
+export const InsertSourceSchema: GenMessage<InsertSource> = /*@__PURE__*/
+  messageDesc(file_mixture_library_v1_library, 1);
 
 /**
  * A screen insert: the library card plus its generation prompts.
@@ -142,6 +214,18 @@ export type Insert = Message<"mixture.library.v1.Insert"> & {
    * @generated from field: bool custom = 15;
    */
   custom: boolean;
+
+  /**
+   * @generated from field: mixture.library.v1.InsertKind kind = 16;
+   */
+  kind: InsertKind;
+
+  /**
+   * absent for scene inserts
+   *
+   * @generated from field: mixture.library.v1.InsertSource source = 17;
+   */
+  source?: InsertSource | undefined;
 };
 
 /**
@@ -149,7 +233,7 @@ export type Insert = Message<"mixture.library.v1.Insert"> & {
  * Use `create(InsertSchema)` to create a new message.
  */
 export const InsertSchema: GenMessage<Insert> = /*@__PURE__*/
-  messageDesc(file_mixture_library_v1_library, 1);
+  messageDesc(file_mixture_library_v1_library, 2);
 
 /**
  * The full merged library: built-ins, generated packages and custom rows.
@@ -187,7 +271,7 @@ export type Library = Message<"mixture.library.v1.Library"> & {
  * Use `create(LibrarySchema)` to create a new message.
  */
 export const LibrarySchema: GenMessage<Library> = /*@__PURE__*/
-  messageDesc(file_mixture_library_v1_library, 2);
+  messageDesc(file_mixture_library_v1_library, 3);
 
 /**
  * @generated from message mixture.library.v1.GetLibraryRequest
@@ -200,7 +284,7 @@ export type GetLibraryRequest = Message<"mixture.library.v1.GetLibraryRequest"> 
  * Use `create(GetLibraryRequestSchema)` to create a new message.
  */
 export const GetLibraryRequestSchema: GenMessage<GetLibraryRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_library_v1_library, 3);
+  messageDesc(file_mixture_library_v1_library, 4);
 
 /**
  * @generated from message mixture.library.v1.GetLibraryResponse
@@ -217,7 +301,7 @@ export type GetLibraryResponse = Message<"mixture.library.v1.GetLibraryResponse"
  * Use `create(GetLibraryResponseSchema)` to create a new message.
  */
 export const GetLibraryResponseSchema: GenMessage<GetLibraryResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_library_v1_library, 4);
+  messageDesc(file_mixture_library_v1_library, 5);
 
 /**
  * @generated from message mixture.library.v1.AddCategoryRequest
@@ -259,7 +343,7 @@ export type AddCategoryRequest = Message<"mixture.library.v1.AddCategoryRequest"
  * Use `create(AddCategoryRequestSchema)` to create a new message.
  */
 export const AddCategoryRequestSchema: GenMessage<AddCategoryRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_library_v1_library, 5);
+  messageDesc(file_mixture_library_v1_library, 6);
 
 /**
  * @generated from message mixture.library.v1.AddCategoryResponse
@@ -281,7 +365,7 @@ export type AddCategoryResponse = Message<"mixture.library.v1.AddCategoryRespons
  * Use `create(AddCategoryResponseSchema)` to create a new message.
  */
 export const AddCategoryResponseSchema: GenMessage<AddCategoryResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_library_v1_library, 6);
+  messageDesc(file_mixture_library_v1_library, 7);
 
 /**
  * @generated from message mixture.library.v1.AddInsertRequest
@@ -386,6 +470,18 @@ export type AddInsertRequest = Message<"mixture.library.v1.AddInsertRequest"> & 
    * @generated from field: repeated string technical_notes_en = 20;
    */
   technicalNotesEn: string[];
+
+  /**
+   * @generated from field: mixture.library.v1.InsertKind kind = 21;
+   */
+  kind: InsertKind;
+
+  /**
+   * must be absent for scene inserts
+   *
+   * @generated from field: mixture.library.v1.InsertSource source = 22;
+   */
+  source?: InsertSource | undefined;
 };
 
 /**
@@ -393,7 +489,7 @@ export type AddInsertRequest = Message<"mixture.library.v1.AddInsertRequest"> & 
  * Use `create(AddInsertRequestSchema)` to create a new message.
  */
 export const AddInsertRequestSchema: GenMessage<AddInsertRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_library_v1_library, 7);
+  messageDesc(file_mixture_library_v1_library, 8);
 
 /**
  * @generated from message mixture.library.v1.AddInsertResponse
@@ -415,7 +511,7 @@ export type AddInsertResponse = Message<"mixture.library.v1.AddInsertResponse"> 
  * Use `create(AddInsertResponseSchema)` to create a new message.
  */
 export const AddInsertResponseSchema: GenMessage<AddInsertResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_library_v1_library, 8);
+  messageDesc(file_mixture_library_v1_library, 9);
 
 /**
  * @generated from message mixture.library.v1.DeleteInsertRequest
@@ -432,7 +528,7 @@ export type DeleteInsertRequest = Message<"mixture.library.v1.DeleteInsertReques
  * Use `create(DeleteInsertRequestSchema)` to create a new message.
  */
 export const DeleteInsertRequestSchema: GenMessage<DeleteInsertRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_library_v1_library, 9);
+  messageDesc(file_mixture_library_v1_library, 10);
 
 /**
  * @generated from message mixture.library.v1.DeleteInsertResponse
@@ -449,7 +545,7 @@ export type DeleteInsertResponse = Message<"mixture.library.v1.DeleteInsertRespo
  * Use `create(DeleteInsertResponseSchema)` to create a new message.
  */
 export const DeleteInsertResponseSchema: GenMessage<DeleteInsertResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_library_v1_library, 10);
+  messageDesc(file_mixture_library_v1_library, 11);
 
 /**
  * @generated from message mixture.library.v1.DeleteCategoryRequest
@@ -466,7 +562,7 @@ export type DeleteCategoryRequest = Message<"mixture.library.v1.DeleteCategoryRe
  * Use `create(DeleteCategoryRequestSchema)` to create a new message.
  */
 export const DeleteCategoryRequestSchema: GenMessage<DeleteCategoryRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_library_v1_library, 11);
+  messageDesc(file_mixture_library_v1_library, 12);
 
 /**
  * @generated from message mixture.library.v1.DeleteCategoryResponse
@@ -483,7 +579,7 @@ export type DeleteCategoryResponse = Message<"mixture.library.v1.DeleteCategoryR
  * Use `create(DeleteCategoryResponseSchema)` to create a new message.
  */
 export const DeleteCategoryResponseSchema: GenMessage<DeleteCategoryResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_library_v1_library, 12);
+  messageDesc(file_mixture_library_v1_library, 13);
 
 /**
  * @generated from message mixture.library.v1.ResetLibraryRequest
@@ -496,7 +592,7 @@ export type ResetLibraryRequest = Message<"mixture.library.v1.ResetLibraryReques
  * Use `create(ResetLibraryRequestSchema)` to create a new message.
  */
 export const ResetLibraryRequestSchema: GenMessage<ResetLibraryRequest> = /*@__PURE__*/
-  messageDesc(file_mixture_library_v1_library, 13);
+  messageDesc(file_mixture_library_v1_library, 14);
 
 /**
  * @generated from message mixture.library.v1.ResetLibraryResponse
@@ -513,7 +609,72 @@ export type ResetLibraryResponse = Message<"mixture.library.v1.ResetLibraryRespo
  * Use `create(ResetLibraryResponseSchema)` to create a new message.
  */
 export const ResetLibraryResponseSchema: GenMessage<ResetLibraryResponse> = /*@__PURE__*/
-  messageDesc(file_mixture_library_v1_library, 14);
+  messageDesc(file_mixture_library_v1_library, 15);
+
+/**
+ * What an insert renders inside the device frame: a packaged scene (the
+ * historical and default case), a live website, or a file from the cloud
+ * drive. UNSPECIFIED is read as SCENE so inserts written before this field
+ * existed keep their meaning.
+ *
+ * @generated from enum mixture.library.v1.InsertKind
+ */
+export enum InsertKind {
+  /**
+   * @generated from enum value: INSERT_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: INSERT_KIND_SCENE = 1;
+   */
+  SCENE = 1,
+
+  /**
+   * @generated from enum value: INSERT_KIND_SITE = 2;
+   */
+  SITE = 2,
+
+  /**
+   * @generated from enum value: INSERT_KIND_FILE = 3;
+   */
+  FILE = 3,
+}
+
+/**
+ * Describes the enum mixture.library.v1.InsertKind.
+ */
+export const InsertKindSchema: GenEnum<InsertKind> = /*@__PURE__*/
+  enumDesc(file_mixture_library_v1_library, 0);
+
+/**
+ * How content fills the screen. UNSPECIFIED means "not chosen"; the client
+ * falls back to its own per-kind default.
+ *
+ * @generated from enum mixture.library.v1.InsertFit
+ */
+export enum InsertFit {
+  /**
+   * @generated from enum value: INSERT_FIT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: INSERT_FIT_CONTAIN = 1;
+   */
+  CONTAIN = 1,
+
+  /**
+   * @generated from enum value: INSERT_FIT_COVER = 2;
+   */
+  COVER = 2,
+}
+
+/**
+ * Describes the enum mixture.library.v1.InsertFit.
+ */
+export const InsertFitSchema: GenEnum<InsertFit> = /*@__PURE__*/
+  enumDesc(file_mixture_library_v1_library, 1);
 
 /**
  * The insert library. Reads are public; mutations are gated by the optional

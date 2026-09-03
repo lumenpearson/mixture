@@ -4,13 +4,15 @@ import { Code, ConnectError, type HandlerContext, type ServiceImpl } from "@conn
 import { count, eq } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { LibraryService } from "@mixture/protocol/library"
+import { InsertKind as PbInsertKind, LibraryService } from "@mixture/protocol/library"
 import { getDb, isDatabaseConfigured } from "@/lib/db"
+import { ensureSchema } from "@/lib/db/ensure"
 import { screenkitCategories, screenkitInserts } from "@/lib/db/schema"
 import { DEFAULT_CATEGORY_DEFS, INSERTS } from "@/lib/screenkit/data"
 import { GENERATED_INSERT_CATEGORIES, GENERATED_INSERTS } from "@/lib/screenkit/generated-inserts"
+import { normalizeSource, validateSource } from "@/lib/screenkit/insert-kinds"
 import { fetchLibrary, isEditLocked } from "@/lib/screenkit/library.server"
-import { aspectFromPb, deviceFromPb, libraryToPb, statusFromPb } from "./codec"
+import { aspectFromPb, deviceFromPb, kindFromPb, libraryToPb, sourceFromPb, statusFromPb } from "./codec"
 import { EDIT_TOKEN_HEADER } from "./headers"
 
 /* ------------------------------------------------------------------ *
@@ -192,6 +194,20 @@ export const libraryServiceImpl: ServiceImpl<typeof LibraryService> = {
     if (!aspect) throw new ConnectError("aspect: unspecified", Code.InvalidArgument)
     if (!status) throw new ConnectError("status: unspecified", Code.InvalidArgument)
 
+    // an unspecified kind is what an older client sends: a packaged scene
+    const kind = req.kind === PbInsertKind.UNSPECIFIED ? "scene" : kindFromPb(req.kind)
+    if (!kind) throw new ConnectError("kind: unsupported value", Code.InvalidArgument)
+    /* the wizard checks the source too, but the request may come from
+       anywhere: a site url ends up as an iframe src and a file path as a
+       cloud lookup, so both are validated here before anything is stored */
+    const requestedSource = req.source ? sourceFromPb(req.source) : undefined
+    const check = validateSource(kind, requestedSource)
+    if (!check.ok) {
+      throw new ConnectError(`${check.field}: ${check.message}`, Code.InvalidArgument)
+    }
+    const source = normalizeSource(kind, requestedSource)
+
+    await ensureSchema()
     const db = getDb()
     const [existing, categories] = await Promise.all([
       db.select({ id: screenkitInserts.id }).from(screenkitInserts),
@@ -235,6 +251,8 @@ export const libraryServiceImpl: ServiceImpl<typeof LibraryService> = {
       negativePromptEn: data.negativePromptEn,
       technicalNotesRu: notesRu,
       technicalNotesEn: notesEn.length ? notesEn : null,
+      kind,
+      source: Object.keys(source).length ? source : null,
     })
 
     return { ...(await respond()), id }

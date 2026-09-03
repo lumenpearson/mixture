@@ -1,9 +1,11 @@
 import "server-only"
 import { asc } from "drizzle-orm"
 import { getDb, isDatabaseConfigured } from "@/lib/db"
+import { ensureSchema } from "@/lib/db/ensure"
 import { screenkitCategories, screenkitInserts } from "@/lib/db/schema"
 import type { LibraryData } from "@/lib/rpc/codec"
 import { buildCategoryDefs, mergeInserts } from "./data"
+import { parseInsertKind, parseInsertSource } from "./insert-kinds"
 import {
   GENERATED_INSERT_CATEGORIES,
   GENERATED_INSERTS,
@@ -69,6 +71,9 @@ export async function fetchCustomInserts(): Promise<Insert[]> {
     negativePrompt: text(r.negativePromptRu, r.negativePromptEn),
     technicalNotes: list(r.technicalNotesRu, r.technicalNotesEn),
     custom: true,
+    kind: parseInsertKind(r.kind),
+    // the column is jsonb: keep only fields we recognise, drop empty sources
+    source: parseInsertSource(r.source),
   }))
 }
 
@@ -92,6 +97,8 @@ let warned = false
 export async function fetchLibrary(): Promise<LibraryData> {
   if (!isDatabaseConfigured()) return builtInLibrary()
   try {
+    // the first query of a process tops up columns an older database misses
+    await ensureSchema()
     const [cats, ins] = await Promise.all([
       fetchCustomCategories(),
       fetchCustomInserts(),

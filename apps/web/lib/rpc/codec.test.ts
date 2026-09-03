@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import type { Insert } from "@/lib/screenkit/types"
+import type { Insert, InsertSource } from "@/lib/screenkit/types"
 import {
   aspectFromPb,
   categoryFromPb,
@@ -7,13 +7,18 @@ import {
   deviceFromPb,
   insertFromPb,
   insertToPb,
+  kindFromPb,
+  kindToPb,
   libraryFromPb,
   libraryToPb,
+  sourceFromPb,
+  sourceToPb,
   statusFromPb,
   textFromPb,
   textToPb,
 } from "./codec"
 import { AspectRatio, DeviceType, InsertStatus } from "@mixture/protocol/common"
+import { InsertKind } from "@mixture/protocol/library"
 
 const insert: Insert = {
   id: "gs-test",
@@ -31,6 +36,7 @@ const insert: Insert = {
   negativePrompt: { ru: "негатив" },
   technicalNotes: { ru: ["a", "b"], en: ["c"] },
   custom: true,
+  kind: "scene",
 }
 
 describe("localized text", () => {
@@ -48,6 +54,51 @@ describe("enums", () => {
     expect(statusFromPb(InsertStatus.NEEDS_REVIEW)).toBe("needs review")
     expect(deviceFromPb(DeviceType.UNSPECIFIED)).toBeNull()
     expect(statusFromPb(99 as InsertStatus)).toBeNull()
+  })
+})
+
+describe("insert kinds", () => {
+  it("maps every kind both ways", () => {
+    for (const kind of ["scene", "site", "file"] as const) {
+      expect(kindFromPb(kindToPb(kind))).toBe(kind)
+    }
+    expect(kindFromPb(InsertKind.UNSPECIFIED)).toBeNull()
+    expect(kindFromPb(99 as InsertKind)).toBeNull()
+  })
+
+  it("reads an insert without a kind as a scene", () => {
+    const legacy = { ...insert, kind: undefined }
+    const decoded = insertFromPb(insertToPb(legacy))
+    expect(decoded.kind).toBe("scene")
+    expect(decoded.source).toBeUndefined()
+  })
+
+  it("round-trips a site source", () => {
+    const source: InsertSource = {
+      url: "https://example.com/board",
+      fit: "cover",
+      zoom: 1.5,
+      scroll: true,
+      background: "#0b0f17",
+    }
+    expect(sourceFromPb(sourceToPb(source))).toEqual(source)
+    const site = { ...insert, kind: "site" as const, source }
+    expect(insertFromPb(insertToPb(site))).toEqual(site)
+  })
+
+  it("keeps a flag the author switched off apart from one never set", () => {
+    // the file defaults are all `true`, so an explicit `false` has to survive
+    expect(sourceFromPb(sourceToPb({ autoplay: false, loop: false, muted: false }))).toEqual({
+      autoplay: false,
+      loop: false,
+      muted: false,
+    })
+    expect(sourceFromPb(sourceToPb({ path: "clips/hall.mp4" }))).toEqual({ path: "clips/hall.mp4" })
+  })
+
+  it("decodes an empty or missing source as {}", () => {
+    expect(sourceFromPb(sourceToPb({}))).toEqual({})
+    expect(sourceFromPb(undefined)).toEqual({})
   })
 })
 
