@@ -1,7 +1,7 @@
 "use client"
 
 import type { LocalEntry, LocalFsBridge } from "@/lib/local/bridge"
-import { webLocalBridge } from "@/lib/local/web"
+import { localBridge } from "@/lib/local"
 import { create } from "@bufbuild/protobuf"
 import { EntryKind, EntrySchema, Visibility, type Entry } from "@mixture/protocol/cloud"
 import { HardDrive } from "lucide-react"
@@ -110,5 +110,5 @@ export function createLocalProvider(bridge: LocalFsBridge): CloudProvider {
 }
 
 if (typeof window !== "undefined") {
-  registerProvider(createLocalProvider(webLocalBridge()))
+  registerProvider(createLocalProvider(localBridge()))
 }

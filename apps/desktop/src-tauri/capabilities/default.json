@@ -1,0 +1,23 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "what the deployed site is allowed to do inside the desktop shell: core window control, opening links in the system browser, the folder picker and the app data directory. The local files themselves are read through the local_* commands, and the granted root is added to the asset protocol scope at runtime (there is no static $ROOT to write here).",
+  "windows": ["main"],
+  "remote": {
+    "urls": [
+      "https://mixture-codeilluminators.vercel.app",
+      "https://*.vercel.app",
+      "http://localhost:3000"
+    ]
+  },
+  "permissions": [
+    "core:default",
+    "shell:allow-open",
+    "dialog:allow-open",
+    "fs:default",
+    {
+      "identifier": "fs:scope",
+      "allow": [{ "path": "$APPDATA" }, { "path": "$APPDATA/**" }]
+    }
+  ]
+}
