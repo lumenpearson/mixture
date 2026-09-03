@@ -27,6 +27,7 @@ import Link from "next/link"
 import * as React from "react"
 import { toast } from "sonner"
 import { InsertLanguageToggle } from "../insert-language-toggle"
+import { SourceControls } from "../kinds/source-controls"
 import { DeleteInsertButton } from "../library-editor"
 import { InsertPreview } from "../insert-preview"
 import { MotionNumber } from "../motion-number"
@@ -181,6 +182,8 @@ export function PreviewSection() {
 
       {/* controls */}
       <div className="flex flex-col gap-7">
+        <SourceControls insert={insert} />
+
         <Control title={t("preview.deviceFormat")} desc={t("preview.deviceFormatDesc")}>
           <SegmentedControl<DeviceType>
             options={DEVICES.map((d) => ({ value: d.id, label: deviceLabel(d.id, contentLocale) }))}

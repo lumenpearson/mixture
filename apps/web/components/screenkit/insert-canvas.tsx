@@ -5,12 +5,15 @@
 import { resolveScene } from "@/lib/screenkit/insert-registry"
 import type { ResolvedInsert } from "@/lib/screenkit/types"
 import * as React from "react"
+import { FileScreen } from "./kinds/file-screen"
+import { SiteScreen } from "./kinds/site-screen"
 import type { PreviewSettings } from "./store"
 
 /**
- * Renders the "screen content" of a prop insert by resolving it to one of the
- * workspace insert-scene packages (packages/inserts/*). The actual scenes live
- * in their own packages; this just picks the right one and renders it.
+ * Renders the "screen content" of a prop insert. Scene inserts resolve to
+ * one of the workspace insert-scene packages (packages/inserts/*); site
+ * inserts embed a website; file inserts show a file from the cloud drive
+ * or a direct url.
  */
 export function InsertCanvas({
   insert,
@@ -22,6 +25,9 @@ export function InsertCanvas({
   // the registry only looks up an existing, module-level scene component (no
   // component is created here); memoising keeps its identity stable across
   // renders so the scene keeps its own state
-  const Scene = React.useMemo(() => resolveScene(insert), [insert])
+  const Scene = React.useMemo(() => (insert.kind === "scene" ? resolveScene(insert) : null), [insert])
+  if (insert.kind === "site") return <SiteScreen insert={insert} />
+  if (insert.kind === "file") return <FileScreen insert={insert} />
+  if (!Scene) return null
   return <Scene insert={insert} settings={settings as unknown as Record<string, unknown>} />
 }
