@@ -5,13 +5,22 @@ import {
   configFromPb,
   configToPb,
   defaultCloudConfig,
+  directoryVisibility,
   parseCloudConfig,
   roleForKeyHash,
   roleForLogin,
   visibilityFor,
+  type CloudConfig,
+  type VisibilityName,
 } from "./config"
 
 const owner = "lumenpearson"
+
+const withRules = (rules: { pattern: string; visibility: VisibilityName }[], defaultVisibility?: VisibilityName): CloudConfig => ({
+  ...defaultCloudConfig(owner),
+  defaultVisibility: defaultVisibility ?? "private",
+  rules,
+})
 
 describe("parseCloudConfig", () => {
   it("falls back to the default config on damaged json", () => {
@@ -46,6 +55,44 @@ describe("visibilityFor", () => {
     expect(visibilityFor("public/a.png", layered)).toBe("public")
     expect(visibilityFor("public/secret/a.png", layered)).toBe("hidden")
     expect(visibilityFor("nested/.gitkeep", layered)).toBe("hidden")
+  })
+})
+
+describe("directoryVisibility", () => {
+  it("keeps a public folder reachable through its subtree rule", () => {
+    // the folder itself matches nothing; `public/**` has to open it or the
+    // public files inside could never be walked to
+    expect(directoryVisibility("public", withRules([{ pattern: "public/**", visibility: "public" }]))).toBe("public")
+    expect(directoryVisibility("public", withRules([{ pattern: "public/**", visibility: "public" }], "hidden"))).toBe(
+      "public",
+    )
+  })
+
+  it("hides a folder a rule names as hidden", () => {
+    expect(directoryVisibility("secret", withRules([{ pattern: "secret", visibility: "hidden" }]))).toBe("hidden")
+  })
+
+  it("hides a folder whose subtree rule is hidden", () => {
+    expect(directoryVisibility("secret", withRules([{ pattern: "secret/**", visibility: "hidden" }]))).toBe("hidden")
+  })
+
+  // the negative twin: without the hidden cases above the folder resolves to
+  // the default and every viewer sees the name, which is often the secret
+  it("does not hide a folder nobody asked to hide", () => {
+    const config = withRules([{ pattern: "public/**", visibility: "public" }])
+    expect(directoryVisibility("renders", config)).toBe("private")
+    expect(canSee("viewer", directoryVisibility("renders", config), config)).toBe(true)
+    expect(canSee("viewer", directoryVisibility("secret", withRules([{ pattern: "secret", visibility: "hidden" }])), config)).toBe(
+      false,
+    )
+  })
+
+  it("takes the more permissive side when both the folder and its subtree are named", () => {
+    const config = withRules([
+      { pattern: "shared", visibility: "private" },
+      { pattern: "shared/**", visibility: "public" },
+    ])
+    expect(directoryVisibility("shared", config)).toBe("public")
   })
 })
 
