@@ -1,13 +1,19 @@
 name: ci
 
 on:
+  # release.yml keys off a successful run of this workflow on master, so master
+  # pushes must be checked here too
   push:
     branches: [master, main]
   pull_request:
 
+# A superseded pull-request run is worthless, so those share a group per branch
+# and cancel each other. A push is what a release waits for, and a group holds
+# at most one pending run, so each commit gets a group of its own: queueing the
+# next commit must not evict the run of the previous one.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
@@ -25,6 +31,9 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      # the release scripts live outside every workspace package, so `pnpm test`
+      # (turbo) does not reach them
+      - run: pnpm test:release
       # the build must succeed without a database or any token
       - run: pnpm build
         env:

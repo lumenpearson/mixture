@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build",
+    "build:x64": "tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi",
+    "build:arm64": "tauri build --target aarch64-pc-windows-msvc --bundles nsis,msi",
+    "build:x86": "tauri build --target i686-pc-windows-msvc --bundles nsis,msi",
     "tauri": "tauri",
     "icons": "node scripts/make-icons.mjs"
   },

@@ -148,6 +148,17 @@ curl -X POST http://localhost:3000/api/rpc/mixture.library.v1.LibraryService/Get
 build` проходит без переменных окружения. Переменные из таблицы выше задаются в
 настройках проекта Vercel.
 
+## Релизы
+
+Каждый коммит в `master`, прошедший `ci`, автоматически становится GitHub Release с
+календарным тегом `v<ГГГГ.ММ.ДД>-<sha>`: исходный код этого коммита в четырёх форматах,
+установщики и переносимые сборки для Windows (x64, ARM64, x86), необязательный APK и
+`SHA256SUMS.txt`. Если не знаете, что качать, — берите
+`mixture-screenkit-<тег>-windows-x64-setup.exe`.
+
+Как это устроено, какой файл кому нужен, какая нужна Windows и как включить подпись —
+[docs/release](docs/release/README.md).
+
 ## Для ИИ-агентов
 
 Точка входа — [`AGENTS.md`](AGENTS.md); правила и границы — [`.agents/`](.agents/);

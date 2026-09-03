@@ -1,0 +1,19 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "dev",
+  "description": "the same permissions as `default`, for the origins only a developer loads: the dev server on localhost:3000 and any Vercel preview deployment reached through MIXTURE_DESKTOP_URL. `https://*.vercel.app` matches every preview of every Vercel account, so this capability is never part of a released build: .github/workflows/release.yml overrides app.security.capabilities with `[\"default\"]`, and a build that does not name a capability set enables every file in this directory.",
+  "windows": ["main"],
+  "remote": {
+    "urls": ["http://localhost:3000", "https://*.vercel.app"]
+  },
+  "permissions": [
+    "core:default",
+    "shell:allow-open",
+    "dialog:allow-open",
+    "fs:default",
+    {
+      "identifier": "fs:scope",
+      "allow": [{ "path": "$APPDATA" }, { "path": "$APPDATA/**" }]
+    }
+  ]
+}
