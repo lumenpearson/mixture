@@ -1,6 +1,7 @@
 "use client"
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
+import { normalizeHttpUrl } from "@/lib/media/url"
 import { cn } from "@/lib/utils"
 import { ArrowLeft, ArrowRight, Check, Loader2, X } from "lucide-react"
 import * as React from "react"
@@ -12,7 +13,6 @@ import {
   emptyDraft,
   isDraftStarted,
   loadDraft,
-  normalizeHttpUrl,
   saveDraft,
   splitLines,
   validateStep,
@@ -53,32 +53,28 @@ export function InsertWizard({ open, onOpenChange }: { open: boolean; onOpenChan
   const [resumable, setResumable] = React.useState<WizardDraft | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [busy, setBusy] = React.useState(false)
-  const saveTimer = React.useRef<number | null>(null)
   const bodyRef = React.useRef<HTMLDivElement | null>(null)
 
   // offer to resume a saved draft once per opening
   React.useEffect(() => {
     if (!open) return
-    const saved = loadDraft()
+    const saved = loadDraft(defaults)
     if (saved && isDraftStarted(saved, defaults)) setResumable(saved)
   }, [open, defaults])
 
   const update = React.useCallback((patch: Partial<WizardDraft>) => {
     setError(null)
-    setDraft((current) => {
-      const next = { ...current, ...patch }
-      if (saveTimer.current) window.clearTimeout(saveTimer.current)
-      saveTimer.current = window.setTimeout(() => saveDraft(next), 300)
-      return next
-    })
+    setDraft((current) => ({ ...current, ...patch }))
   }, [])
 
-  React.useEffect(
-    () => () => {
-      if (saveTimer.current) window.clearTimeout(saveTimer.current)
-    },
-    [],
-  )
+  /* persist the committed draft, not the one an updater produced: React may
+     call an updater twice. An untouched draft is never written, so opening
+     the dialog cannot overwrite the draft the resume banner is offering */
+  React.useEffect(() => {
+    if (!open || !isDraftStarted(draft, defaults)) return
+    const id = window.setTimeout(() => saveDraft(draft), 300)
+    return () => window.clearTimeout(id)
+  }, [draft, open, defaults])
 
   const index = WIZARD_STEPS.indexOf(draft.step)
   const total = WIZARD_STEPS.length
@@ -154,6 +150,8 @@ export function InsertWizard({ open, onOpenChange }: { open: boolean; onOpenChan
     if (event.key !== "Enter" || event.shiftKey || event.metaKey || event.ctrlKey) return
     const target = event.target as HTMLElement
     if (target.tagName === "TEXTAREA" || target.tagName === "BUTTON" || target.getAttribute("role") === "combobox") return
+    // a search field inside a step answers Enter itself (the file picker)
+    if (target.closest("[data-wizard-no-enter]")) return
     event.preventDefault()
     if (isLast) void submit()
     else next()

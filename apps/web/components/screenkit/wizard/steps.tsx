@@ -6,6 +6,7 @@ import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { formatBytes } from "@/lib/media/kinds"
+import { normalizeHttpUrl } from "@/lib/media/url"
 import { cloudClient, rpcErrorMessage } from "@/lib/rpc/client"
 import { RPC_MAX_MESSAGE_BYTES } from "@/lib/rpc/limits"
 import { ASPECTS, DEVICES, STATUSES } from "@/lib/screenkit/data"
@@ -21,7 +22,7 @@ import { InsertPreview } from "../insert-preview"
 import { invalidateCloudTree } from "../media/use-cloud-tree"
 import { Explain, KeyVal, SegmentedControl } from "../primitives"
 import { useScreenkit } from "../store"
-import { normalizeHttpUrl, splitLines, suggestSlug, type WizardDraft } from "./draft"
+import { splitLines, suggestSlug, type WizardDraft } from "./draft"
 import { KIND_ART } from "./kind-art"
 
 export type StepProps = {
@@ -64,7 +65,9 @@ export function draftToInsert(draft: WizardDraft, locale: Locale): ResolvedInser
     hasEnglish: Boolean(draft.titleEn.trim()),
     custom: true,
     kind: draft.kind,
-    source: draft.kind === "site" ? { ...draft.source, url: normalizeHttpUrl(draft.source.url) } : draft.source,
+    // both live kinds render the url: a half-typed or `javascript:` one must
+    // not reach the iframe or the media element of the live preview
+    source: draft.kind === "scene" ? draft.source : { ...draft.source, url: normalizeHttpUrl(draft.source.url) || undefined },
   }
 }
 
@@ -228,6 +231,12 @@ function SiteSource({ draft, update }: StepProps) {
   )
 }
 
+/* the encoded WriteFile message carries the path, the commit message and the
+   grpc-web framing besides the bytes, and the whole message has to fit the
+   router's readMaxBytes: reserve room for the envelope so a file just under
+   the cap fails with the friendly toast instead of resource_exhausted */
+const MAX_UPLOAD_BYTES = RPC_MAX_MESSAGE_BYTES - 64 * 1024
+
 type FileTab = "cloud" | "url" | "upload"
 
 function FileSource({ draft, update }: StepProps) {
@@ -240,7 +249,7 @@ function FileSource({ draft, update }: StepProps) {
   const pick = (entry: Entry) => setSource({ path: entry.path, url: undefined })
 
   const upload = async (file: File) => {
-    if (file.size > RPC_MAX_MESSAGE_BYTES) {
+    if (file.size > MAX_UPLOAD_BYTES) {
       toast.error(t("wizard.file.uploadTooLarge"))
       return
     }
@@ -276,7 +285,12 @@ function FileSource({ draft, update }: StepProps) {
             onChange={setTab}
             size="sm"
           />
-          {tab === "cloud" ? <FilePickerLazy value={draft.source.path} onPick={pick} /> : null}
+          {tab === "cloud" ? (
+            /* its own boundary: the picker chunk must not suspend the dialog */
+            <React.Suspense fallback={<PickerSkeleton label={t("wizard.file.loading")} />}>
+              <FilePickerLazy value={draft.source.path} onPick={pick} />
+            </React.Suspense>
+          ) : null}
           {tab === "url" ? (
             <Field label={t("kind.source.url")} required>
               <Input value={draft.source.url ?? ""} onChange={(event) => setSource({ url: event.target.value, path: undefined })} placeholder={t("kind.source.urlPh")} className={inputCls} inputMode="url" />
@@ -336,6 +350,25 @@ function FileSource({ draft, update }: StepProps) {
 }
 
 const FilePickerLazy = React.lazy(() => import("./file-picker").then((module) => ({ default: module.FilePicker })))
+
+/** the shape of the picker while its chunk arrives */
+function PickerSkeleton({ label }: { label: string }) {
+  return (
+    <div className="flex flex-col gap-3" aria-busy="true">
+      <div className="h-10 rounded-xl border border-panel-border bg-control" />
+      <div className="flex items-center gap-1.5">
+        {[0, 1, 2].map((index) => (
+          <div key={index} className="h-6 w-16 rounded-full border border-panel-border bg-panel-soft" />
+        ))}
+      </div>
+      <div className="flex h-64 items-center justify-center rounded-2xl border border-panel-border bg-control">
+        <span className="inline-flex items-center gap-2 font-mono text-[11px] lowercase text-text-muted">
+          <Loader2 className="size-3.5 animate-spin" /> {label}
+        </span>
+      </div>
+    </div>
+  )
+}
 
 /* ------------------------------ 3 · identity ------------------------------ */
 

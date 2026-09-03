@@ -1,5 +1,6 @@
 "use client"
 
+import { normalizeHttpUrl } from "@/lib/media/url"
 import type { ResolvedInsert } from "@/lib/screenkit/types"
 import { FileQuestion } from "lucide-react"
 import * as React from "react"
@@ -13,12 +14,15 @@ export function FileScreen({ insert }: { insert: ResolvedInsert }) {
   const { t } = useScreenkit()
   const { source } = useInsertSource(insert.id, insert.source)
   const path = source.path?.trim() || undefined
-  const url = source.url?.trim() || undefined
+  // the stored url is checked again here: a per-browser override, a restored
+  // row or a draft never passed through the write-time gate, and this url
+  // becomes an <img>/<video>/<iframe> src and a download href below
+  const url = normalizeHttpUrl(source.url) || undefined
   const name = (path ?? url ?? "").split("?")[0].split("/").pop() || insert.title
 
   if (!path && !url) {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[#0b0b0c] font-mono text-[11px] lowercase text-white/60">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-black font-mono text-[11px] lowercase text-white/60">
         <FileQuestion className="size-5" />
         {t("kind.file.empty")}
       </div>

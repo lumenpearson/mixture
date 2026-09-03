@@ -6,6 +6,10 @@ const PACKAGES = GENERATED_INSERT_PACKAGES
 const byPriority = (a: (typeof PACKAGES)[number], b: (typeof PACKAGES)[number]) =>
   (b.manifest.priority ?? 0) - (a.manifest.priority ?? 0)
 
+/* module-level so `resolveScene` never mints a component identity: the canvas
+   memoises what it returns and would otherwise remount the scene */
+const NullScene: SceneComponent = () => null
+
 /**
  * Resolve which scene renders a given insert.
  * Matching order (strongest first):
@@ -29,7 +33,7 @@ export function resolveScene(insert: ResolvedInsert): SceneComponent {
   if (fallback) return fallback.Scene
 
   // last resort: render nothing rather than crash
-  return matches[0]?.Scene ?? (() => null)
+  return matches[0]?.Scene ?? NullScene
 }
 
 /** all registered scene manifests (for tooling / listings) */

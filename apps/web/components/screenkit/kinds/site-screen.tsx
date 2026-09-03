@@ -1,5 +1,6 @@
 "use client"
 
+import { normalizeHttpUrl } from "@/lib/media/url"
 import type { ResolvedInsert } from "@/lib/screenkit/types"
 import { Globe } from "lucide-react"
 import * as React from "react"
@@ -16,11 +17,11 @@ export function SiteScreen({ insert }: { insert: ResolvedInsert }) {
   const { t } = useScreenkit()
   const { source } = useInsertSource(insert.id, insert.source)
   const zoom = clampZoom(source.zoom)
-  const url = normalizeUrl(source.url)
+  const url = normalizeHttpUrl(source.url)
 
   if (!url) {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[#0b0b0c] font-mono text-[11px] lowercase text-white/60">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-black font-mono text-[11px] lowercase text-white/60">
         <Globe className="size-5" />
         {t("kind.site.empty")}
       </div>
@@ -54,18 +55,4 @@ export function SiteScreen({ insert }: { insert: ResolvedInsert }) {
 export function clampZoom(value: number | undefined): number {
   if (!Number.isFinite(value) || value === undefined) return 1
   return Math.min(3, Math.max(0.25, value))
-}
-
-/** accept bare hosts ("example.com") and refuse anything but http(s) */
-export function normalizeUrl(value: string | undefined): string {
-  const raw = (value ?? "").trim()
-  if (!raw) return ""
-  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `https://${raw}`
-  try {
-    const parsed = new URL(withScheme)
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return ""
-    return parsed.toString()
-  } catch {
-    return ""
-  }
 }
