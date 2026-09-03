@@ -20,6 +20,7 @@ import {
   configFromPb,
   configToPb,
   defaultCloudConfig,
+  directoryVisibility,
   maxRole,
   parseCloudConfig,
   roleAtLeast,
@@ -31,7 +32,6 @@ import {
   visibilityToPb,
   type CloudConfig,
   type RoleName,
-  type VisibilityName,
 } from "./config"
 import { normalizeCloudPath } from "./glob"
 import { GitHubRepo, toConnectError, viewerLogin, type GitHubFile } from "./github"
@@ -74,6 +74,19 @@ function settings(): Settings {
       .filter(Boolean),
   }
 }
+
+/*
+ * `Status.message` carries a stable reason key, not a sentence: the interface
+ * is Russian and renders it through the dictionary, and the english text it
+ * used to carry named an internal environment variable to anonymous visitors.
+ * The keys live in `lib/screenkit/i18n/cloud-manager.ts` (`cloud.status.*`).
+ * A dedicated `message_code` field in cloud.proto would say this in the
+ * contract; that change belongs to the protocol, not here.
+ */
+const STATUS_NO_TOKEN = "cloud.status.noToken"
+const STATUS_UNREACHABLE = "cloud.status.unreachable"
+const STATUS_CONFIG_INVALID = "cloud.status.configInvalid"
+const STATUS_SIGN_IN = "cloud.status.signIn"
 
 type Session = {
   repo: GitHubRepo | null
@@ -167,7 +180,7 @@ async function resolveSession(ctx: HandlerContext): Promise<Session> {
       role: "anonymous",
       config: defaultCloudConfig(cfg.owner),
       configSha: "",
-      message: "no github token: set MIXTURE_CLOUD_GITHUB_TOKEN on the server or connect a token in the cloud tab",
+      message: STATUS_NO_TOKEN,
     }
   }
 
@@ -208,11 +221,14 @@ async function resolveSession(ctx: HandlerContext): Promise<Session> {
 
   let message = ""
   if (!loaded.reachable) {
-    message = `repository ${cfg.owner}/${cfg.repo} is not reachable with the current token`
+    message = STATUS_UNREACHABLE
   } else if (loaded.configError) {
-    message = `cloud.config.json is invalid, defaults in effect: ${loaded.configError}`
+    // the parse error itself stays server-side: it is english, it quotes the
+    // damaged json and the status card is read by anyone who opens the tab
+    console.warn(`cloud.config.json is invalid, defaults in effect: ${loaded.configError}`)
+    message = STATUS_CONFIG_INVALID
   } else if (role === "anonymous" && !loaded.config.access.allowAnonymousPublic) {
-    message = "sign in with a github token or an access key to see files"
+    message = STATUS_SIGN_IN
   }
 
   return {
@@ -240,8 +256,10 @@ function statusOf(session: Session): Status {
 }
 
 function requireRepo(session: Session): GitHubRepo {
+  // not session.message: that is a dictionary key for the status card, and an
+  // rpc error is read as text by the caller and the logs
   if (!session.repo) {
-    throw new ConnectError(session.message || "cloud repository is not configured", Code.FailedPrecondition)
+    throw new ConnectError("cloud repository is not configured", Code.FailedPrecondition)
   }
   return session.repo
 }
@@ -262,7 +280,10 @@ function cleanPath(input: string, allowRoot: boolean): string {
   }
   if (path.length > MAX_PATH_LENGTH) throw new ConnectError("path: too long", Code.InvalidArgument)
   for (const segment of path.split("/")) {
-    if (segment === ".." || segment === ".git" || CONTROL_CHARS.test(segment)) {
+    // lower-cased: git refuses to check `.GIT` out on a case-insensitive
+    // filesystem, so a repository that accepted one could not be cloned
+    const name = segment.toLowerCase()
+    if (name === ".." || name === ".git" || CONTROL_CHARS.test(segment)) {
       throw new ConnectError("path: forbidden segment", Code.InvalidArgument)
     }
   }
@@ -277,6 +298,32 @@ function isSystemFile(path: string): boolean {
 function assertUserPath(path: string) {
   if (path === CLOUD_CONFIG_FILE) {
     throw new ConnectError("cloud.config.json is managed through the access settings", Code.InvalidArgument)
+  }
+}
+
+/**
+ * One message for every refusal. A hidden entry and a missing entry have to be
+ * indistinguishable down to the wording: two different texts under the same
+ * code still tell the caller which of the two they hit.
+ */
+const notFound = () => new ConnectError("not found in the cloud repository", Code.NotFound)
+
+/**
+ * The gate every mutation shares. `requireRole` answers "may this caller edit
+ * at all"; this answers "may this caller know that this path exists" — an
+ * editor is not an owner, and the owner-only (hidden) part of the drive must
+ * stay invisible to them, or a delete, an overwrite or a move destination
+ * becomes an oracle over the whole hidden tree.
+ *
+ * The kind is not known before GitHub answers, and asking GitHub first would
+ * already be the leak, so the path is refused unless it is visible *both* as a
+ * file and as a folder.
+ */
+function assertVisible(session: Session, path: string) {
+  const asFile = visibilityFor(path, session.config)
+  const asDirectory = directoryVisibility(path, session.config)
+  if (!canSee(session.role, asFile, session.config) || !canSee(session.role, asDirectory, session.config)) {
+    throw notFound()
   }
 }
 
@@ -312,14 +359,6 @@ const CONTENT_TYPES: Record<string, string> = {
 export function contentTypeFor(name: string): string {
   const ext = name.toLowerCase().split(".").pop() ?? ""
   return CONTENT_TYPES[ext] ?? "application/octet-stream"
-}
-
-/** directories inherit the most permissive visibility of their subtree rules */
-function directoryVisibility(path: string, config: CloudConfig): VisibilityName {
-  const own = visibilityFor(path, config)
-  const child = visibilityFor(`${path}/*`, config)
-  const rank: Record<VisibilityName, number> = { hidden: 0, private: 1, public: 2 }
-  return rank[child] > rank[own] ? child : own
 }
 
 function toEntry(file: GitHubFile, session: Session): Entry | null {
@@ -386,9 +425,14 @@ export const cloudServiceImpl: ServiceImpl<typeof CloudService> = {
       let htmlUrl = `https://github.com/${cfg.owner}/${cfg.repo}`
       const existing = await repo.info()
       if (!existing) {
+        // always private, whatever InitRepositoryRequest.private says: proto3
+        // cannot tell an unset bool from `false`, so honouring the field would
+        // turn every request that omits it into a public repository holding
+        // production stills. The field is inert until the contract can express
+        // "unset" (see cloud.proto InitRepositoryRequest.private).
         const result = await repo.createRepository(
           "Private cloud drive storage for mixture · screenkit (files in the root, access rules in cloud.config.json)",
-          req.private || true,
+          true,
         )
         htmlUrl = result.html_url
         created = true
@@ -418,7 +462,7 @@ export const cloudServiceImpl: ServiceImpl<typeof CloudService> = {
       return { path, entries: [], status: statusOf(session) }
     }
     if (path && !canSee(session.role, directoryVisibility(path, session.config), session.config)) {
-      throw new ConnectError("not found in the cloud repository", Code.NotFound)
+      throw notFound()
     }
     let listing: GitHubFile[] | null
     try {
@@ -428,7 +472,7 @@ export const cloudServiceImpl: ServiceImpl<typeof CloudService> = {
     }
     if (!listing) {
       if (!path) return { path, entries: [], status: statusOf(session) }
-      throw new ConnectError("folder not found", Code.NotFound)
+      throw notFound()
     }
     const entries = listing
       .filter((file) => !isSystemFile(file.path))
@@ -483,14 +527,14 @@ export const cloudServiceImpl: ServiceImpl<typeof CloudService> = {
     if (Array.isArray(found)) {
       const entry = directoryEntry(path, session)
       if (!canSee(session.role, directoryVisibility(path, session.config), session.config)) {
-        throw new ConnectError("not found in the cloud repository", Code.NotFound)
+        throw notFound()
       }
       return { entry }
     }
     // an entry the caller may not see answers exactly like a missing one, so
     // stat cannot be used to probe for hidden paths
     const entry = found && !isSystemFile(found.path) ? toEntry(found, session) : null
-    if (!entry) throw new ConnectError("not found in the cloud repository", Code.NotFound)
+    if (!entry) throw notFound()
     return { entry }
   },
 
@@ -507,7 +551,7 @@ export const cloudServiceImpl: ServiceImpl<typeof CloudService> = {
     }
     // an invisible file answers exactly like a missing one
     const entry = file ? toEntry(file, session) : null
-    if (!file || !entry) throw new ConnectError("file not found", Code.NotFound)
+    if (!file || !entry) throw notFound()
 
     if (file.size > INLINE_READ_LIMIT) {
       return { entry, content: new Uint8Array(), truncated: true }
@@ -552,7 +596,7 @@ export const cloudServiceImpl: ServiceImpl<typeof CloudService> = {
     // indistinguishable from one that does not exist, so a ticket request
     // cannot be used to probe for hidden paths
     const entry = file ? toEntry(file, session) : null
-    if (!file || !entry) throw new ConnectError("file not found", Code.NotFound)
+    if (!file || !entry) throw notFound()
 
     const expires = Date.now() + STREAM_TICKET_TTL_MS
     return {
@@ -567,6 +611,7 @@ export const cloudServiceImpl: ServiceImpl<typeof CloudService> = {
     requireRole(session, "editor")
     const path = cleanPath(req.path, false)
     assertUserPath(path)
+    assertVisible(session, path)
     if (req.content.byteLength > RPC_MAX_MESSAGE_BYTES) {
       throw new ConnectError("file is larger than the upload limit", Code.InvalidArgument)
     }
@@ -591,9 +636,10 @@ export const cloudServiceImpl: ServiceImpl<typeof CloudService> = {
     requireRole(session, "editor")
     const path = cleanPath(req.path, false)
     assertUserPath(path)
+    assertVisible(session, path)
     try {
       const target = await repo.contents(path)
-      if (!target) throw new ConnectError("not found in the cloud repository", Code.NotFound)
+      if (!target) throw notFound()
       if (!Array.isArray(target)) {
         const result = await repo.deleteFile(
           path,
@@ -609,7 +655,7 @@ export const cloudServiceImpl: ServiceImpl<typeof CloudService> = {
       if (truncated || blobs.length > MAX_TREE_CHANGES) {
         throw new ConnectError("folder is too large to delete in one step", Code.ResourceExhausted)
       }
-      if (blobs.length === 0) throw new ConnectError("folder not found", Code.NotFound)
+      if (blobs.length === 0) throw notFound()
       const commitSha = await repo.commitChanges(
         blobs.map((b) => ({ path: b.path, sha: null })),
         `cloud: delete folder ${path}${commitLabel(session)}`,
@@ -628,13 +674,17 @@ export const cloudServiceImpl: ServiceImpl<typeof CloudService> = {
     const to = cleanPath(req.to, false)
     assertUserPath(from)
     assertUserPath(to)
+    // both ends: the destination is checked too, or "destination already
+    // exists" versus "not found" would report whether a hidden path is taken
+    assertVisible(session, from)
+    assertVisible(session, to)
     if (from === to) throw new ConnectError("source and destination are the same", Code.InvalidArgument)
     if (to.startsWith(`${from}/`)) throw new ConnectError("cannot move a folder into itself", Code.InvalidArgument)
     try {
       const existing = await repo.contents(to)
       if (existing) throw new ConnectError("destination already exists", Code.AlreadyExists)
       const source = await repo.contents(from)
-      if (!source) throw new ConnectError("not found in the cloud repository", Code.NotFound)
+      if (!source) throw notFound()
 
       if (!Array.isArray(source)) {
         await repo.commitChanges(
@@ -673,6 +723,8 @@ export const cloudServiceImpl: ServiceImpl<typeof CloudService> = {
     const repo = requireRepo(session)
     requireRole(session, "editor")
     const path = cleanPath(req.path, false)
+    assertUserPath(path)
+    assertVisible(session, path)
     try {
       const existing = await repo.contents(path)
       if (existing) throw new ConnectError("folder already exists", Code.AlreadyExists)

@@ -91,6 +91,8 @@ export class WebLocalBridge implements LocalFsBridge {
   readonly runtime = "web" as const
   private root: DirHandle | null = null
   private loaded = false
+  /** the one live object url handed out by `streamUrl`, with what it points at */
+  private stream: { stamp: string; url: string } | null = null
 
   isSupported(): boolean {
     return picker() !== null
@@ -144,6 +146,9 @@ export class WebLocalBridge implements LocalFsBridge {
   async forgetRoot(): Promise<void> {
     this.root = null
     this.loaded = true
+    // the url outlives the permission otherwise: revoking is the only way to
+    // let go of the bytes of a folder the user has just disconnected
+    this.releaseStream()
     await storeHandle(null)
   }
 
@@ -241,9 +246,31 @@ export class WebLocalBridge implements LocalFsBridge {
     return new Uint8Array(await blob.arrayBuffer())
   }
 
+  /**
+   * One object url at a time.
+   *
+   * `URL.createObjectURL(file)` pins the whole file in memory until something
+   * revokes it, and the preview asks for a url per file it opens: clicking
+   * through a folder of rushes used to leave every one of them alive for the
+   * life of the document — half a gigabyte of footage never released. Only one
+   * file is previewed at a time, so the bridge keeps the url for that file and
+   * revokes the previous one; `forgetRoot` drops the last. The stamp carries
+   * the size and mtime, so a file edited outside the browser gets a fresh url
+   * instead of the old snapshot.
+   */
   async streamUrl(path: string): Promise<string | null> {
     const file = await (await this.fileAt(path)).getFile()
-    return URL.createObjectURL(file)
+    const stamp = `${path}#${file.lastModified}#${file.size}`
+    if (this.stream?.stamp === stamp) return this.stream.url
+    this.releaseStream()
+    this.stream = { stamp, url: URL.createObjectURL(file) }
+    return this.stream.url
+  }
+
+  private releaseStream(): void {
+    if (!this.stream) return
+    URL.revokeObjectURL(this.stream.url)
+    this.stream = null
   }
 
   async write(path: string, content: Uint8Array): Promise<LocalEntry> {

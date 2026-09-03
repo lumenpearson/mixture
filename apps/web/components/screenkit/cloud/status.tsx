@@ -31,6 +31,21 @@ import { toolbarButtonCls, toolbarPrimaryCls } from "./toolbar"
 const inputCls =
   "h-10 rounded-xl border-panel-border bg-control font-mono text-sm text-foreground placeholder:text-text-faint focus-visible:ring-ring"
 
+/*
+ * `Status.message` carries a dictionary key, not a sentence: the interface is
+ * russian and the server used to send english text that named an internal
+ * environment variable to anyone who opened the tab. Only these four keys are
+ * rendered — anything else (an older deployment, a message that slipped
+ * through) is dropped rather than shown raw, because `translate` falls back to
+ * echoing the key.
+ */
+const STATUS_MESSAGE_KEYS = new Set([
+  "cloud.status.noToken",
+  "cloud.status.unreachable",
+  "cloud.status.configInvalid",
+  "cloud.status.signIn",
+])
+
 export const ROLE_KEY: Record<Role, string> = {
   [Role.UNSPECIFIED]: "cloud.role.anonymous",
   [Role.ANONYMOUS]: "cloud.role.anonymous",
@@ -59,6 +74,7 @@ export function StatusCard({
   const { t } = useScreenkit()
   const role = status?.role ?? Role.ANONYMOUS
   const ok = Boolean(status?.configured && status.reachable)
+  const message = status && STATUS_MESSAGE_KEYS.has(status.message) ? t(status.message) : ""
   return (
     <div className="flex min-w-0 flex-col gap-3 rounded-3xl border border-panel-border bg-panel-soft p-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-center gap-3">
@@ -85,8 +101,8 @@ export function StatusCard({
             </span>
           </div>
           <div className="truncate font-mono text-[11px] lowercase text-text-muted">
-            {status?.login ? `${t("cloud.signedInAs")} ${status.login}` : status?.message || (ok ? "" : t("cloud.notConfigured"))}
-            {status?.login && status.message ? ` · ${status.message}` : ""}
+            {status?.login ? `${t("cloud.signedInAs")} ${status.login}` : message || (ok ? "" : t("cloud.notConfigured"))}
+            {status?.login && message ? ` · ${message}` : ""}
           </div>
         </div>
       </div>

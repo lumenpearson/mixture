@@ -1,3 +1,4 @@
+import { RPC_MAX_MESSAGE_BYTES } from "@/lib/rpc/limits"
 import { describe, expect, it } from "vitest"
 import {
   DIRECT_UPLOAD_LIMIT,
@@ -8,6 +9,7 @@ import {
   queueIsFinished,
   resolveConflict,
   summarize,
+  takenPaths,
   uploadRoute,
   type UploadCandidate,
 } from "./upload-queue"
@@ -24,6 +26,15 @@ describe("uploadRoute", () => {
   it("keeps small files on the rpc route", () => {
     expect(uploadRoute(1024, false)).toBe("rpc")
     expect(uploadRoute(UPLOAD_LIMIT_RPC, false)).toBe("rpc")
+  })
+
+  // the ceiling is the payload, not the message: a file of exactly
+  // RPC_MAX_MESSAGE_BYTES serializes past the router's readMaxBytes and the
+  // transport refuses it before the handler can call it too large
+  it("leaves the request envelope room under the transport cap", () => {
+    expect(UPLOAD_LIMIT_RPC).toBeLessThan(RPC_MAX_MESSAGE_BYTES)
+    expect(uploadRoute(RPC_MAX_MESSAGE_BYTES, false)).toBe("too-large")
+    expect(RPC_MAX_MESSAGE_BYTES - UPLOAD_LIMIT_RPC).toBeGreaterThan(512)
   })
 
   // the negative half: without the caller's own github token the vercel body
@@ -67,11 +78,12 @@ describe("buildUploadItems", () => {
 })
 
 describe("resolveConflict", () => {
+  const folder = ["a.png"]
   const conflicted = () => build([candidate("a.png")], { existing: [{ path: "a.png", sha: "abc" }] }).items
 
   it("overwrite keeps the path and the sha so the commit replaces the blob", () => {
     const items = conflicted()
-    const next = resolveConflict(items, items[0]!.id, "overwrite", ["a.png"])
+    const next = resolveConflict(items, items[0]!.id, "overwrite", takenPaths(items, folder))
     expect(next[0]?.status).toBe("pending")
     expect(next[0]?.sha).toBe("abc")
     expect(next[0]?.path).toBe("a.png")
@@ -79,17 +91,44 @@ describe("resolveConflict", () => {
 
   it("keep-both renames and drops the sha so nothing is replaced", () => {
     const items = conflicted()
-    const next = resolveConflict(items, items[0]!.id, "keep-both", ["a.png"])
+    const next = resolveConflict(items, items[0]!.id, "keep-both", takenPaths(items, folder))
     expect(next[0]?.path).toBe("a (copy).png")
     expect(next[0]?.sha).toBe("")
     expect(next[0]?.status).toBe("pending")
   })
 
+  /*
+   * The queue is not the folder. `keep both` used to be handed the queued
+   * paths alone, so a repository already holding `a (copy).png` got that file
+   * overwritten — the item goes out with an empty sha and the server fills the
+   * existing one in. `takenPaths` is what the runner passes; asserting on it
+   * is asserting on the real call.
+   */
+  it("keep-both steps over a name the folder already holds", () => {
+    const items = conflicted()
+    const next = resolveConflict(items, items[0]!.id, "keep-both", takenPaths(items, ["a.png", "a (copy).png"]))
+    expect(next[0]?.path).toBe("a (copy 2).png")
+  })
+
   it("skip takes the item out of the run", () => {
     const items = conflicted()
-    const next = resolveConflict(items, items[0]!.id, "skip", ["a.png"])
+    const next = resolveConflict(items, items[0]!.id, "skip", takenPaths(items, folder))
     expect(next[0]?.status).toBe("skipped")
     expect(nextPending(next)).toBeNull()
+  })
+})
+
+describe("takenPaths", () => {
+  it("unions the folder listing with everything queued", () => {
+    const { items } = build([candidate("b.png")])
+    expect(takenPaths(items, ["a.png"])).toEqual(["a.png", "b.png"])
+  })
+
+  // the negative twin: with an empty folder listing only the queue is avoided,
+  // which is exactly the state that made "keep both" overwrite a file
+  it("has only the queue to go on when the folder is unknown", () => {
+    const { items } = build([candidate("b.png")])
+    expect(takenPaths(items, [])).toEqual(["b.png"])
   })
 })
 

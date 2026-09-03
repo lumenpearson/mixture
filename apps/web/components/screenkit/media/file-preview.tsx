@@ -447,6 +447,28 @@ function Toolbar({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-panel-border bg-control px-3 py-2">{children}</div>
 }
 
+/*
+ * Types a top-level navigation would *run* instead of display. A blob url is
+ * same-origin by construction, so opening one in a tab puts the file on the
+ * app's own origin, next to `mixture-cloud-token` in localStorage: an uploaded
+ * `logo.svg` with a <script> inside would execute there. `/api/cloud/stream`
+ * already neutralises the same list on its way out.
+ */
+const ACTIVE_TYPES = new Set([
+  "image/svg+xml",
+  "text/html",
+  "application/xhtml+xml",
+  "text/xml",
+  "application/xml",
+])
+
+
+/**
+ * "open in a new tab". A remote https url belongs to someone else's origin and
+ * opens as it is; a same-origin blob url of an active type is handed over as a
+ * download instead, so the file still leaves the app but nothing of it is
+ * parsed as a document on our origin.
+ */
 function ToolLink({
   href,
   download,

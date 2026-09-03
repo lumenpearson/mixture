@@ -63,7 +63,11 @@ export function pathProblem(input: string): PathProblem | null {
   if (!path) return "empty"
   if (path.length > MAX_PATH_LENGTH) return "too-long"
   for (const segment of path.split("/")) {
-    if (segment === ".." || segment === ".git" || CONTROL_CHARS.test(segment)) return "forbidden-segment"
+    // lower-cased, like the server: git refuses to check `.GIT` out on a
+    // case-insensitive filesystem, so a repository that took one could not be
+    // cloned cleanly on macos or windows
+    const name = segment.toLowerCase()
+    if (name === ".." || name === ".git" || CONTROL_CHARS.test(segment)) return "forbidden-segment"
   }
   if (path === CLOUD_CONFIG_FILE) return "config-file"
   return null

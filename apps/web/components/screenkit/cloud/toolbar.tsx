@@ -167,13 +167,18 @@ export function SearchBox({
           </button>
         ) : null}
       </div>
-      <div role="tablist" aria-label={t("cloudfm.search.scopeFolder")} className="flex shrink-0 gap-1 rounded-xl border border-panel-border bg-control p-1">
+      {/* toggle buttons, not tabs: the scope changes what the search covers,
+          it does not switch between two panels */}
+      <div
+        role="group"
+        aria-label={t("cloudfm.search.scopeFolder")}
+        className="flex shrink-0 gap-1 rounded-xl border border-panel-border bg-control p-1"
+      >
         {[false, true].map((scope) => (
           <button
             key={String(scope)}
             type="button"
-            role="tab"
-            aria-selected={everywhere === scope}
+            aria-pressed={everywhere === scope}
             onClick={() => onScopeChange(scope)}
             className={cn(
               "rounded-lg px-2.5 py-1.5 font-mono text-[11px] lowercase transition-colors focus-visible:ring-2 focus-visible:ring-ring",

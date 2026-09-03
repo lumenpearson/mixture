@@ -108,14 +108,78 @@ export function maxRole(a: RoleName, b: RoleName): RoleName {
   return ROLE_RANK[a] >= ROLE_RANK[b] ? a : b
 }
 
+type RuleMatch = { visibility: VisibilityName; explicit: boolean }
+
+/** the last rule matching this exact path, or the default when none does */
+function ownRule(path: string, config: CloudConfig): RuleMatch {
+  const clean = normalizeCloudPath(path)
+  let visibility: VisibilityName = config.defaultVisibility
+  let explicit = false
+  for (const rule of config.rules) {
+    if (matchGlob(rule.pattern, clean)) {
+      visibility = rule.visibility
+      explicit = true
+    }
+  }
+  return { visibility, explicit }
+}
+
+/**
+ * The visibility of a repository path, and whether a rule (not the default)
+ * decided it.
+ *
+ * `hidden` is inherited downwards. A rule that names a folder (`secret`)
+ * matches the folder and nothing else — gitignore-style patterns without a
+ * slash match a name, not a subtree — so without inheritance hiding a folder
+ * would hide its name while every file under it stayed readable to anyone who
+ * guessed one. The nearest rule that names an ancestor decides: a later,
+ * narrower rule (`secret/brief.pdf public`) still wins, so an opening in a
+ * hidden folder stays expressible.
+ */
+export function visibilityRuleFor(path: string, config: CloudConfig): RuleMatch {
+  const own = ownRule(path, config)
+  if (own.explicit) return own
+  const segments = normalizeCloudPath(path).split("/")
+  for (let cut = segments.length - 1; cut > 0; cut -= 1) {
+    const ancestor = ownRule(segments.slice(0, cut).join("/"), config)
+    if (!ancestor.explicit) continue
+    return ancestor.visibility === "hidden" ? { visibility: "hidden", explicit: true } : own
+  }
+  return own
+}
+
 /** the visibility of a repository path under the config rules (last match wins) */
 export function visibilityFor(path: string, config: CloudConfig): VisibilityName {
-  const clean = normalizeCloudPath(path)
-  let result: VisibilityName = config.defaultVisibility
-  for (const rule of config.rules) {
-    if (matchGlob(rule.pattern, clean)) result = rule.visibility
-  }
-  return result
+  return visibilityRuleFor(path, config).visibility
+}
+
+const VISIBILITY_RANK: Record<VisibilityName, number> = { hidden: 0, private: 1, public: 2 }
+
+/**
+ * The visibility of a *folder*, which is not the visibility of its own path:
+ * a folder exists to be walked into, so `public/**` has to keep the `public`
+ * folder itself reachable even when the default is stricter.
+ *
+ * Three cases, in this order:
+ *   1. a rule puts the folder itself in the hidden tree — it stays hidden,
+ *      whatever its subtree says. Widening here is what used to make a folder
+ *      unhideable: the subtree probe fell back to the (more permissive)
+ *      default and undid the rule, and a folder name is often the secret;
+ *   2. nothing names the folder: its subtree decides, so `public/** public`
+ *      opens the folder and `secret/** hidden` closes it;
+ *   3. both are named: the more permissive of the two wins, so a private
+ *      folder holding a public subtree stays reachable.
+ */
+export function directoryVisibility(path: string, config: CloudConfig): VisibilityName {
+  const own = visibilityRuleFor(path, config)
+  // `${path}/*` stands for an arbitrary direct child: it matches the same
+  // subtree rules a real child would
+  const child = visibilityRuleFor(`${path}/*`, config)
+  // `explicit` matters: `defaultVisibility: "hidden"` must not swallow the
+  // `public/**` folder, or the files it opens could never be walked to
+  if (own.explicit && own.visibility === "hidden") return "hidden"
+  if (!own.explicit && child.explicit) return child.visibility
+  return VISIBILITY_RANK[child.visibility] > VISIBILITY_RANK[own.visibility] ? child.visibility : own.visibility
 }
 
 /** whether a role may see (list and read) an entry with the given visibility */

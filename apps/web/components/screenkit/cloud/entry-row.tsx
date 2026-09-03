@@ -274,6 +274,11 @@ function RowInner(props: SharedProps) {
           onClick={(event) => props.onPointerSelect(index, event)}
           onDoubleClick={() => actions.open(entry)}
           onKeyDown={(event) => {
+            // only the row's own keys. A key pressed on one of the action
+            // buttons inside it bubbles here, and the listing handler
+            // preventDefaults enter and space — which would cancel the
+            // button's activation and run the row action instead
+            if (event.target !== event.currentTarget) return
             if (isMenuKey(event)) {
               event.preventDefault()
               openMenuAt(ref.current)
@@ -427,6 +432,11 @@ function TileInner(props: SharedProps) {
           onClick={(event) => props.onPointerSelect(index, event)}
           onDoubleClick={() => actions.open(entry)}
           onKeyDown={(event) => {
+            // only the row's own keys. A key pressed on one of the action
+            // buttons inside it bubbles here, and the listing handler
+            // preventDefaults enter and space — which would cancel the
+            // button's activation and run the row action instead
+            if (event.target !== event.currentTarget) return
             if (isMenuKey(event)) {
               event.preventDefault()
               openMenuAt(ref.current)

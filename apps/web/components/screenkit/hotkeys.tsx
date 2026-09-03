@@ -32,6 +32,31 @@ export const CLOUD_OPEN_EVENT = "screenkit:cloud-open"
 /** window event asking the cloud tab to start an action: detail { action: "upload" | "new-folder" } */
 export const CLOUD_ACTION_EVENT = "screenkit:cloud-action"
 
+export type CloudAction = "upload" | "new-folder"
+
+/*
+ * The command palette can ask for a cloud action from any section, and the
+ * cloud file manager is not listening yet when it does: switching sections
+ * remounts the section view and the reveal delay puts the manager on screen
+ * a few hundred milliseconds later, by which time a dispatched event is gone.
+ * The request is parked here as well, and the manager drains it on mount. A
+ * manager that is already mounted hears the event and drains the slot at once,
+ * so the action never fires twice.
+ */
+let pendingCloudAction: CloudAction | null = null
+
+export function requestCloudAction(action: CloudAction) {
+  pendingCloudAction = action
+  window.dispatchEvent(new CustomEvent(CLOUD_ACTION_EVENT, { detail: { action } }))
+}
+
+/** the parked request, if any; taking it clears it */
+export function takePendingCloudAction(): CloudAction | null {
+  const action = pendingCloudAction
+  pendingCloudAction = null
+  return action
+}
+
 const SECTION_KEYS: Record<string, Section> = {
   "1": "overview",
   "2": "library",

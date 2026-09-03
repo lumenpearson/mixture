@@ -44,7 +44,13 @@ import {
 import { useRouter } from "next/navigation"
 import * as React from "react"
 import { toast } from "sonner"
-import { CLOUD_ACTION_EVENT, CLOUD_OPEN_EVENT, COMMAND_PALETTE_EVENT, focusLibrarySearch } from "./hotkeys"
+import {
+  CLOUD_OPEN_EVENT,
+  COMMAND_PALETTE_EVENT,
+  focusLibrarySearch,
+  requestCloudAction,
+  type CloudAction,
+} from "./hotkeys"
 import { iconForDevice } from "./icons"
 import { useCloudTree } from "./media/use-cloud-tree"
 import { openInsertWizard } from "./wizard/button"
@@ -192,11 +198,14 @@ export function CommandPalette() {
   )
 
   const cloudAction = React.useCallback(
-    (action: "upload" | "new-folder") => {
+    (action: CloudAction) => {
       store.setSection("cloud")
-      window.setTimeout(() => {
-        window.dispatchEvent(new CustomEvent(CLOUD_ACTION_EVENT, { detail: { action } }))
-      }, 50)
+      // not a timed dispatch: the cloud tab mounts after its reveal delay, so
+      // a fixed 50 ms landed before the manager existed and the command did
+      // nothing from any other section. `requestCloudAction` parks the request
+      // for the manager to drain on mount and still fires the event for a
+      // manager that is already there.
+      requestCloudAction(action)
     },
     [store],
   )

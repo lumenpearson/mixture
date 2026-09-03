@@ -49,6 +49,9 @@ describe("extensionOf / stemOf", () => {
 describe("pathProblem", () => {
   it("accepts an ordinary repository path", () => {
     expect(pathProblem("renders/ep01/lock.png")).toBeNull()
+    // the guard is on the segment `.git`, not on the three letters
+    expect(pathProblem("github/notes.md")).toBeNull()
+    expect(pathProblem(".gitignore")).toBeNull()
   })
 
   // the negative half of the server's rule: a direct browser upload never
@@ -57,6 +60,9 @@ describe("pathProblem", () => {
     expect(pathProblem("../secrets.txt")).toBe("forbidden-segment")
     expect(pathProblem("a/../../b")).toBe("forbidden-segment")
     expect(pathProblem(".git/config")).toBe("forbidden-segment")
+    // a case-insensitive filesystem cannot check `.GIT` out either
+    expect(pathProblem(".GIT/hooks/pre-commit")).toBe("forbidden-segment")
+    expect(pathProblem("a/.Git/config")).toBe("forbidden-segment")
     expect(pathProblem("a/\u0007b.png")).toBe("forbidden-segment")
     expect(pathProblem(`${"x".repeat(513)}.png`)).toBe("too-long")
     expect(pathProblem("cloud.config.json")).toBe("config-file")
