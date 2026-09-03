@@ -118,6 +118,14 @@ message GetTreeResponse {
   string sha = 3;
 }
 
+message StatEntryRequest {
+  string path = 1;
+}
+
+message StatEntryResponse {
+  Entry entry = 1;
+}
+
 message ReadFileRequest {
   string path = 1;
 }
@@ -209,6 +217,9 @@ service CloudService {
   rpc ListEntries(ListEntriesRequest) returns (ListEntriesResponse);
   // recursive listing for search, the command palette and folder pickers
   rpc GetTree(GetTreeRequest) returns (GetTreeResponse);
+  // metadata for one path without transferring its bytes; answers not_found
+  // for anything the caller may not see, exactly like ReadFile
+  rpc StatEntry(StatEntryRequest) returns (StatEntryResponse);
   rpc ReadFile(ReadFileRequest) returns (ReadFileResponse);
   rpc WriteFile(WriteFileRequest) returns (WriteFileResponse);
   rpc DeleteEntry(DeleteEntryRequest) returns (DeleteEntryResponse);
