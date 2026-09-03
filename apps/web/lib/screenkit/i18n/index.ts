@@ -1,5 +1,6 @@
 import type { UiLocale } from "@screenkit/core"
 import cloudManager from "./cloud-manager"
+import desktop from "./desktop"
 import glass from "./glass"
 import layout from "./layout"
 import local from "./local"
@@ -24,6 +25,7 @@ export type FeatureDictionary = Partial<Record<UiLocale, Dict>> & { ru: Dict; en
 
 export const FEATURE_DICTIONARIES: FeatureDictionary[] = [
   cloudManager,
+  desktop,
   glass,
   layout,
   local,

@@ -241,6 +241,19 @@
   /* narrow-screen bottom rail: one height so the rail's own row, the content's
      reserved scroll padding and the collapse animation all agree on it. */
   --sk-bottom-rail-h: 4.5rem;
+
+  /* height of the desktop title bar. Zero here and overwritten on <html> only
+     inside the Tauri shell, so an overlay that starts below the bar (the
+     offline screen) starts at the top of the viewport on the web. */
+  --sk-titlebar-h: 0px;
+}
+
+/* the title bar is a window handle: nothing inside it may start a text
+   selection or a native drag, and the pointer stays an arrow over it. */
+[data-tauri-drag-region] {
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
 }
 
 @layer utilities {
