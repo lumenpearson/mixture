@@ -23,7 +23,8 @@ function Toggle({
         <span className="font-mono text-sm lowercase text-foreground">{title}</span>
         <span className="font-mono text-[12px] text-text-muted">{desc}</span>
       </div>
-      <Switch checked={checked} onCheckedChange={onChange} />
+      {/* the title span is not associated with the switch, so name it directly */}
+      <Switch aria-label={title} checked={checked} onCheckedChange={onChange} />
     </div>
   )
 }

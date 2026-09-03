@@ -57,18 +57,52 @@ const CONTENT_WIDTH_CLASS: Record<ContentWidth, string> = {
   wide: "md:mx-auto md:max-w-full 2xl:max-w-full",
 }
 
+/** the bottom rail — and therefore this preference — only exists below `md` */
+const NARROW_QUERY = "(max-width: 767.98px)"
+/** ignore anything smaller than a deliberate flick */
+const SCROLL_EPSILON_PX = 4
+/** far enough down that the elastic bounce at the top of a section cannot hide the rail */
+const HIDE_AFTER_PX = 96
+/** bringing the rail back asks for a clearer upward gesture than hiding it */
+const SHOW_DELTA_PX = 24
+/** matches the `.sk-resize` duration in globals.css */
+const SETTLE_MS = 500
+
 /**
  * Below `md`, the "hide the rail while scrolling down" preference (see
  * layout-controls.tsx) drives the same show/hide state as the floating
  * toggle button. Radix's ScrollArea does not forward the viewport ref or an
  * onScroll prop, so this reads the viewport back off the DOM the same way
  * category-panel.tsx measures label widths off its own subtree.
+ *
+ * Two things it deliberately does not do. It does not run at `md` and up,
+ * where the rail is `md:hidden` and flipping the state would only re-render
+ * the shell. And it does not react to its own effect: collapsing the rail
+ * grows this viewport, the browser answers by clamping `scrollTop`, and that
+ * clamp arrives as an upward scroll — which would show the rail again, on
+ * every flick at the end of a section. Hence the settle window.
  */
 function useAutoHideRailOnScroll(containerRef: React.RefObject<HTMLDivElement | null>) {
-  const { autoHideOnScroll, railVisible, hideRail, showRail } = useLayout()
+  const { autoHideOnScroll, railVisible, setRailVisibleTransient } = useLayout()
+  const [narrow, setNarrow] = React.useState(false)
+  const railVisibleRef = React.useRef(railVisible)
+  const settleUntil = React.useRef(0)
 
   React.useEffect(() => {
-    if (!autoHideOnScroll) return
+    railVisibleRef.current = railVisible
+  }, [railVisible])
+
+  React.useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return
+    const mq = window.matchMedia(NARROW_QUERY)
+    setNarrow(mq.matches)
+    const onChange = (event: MediaQueryListEvent) => setNarrow(event.matches)
+    mq.addEventListener("change", onChange)
+    return () => mq.removeEventListener("change", onChange)
+  }, [])
+
+  React.useEffect(() => {
+    if (!autoHideOnScroll || !narrow) return
     const viewport = containerRef.current?.querySelector<HTMLElement>(
       "[data-radix-scroll-area-viewport]",
     )
@@ -79,14 +113,21 @@ function useAutoHideRailOnScroll(containerRef: React.RefObject<HTMLDivElement | 
       const top = viewport.scrollTop
       const delta = top - lastTop
       lastTop = top
-      if (Math.abs(delta) < 4) return
-      // ignore the small elastic bounce right at the top of a section
-      if (delta > 0 && top > 24 && railVisible) hideRail()
-      else if (delta < 0 && !railVisible) showRail()
+      if (Math.abs(delta) < SCROLL_EPSILON_PX) return
+      if (performance.now() < settleUntil.current) return
+
+      const visible = railVisibleRef.current
+      if (delta > 0 && top > HIDE_AFTER_PX && visible) {
+        settleUntil.current = performance.now() + SETTLE_MS
+        setRailVisibleTransient(false)
+      } else if (delta < -SHOW_DELTA_PX && !visible) {
+        settleUntil.current = performance.now() + SETTLE_MS
+        setRailVisibleTransient(true)
+      }
     }
     viewport.addEventListener("scroll", onScroll, { passive: true })
     return () => viewport.removeEventListener("scroll", onScroll)
-  }, [autoHideOnScroll, railVisible, hideRail, showRail, containerRef])
+  }, [autoHideOnScroll, narrow, setRailVisibleTransient, containerRef])
 }
 
 export function Content({ notFound = false }: { notFound?: boolean }) {
@@ -99,10 +140,16 @@ export function Content({ notFound = false }: { notFound?: boolean }) {
       {/* The side category panel needs enough room to share the main area.
           Keep chips on mobile/tablet/pre-desktop so the panel never consumes
           the whole content column around the narrow desktop breakpoint. */}
-      <CategoryPanel className="hidden xl:flex" />
+      {/* `sk-glass-rail` is the hook glass.css uses for the two navigation
+          surfaces; it is a marker, not a style. */}
+      <CategoryPanel className="sk-glass-rail hidden xl:flex" />
 
       <ScrollArea className="h-full min-w-0 flex-1 overflow-x-hidden sk-scroll">
-        <div className="w-full min-w-0 overflow-x-hidden">
+        {/* the home-indicator inset is honoured here rather than on the bottom
+            rail alone: hiding the rail (toggle or scroll) would otherwise take
+            the app's only safe-area padding with it and put the last row of a
+            section under the indicator. */}
+        <div className="sk-safe-bottom-inset w-full min-w-0 overflow-x-hidden">
           {/* Chips span the whole available main area: from the category-panel
               edge to the right edge, not only the centered content column. */}
           <CategoryChips className="mb-5 border-b border-panel-border/40 bg-background/95 py-3 backdrop-blur sm:mb-6 xl:hidden" />

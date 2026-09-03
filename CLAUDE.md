@@ -89,11 +89,13 @@ is off because Vercel functions speak HTTP/1.1 without trailers.
 - `theme.tsx` owns palette, gradients, scale and glow (`<html data-*>` attributes);
   `motion.tsx` owns reduce-motion and per-feature flags.
 - `localStorage` keys: `screenkit-locale`, `screenkit-palette`, `screenkit-gradients`,
-  `screenkit-scale`, `screenkit-glow`, `screenkit-motion`, `screenkit-motion-features-v2`,
-  `screenkit-content-width-v1`, `screenkit-category-panel-width`, `screenkit-favorites-v1`,
-  `screenkit-library-list-v1`, `screenkit.reveal-mode`, `mixture-edit-token`,
-  `mixture-cloud-token`, `mixture-cloud-key`. `sessionStorage`:
-  `screenkit-library-cache-v2`, `screenkit-changelog-cache-v3`.
+  `screenkit-scale`, `screenkit-glass-v1`, `screenkit-layout-v1`, `screenkit-motion`,
+  `screenkit-motion-features-v2`, `screenkit-content-width-v1`,
+  `screenkit-category-panel-width`, `screenkit-favorites-v1`, `screenkit-library-list-v1`,
+  `screenkit.reveal-mode`, `mixture-edit-token`, `mixture-cloud-token`,
+  `mixture-cloud-key`. `screenkit-glow` is the pre-glass flag: read once for migration,
+  then removed. `sessionStorage`: `screenkit-library-cache-v2`,
+  `screenkit-changelog-cache-v3`.
 - Built-in inserts, scene packages and `cloud.config.json` are configuration, not state.
 
 ### Degradation by design

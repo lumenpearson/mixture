@@ -8,6 +8,7 @@ import { MotionNumber } from "../motion-number"
 import { Explain, SectionHeading, SegmentedControl } from "../primitives"
 import { useScreenkit } from "../store"
 import {
+  GLASS_ALPHA_MIN,
   GLASS_GLOW_COLORS,
   GLASS_NOISE_IMAGE,
   GLASS_PRESETS,
@@ -50,7 +51,13 @@ function RangeControl({
         <SectionHeading title={title} />
         <span className="font-mono text-xs text-text-secondary">{display}</span>
       </div>
-      <Slider value={[value]} min={min} max={max} step={step} onValueChange={(v) => onChange(v[0])} />
+      {/* the heading above is an <h3>, which names nothing. radix reads the
+          thumb's own aria-label, and the vendored Slider does not forward one,
+          so group the control and name the group — otherwise all four sliders
+          announce as "slider, 14". */}
+      <div role="group" aria-label={title}>
+        <Slider value={[value]} min={min} max={max} step={step} onValueChange={(v) => onChange(v[0])} />
+      </div>
       <Explain>{desc}</Explain>
     </div>
   )
@@ -73,7 +80,8 @@ function ToggleCard({
         <span className="font-mono text-sm lowercase text-foreground">{title}</span>
         <span className="font-mono text-[12px] text-text-muted">{desc}</span>
       </div>
-      <Switch checked={checked} onCheckedChange={onChange} />
+      {/* the title span is not associated with the switch, so name it directly */}
+      <Switch aria-label={title} checked={checked} onCheckedChange={onChange} />
     </div>
   )
 }
@@ -125,15 +133,27 @@ function GlassPreview() {
  * glass-controls
  * -------------------------------------------------------------------- */
 
+/** the presets plus the read-only segment that stands for hand-tuned values */
+type PresetSegment = GlassPreset | "custom"
+
 export function GlassControls() {
   const { t } = useScreenkit()
   const { glass, activePreset, setEnabled, setPreset, setBlur, setAlpha, setSaturate, setBorderGlow, setGlowColor, setNoise, setTarget, reset } =
     useGlass()
 
-  const presetOptions: { value: GlassPreset; label: string }[] = GLASS_PRESETS.map((preset) => ({
-    value: preset,
-    label: t(`glass.preset.${preset}`),
-  }))
+  // `activePreset` is null as soon as the numbers stop matching a preset.
+  // Rendering "glass" as selected then is a claim the tablist also makes to a
+  // screen reader through aria-selected, so hand-tuned values get a segment of
+  // their own, which appears only while it is true.
+  const presetOptions: { value: PresetSegment; label: string }[] = [
+    ...GLASS_PRESETS.map((preset) => ({
+      value: preset as PresetSegment,
+      label: t(`glass.preset.${preset}`),
+    })),
+    ...(activePreset === null
+      ? [{ value: "custom" as PresetSegment, label: t("glass.preset.custom") }]
+      : []),
+  ]
 
   const glowColorOptions: { value: GlassGlowColor; label: string }[] = GLASS_GLOW_COLORS.map((color) => ({
     value: color,
@@ -163,7 +183,13 @@ export function GlassControls() {
 
       <div className="flex flex-col gap-3">
         <SectionHeading title={t("glass.presets")} />
-        <SegmentedControl<GlassPreset> options={presetOptions} value={activePreset ?? "glass"} onChange={setPreset} />
+        <SegmentedControl<PresetSegment>
+          options={presetOptions}
+          value={activePreset ?? "custom"}
+          onChange={(value) => {
+            if (value !== "custom") setPreset(value)
+          }}
+        />
         <Explain>{t("glass.presetsDesc")}</Explain>
       </div>
 
@@ -182,7 +208,7 @@ export function GlassControls() {
         title={t("glass.translucency")}
         desc={t("glass.translucencyDesc")}
         value={glass.alpha}
-        min={0.2}
+        min={GLASS_ALPHA_MIN}
         max={1}
         step={0.01}
         onChange={setAlpha}
@@ -240,7 +266,9 @@ export function GlassControls() {
               >
                 <span className="flex items-center justify-between gap-3">
                   <span className="font-mono text-[12px] font-bold lowercase">{t(`glass.target.${key}`)}</span>
-                  <span className="shrink-0 font-mono text-[10px] lowercase opacity-75">{enabled ? "on" : "off"}</span>
+                  <span className="shrink-0 font-mono text-[10px] lowercase opacity-75">
+                    {t(enabled ? "glass.on" : "glass.off")}
+                  </span>
                 </span>
                 <span className="mt-2 block font-mono text-[11px] lowercase leading-relaxed opacity-75">
                   {t(`glass.target.${key}Desc`)}

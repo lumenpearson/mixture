@@ -38,20 +38,24 @@ function sectionLabel(id: Section, t: (key: string) => string) {
 }
 
 /** shared overview glyph: same look on the vertical desktop rail and the
-    horizontal bottom rail. */
+    horizontal bottom rail. the glyph is decorative («гс»), so the label passed
+    in is the whole accessible name — it follows the locale like every other
+    rail item. */
 function OverviewButton({
   active,
+  label,
   onClick,
   className,
 }: {
   active: boolean
+  label: string
   onClick: () => void
   className?: string
 }) {
   return (
     <button
       onClick={onClick}
-      aria-label="overview"
+      aria-label={label}
       aria-current={active ? "page" : undefined}
       className={cn(
         "flex size-[3.35rem] shrink-0 items-center justify-center rounded-xl border font-mono text-sm font-bold transition-colors",
@@ -85,7 +89,12 @@ export function Rail({ onNavigate }: { onNavigate?: () => void }) {
       className="flex h-full w-[108px] shrink-0 flex-col items-center gap-1 bg-sidebar px-3 py-3 md:py-4 md:pl-3 md:pr-6"
     >
       {/* project glyph -> overview */}
-      <OverviewButton active={section === "overview"} onClick={() => go("overview")} className="mb-3" />
+      <OverviewButton
+        active={section === "overview"}
+        label={t("section.overview")}
+        onClick={() => go("overview")}
+        className="mb-3"
+      />
 
       <div className="flex flex-1 flex-col items-center gap-1">
         {RAIL_ITEMS.map((item) => {
@@ -114,6 +123,7 @@ export function Rail({ onNavigate }: { onNavigate?: () => void }) {
 
       <button
         onClick={() => go("about")}
+        aria-current={section === "about" ? "page" : undefined}
         className={cn(
           "flex w-[4.5rem] flex-col items-center gap-1 rounded-xl px-1 py-2.5 transition-colors",
           section === "about"
@@ -132,11 +142,15 @@ export function Rail({ onNavigate }: { onNavigate?: () => void }) {
 
 /**
  * Bottom rail for narrow screens (below `md`): the same items as `Rail`, laid
- * out horizontally and scrollable if they overflow. The wrapping element in
- * app-shell.tsx owns show/hide (it tucks under the main area the same way
- * the desktop rail tucks under its left edge); this component only renders
- * the row of buttons and reserves its own height via `--sk-bottom-rail-h` so
- * `content.tsx`'s scroll padding always matches.
+ * out horizontally and scrollable if they overflow. It is a flex sibling of
+ * main, so main's height already excludes it; the wrapping element in
+ * app-shell.tsx owns show/hide by collapsing that height (and marks this
+ * subtree `inert` while it is collapsed). `--sk-bottom-rail-h` is the one
+ * height the row and the collapse animation agree on.
+ *
+ * `data-glass-edge="top"` tells glass.css to put the rail's inset highlight on
+ * the edge that faces the content — the top here, the right side on the
+ * vertical desktop rail.
  */
 export function BottomRail() {
   const { section, setSection, t } = useScreenkit()
@@ -147,7 +161,11 @@ export function BottomRail() {
   }
 
   return (
-    <nav aria-label="primary" className="relative min-w-0 bg-sidebar sk-safe-bottom">
+    <nav
+      aria-label="primary"
+      data-glass-edge="top"
+      className="relative min-w-0 bg-sidebar sk-safe-bottom"
+    >
       <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-sidebar to-transparent" />
       <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-sidebar to-transparent" />
 
@@ -157,6 +175,7 @@ export function BottomRail() {
       >
         <OverviewButton
           active={section === "overview"}
+          label={t("section.overview")}
           onClick={() => setSection("overview")}
           className="size-11 text-xs"
         />

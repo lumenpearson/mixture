@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 import type { CategoryDef, Insert } from "@/lib/screenkit/types"
 import { ChevronDown } from "lucide-react"
 import * as React from "react"
+import { toast } from "sonner"
 import { Content } from "./content"
 import { CommandPalette } from "./command-palette"
 import { ContextMenuGuard } from "./context-menu/guard"
@@ -56,38 +57,67 @@ function RailToggleButton() {
   )
 }
 
+/** how close to the bottom edge a touch has to start to count as the gesture */
+const SWIPE_EDGE_PX = 24
+/** and how far up it has to travel before the rail comes back */
+const SWIPE_DISTANCE_PX = 28
+
 /**
- * Thin, invisible strip at the very bottom edge, present only while the rail
- * is hidden: a swipe up from there brings it back without hunting for the
- * toggle button. Purely additive — it never calls preventDefault, so normal
- * scrolling is unaffected.
+ * Swipe up from the bottom edge to bring the rail back, without hunting for
+ * the toggle button. The listeners are passive and live on the document: an
+ * invisible `fixed` strip would sit above `main` and swallow every tap in the
+ * bottom band of the screen — the last row of the library grid, the last cloud
+ * entry — while looking like nothing was there.
+ *
+ * The first time the rail goes away on a touch device the gesture announces
+ * itself once (`layout.swipeHint`); an invisible affordance nobody is told
+ * about is not an affordance.
  */
-function SwipeRevealHandle() {
+function SwipeReveal() {
   const { railVisible, showRail } = useLayout()
-  const startY = React.useRef<number | null>(null)
+  const { t } = useScreenkit()
+  const hinted = React.useRef(false)
 
-  if (railVisible) return null
+  React.useEffect(() => {
+    if (railVisible) return
 
-  return (
-    <div
-      aria-hidden="true"
-      className="fixed inset-x-0 bottom-0 z-20 h-6 md:hidden"
-      onTouchStart={(event) => {
-        startY.current = event.touches[0]?.clientY ?? null
-      }}
-      onTouchMove={(event) => {
-        if (startY.current == null) return
-        const y = event.touches[0]?.clientY ?? startY.current
-        if (startY.current - y > 28) {
-          showRail()
-          startY.current = null
-        }
-      }}
-      onTouchEnd={() => {
-        startY.current = null
-      }}
-    />
-  )
+    const coarse = window.matchMedia?.("(pointer: coarse)").matches ?? false
+    if (coarse && !hinted.current) {
+      hinted.current = true
+      toast(t("layout.swipeHint"))
+    }
+
+    let startY: number | null = null
+    const onStart = (event: TouchEvent) => {
+      const touch = event.touches[0]
+      startY =
+        touch && touch.clientY > window.innerHeight - SWIPE_EDGE_PX ? touch.clientY : null
+    }
+    const onMove = (event: TouchEvent) => {
+      if (startY == null) return
+      const y = event.touches[0]?.clientY ?? startY
+      if (startY - y > SWIPE_DISTANCE_PX) {
+        startY = null
+        showRail()
+      }
+    }
+    const onEnd = () => {
+      startY = null
+    }
+
+    document.addEventListener("touchstart", onStart, { passive: true })
+    document.addEventListener("touchmove", onMove, { passive: true })
+    document.addEventListener("touchend", onEnd, { passive: true })
+    document.addEventListener("touchcancel", onEnd, { passive: true })
+    return () => {
+      document.removeEventListener("touchstart", onStart)
+      document.removeEventListener("touchmove", onMove)
+      document.removeEventListener("touchend", onEnd)
+      document.removeEventListener("touchcancel", onEnd)
+    }
+  }, [railVisible, showRail, t])
+
+  return null
 }
 
 function LocaleFlowEffect() {
@@ -149,8 +179,13 @@ function ShellInner({ notFound = false }: { notFound?: boolean }) {
 
           {/* bottom rail (below md) — a real flex sibling, not an overlay, so
               main's available height already excludes it; collapsing its
-              max-height to 0 hides it and lets main grow to fill the screen. */}
+              max-height to 0 hides it and lets main grow to fill the screen.
+              `inert` while collapsed: neither `overflow: hidden` nor
+              `max-height: 0` takes the eight buttons out of the tab order or
+              the accessibility tree, so without it tabbing past the content
+              walks through a nav that is not on screen. */}
           <div
+            inert={!railVisible}
             className={cn(
               "sk-resize overflow-hidden md:hidden",
               railVisible ? "sk-bottom-rail-collapse" : "max-h-0",
@@ -161,7 +196,7 @@ function ShellInner({ notFound = false }: { notFound?: boolean }) {
         </div>
 
         <RailToggleButton />
-        <SwipeRevealHandle />
+        <SwipeReveal />
       </div>
     </>
   )

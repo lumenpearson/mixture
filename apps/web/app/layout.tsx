@@ -1,5 +1,6 @@
 import { ThemeProvider } from '@/components/screenkit/theme'
 import { Toaster } from '@/components/ui/sonner'
+import { APPEARANCE_BOOT_SCRIPT } from '@/lib/screenkit/appearance'
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
@@ -60,6 +61,13 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`bg-background ${geistSans.variable} ${geistMono.variable}`}
     >
+      <head>
+        {/* palette, gradients, site scale, glass and the narrow-screen rail are
+            per-browser preferences their providers can only apply in an effect.
+            Paint them on <html> first, next to the class next-themes injects for
+            light/dark, so the first frame is already the user's. */}
+        <script dangerouslySetInnerHTML={{ __html: APPEARANCE_BOOT_SCRIPT }} />
+      </head>
       <body className="font-mono antialiased bg-background text-foreground">
         <ThemeProvider>
           {children}
