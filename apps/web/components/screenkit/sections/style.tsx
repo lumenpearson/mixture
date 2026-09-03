@@ -9,6 +9,7 @@ import { DEFAULT_MOTION_FEATURES, useMotion, type MotionFeature } from "../motio
 import { Explain, SectionHeading, SegmentedControl } from "../primitives"
 import { GlassControls } from "../settings/glass-controls"
 import { LayoutControls } from "../settings/layout-controls"
+import { PlayerSettingsPanel } from "../settings/player-settings"
 import { RpcSettings } from "../settings/rpc-settings"
 import { SettingsTabs } from "../settings-tabs"
 import { useScreenkit, type ContentWidth } from "../store"
@@ -332,6 +333,7 @@ export function StyleSection() {
       <ThemeControls />
       <GlassControls />
       <RpcSettings />
+      <PlayerSettingsPanel />
       <HotkeysCard />
 
       <div className="flex flex-col gap-4">
