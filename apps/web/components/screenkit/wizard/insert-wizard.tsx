@@ -42,9 +42,19 @@ const STEP_COMPONENTS: Record<WizardStep, React.ComponentType<{ draft: WizardDra
 const fill = (template: string, values: Record<string, string | number>) =>
   template.replace(/\{(\w+)\}/g, (_, key: string) => String(values[key] ?? ""))
 
+/** window event that opens the wizard from menus and the palette */
+export const WIZARD_OPEN_EVENT = "screenkit:wizard-open"
+
 export function InsertWizardButton() {
   const { persistent, t } = useScreenkit()
   const [open, setOpen] = React.useState(false)
+  React.useEffect(() => {
+    const onOpen = () => {
+      if (persistent) setOpen(true)
+    }
+    window.addEventListener(WIZARD_OPEN_EVENT, onOpen)
+    return () => window.removeEventListener(WIZARD_OPEN_EVENT, onOpen)
+  }, [persistent])
   return (
     <>
       <button

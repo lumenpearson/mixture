@@ -15,9 +15,12 @@ import {
   X,
 } from "lucide-react"
 import * as React from "react"
+import { useInsertMenuBuilder, useLibraryMenuBuilder } from "../context-menu/builders"
+import { SkContextMenu } from "../context-menu/menu"
+import type { MenuModel } from "../context-menu/model"
 import { SEARCH_INPUT_ID } from "../hotkeys"
 import { iconForDevice } from "../icons"
-import { LibraryEditor } from "../library-editor"
+import { DeleteInsertDialog, LibraryEditor } from "../library-editor"
 import { LibraryListControls } from "../library-list-controls"
 import {
   LIBRARY_LIST_UI,
@@ -56,6 +59,9 @@ export function LibrarySection() {
   const labels = LIBRARY_LIST_UI[contentLocale]
   const { sort: sortKey, view: viewMode, pageSize } = libraryListSettings
   const [page, setPage] = React.useState(1)
+  const [deleteId, setDeleteId] = React.useState<string | null>(null)
+  const buildInsertMenu = useInsertMenuBuilder()
+  const buildLibraryMenu = useLibraryMenuBuilder()
 
   const filtered = React.useMemo(
     () =>
@@ -229,6 +235,7 @@ export function LibrarySection() {
         </span>
       </div>
 
+      <SkContextMenu build={buildLibraryMenu}>
       <ul className={listCls(viewMode)}>
         {paged.map((insert, idx) => (
           <li key={insert.id} className="min-w-0 sk-animate-in" style={staggerDelay(idx)}>
@@ -247,6 +254,7 @@ export function LibrarySection() {
               favorite={isFavorite(insert.id)}
               favoriteLabel={isFavorite(insert.id) ? t("common.unfavorite") : t("common.favorite")}
               onToggleFavorite={() => toggleFavorite(insert.id)}
+              menu={() => buildInsertMenu(insert, { onDelete: () => setDeleteId(insert.id) })}
             />
           </li>
         ))}
@@ -257,6 +265,8 @@ export function LibrarySection() {
           </li>
         )}
       </ul>
+      </SkContextMenu>
+      <DeleteInsertDialog id={deleteId} onOpenChange={(open) => !open && setDeleteId(null)} />
 
       {sorted.length > pageSize && (
         <PaginationBar
@@ -285,6 +295,7 @@ function InsertCard({
   favorite,
   favoriteLabel,
   onToggleFavorite,
+  menu,
 }: {
   insert: ResolvedInsert
   contentLocale: Locale
@@ -300,10 +311,12 @@ function InsertCard({
   favorite: boolean
   favoriteLabel: string
   onToggleFavorite: () => void
+  menu: () => MenuModel
 }) {
   const Icon = iconForDevice(insert.device)
 
   return (
+    <SkContextMenu build={menu}>
     <div className={cn(cardCls(viewMode), "relative")}>
       <button
         type="button"
@@ -369,6 +382,7 @@ function InsertCard({
       )}
       </button>
     </div>
+    </SkContextMenu>
   )
 }
 

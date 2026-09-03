@@ -239,19 +239,29 @@ function AddCategoryDialog() {
 /* ---------- delete insert (used by the preview header) ---------- */
 
 export function DeleteInsertButton({ id, icon }: { id: string; icon?: React.ReactNode }) {
-  const { deleteInsert, libraryBusy, t, inserts, setSelectedId } = useScreenkit()
+  const { t } = useScreenkit()
+  const [open, setOpen] = React.useState(false)
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <button
-          type="button"
-          aria-label={t("editor.deleteInsert")}
-          title={t("editor.deleteInsert")}
-          className="inline-flex size-9 items-center justify-center rounded-full border border-panel-border bg-control text-text-secondary transition-colors hover:bg-panel-hover hover:text-accent-red"
-        >
-          {icon ?? <Trash2 className="size-4" />}
-        </button>
-      </AlertDialogTrigger>
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label={t("editor.deleteInsert")}
+        title={t("editor.deleteInsert")}
+        className="inline-flex size-9 items-center justify-center rounded-full border border-panel-border bg-control text-text-secondary transition-colors hover:bg-panel-hover hover:text-accent-red"
+      >
+        {icon ?? <Trash2 className="size-4" />}
+      </button>
+      <DeleteInsertDialog id={open ? id : null} onOpenChange={setOpen} />
+    </>
+  )
+}
+
+/** a controlled confirmation; `id` null keeps it closed */
+export function DeleteInsertDialog({ id, onOpenChange }: { id: string | null; onOpenChange: (open: boolean) => void }) {
+  const { deleteInsert, libraryBusy, t, inserts, selectedId, setSelectedId } = useScreenkit()
+  return (
+    <AlertDialog open={id !== null} onOpenChange={onOpenChange}>
       <AlertDialogContent className="border-panel-border bg-panel">
         <AlertDialogHeader>
           <AlertDialogTitle className="font-mono lowercase text-foreground">{t("editor.deleteInsert")}</AlertDialogTitle>
@@ -264,16 +274,19 @@ export function DeleteInsertButton({ id, icon }: { id: string; icon?: React.Reac
             {t("editor.cancel")}
           </AlertDialogCancel>
           <AlertDialogAction
-            disabled={libraryBusy}
-            onClick={() =>
+            disabled={libraryBusy || id === null}
+            onClick={() => {
+              if (id === null) return
               void deleteInsert(id)
                 .then(() => {
-                  const fallback = inserts.find((i) => i.id !== id)
-                  if (fallback) setSelectedId(fallback.id)
+                  if (selectedId === id) {
+                    const fallback = inserts.find((i) => i.id !== id)
+                    if (fallback) setSelectedId(fallback.id)
+                  }
                   toast.success(t("editor.deleted"))
                 })
                 .catch(() => null)
-            }
+            }}
             className="rounded-xl bg-accent-red font-mono text-sm lowercase text-white hover:opacity-90"
           >
             {t("editor.deleteConfirm")}

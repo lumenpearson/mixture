@@ -26,9 +26,11 @@ import { Check, ChevronLeft, ChevronRight, Link2, Maximize2, Star, Trash2 } from
 import Link from "next/link"
 import * as React from "react"
 import { toast } from "sonner"
+import { useInsertMenuBuilder, usePreviewExtras } from "../context-menu/builders"
+import { SkContextMenu } from "../context-menu/menu"
 import { InsertLanguageToggle } from "../insert-language-toggle"
 import { SourceControls } from "../kinds/source-controls"
-import { DeleteInsertButton } from "../library-editor"
+import { DeleteInsertButton, DeleteInsertDialog } from "../library-editor"
 import { InsertPreview } from "../insert-preview"
 import { MotionNumber } from "../motion-number"
 import {
@@ -64,6 +66,9 @@ export function PreviewSection() {
   } = useScreenkit()
   const raw = getInsert(selectedId) ?? inserts[0]
   const [linkCopied, setLinkCopied] = React.useState(false)
+  const [deleteOpen, setDeleteOpen] = React.useState(false)
+  const buildInsertMenu = useInsertMenuBuilder()
+  const previewExtras = usePreviewExtras()
   const shareLink = React.useCallback(() => {
     const url = new URL(window.location.href)
     url.search = `?view=preview&insert=${encodeURIComponent(raw.id)}`
@@ -168,9 +173,12 @@ export function PreviewSection() {
       </div>
 
       {/* preview stage */}
-      <div className="flex min-w-0 items-center justify-center overflow-hidden rounded-3xl border border-panel-border bg-[radial-gradient(120%_120%_at_50%_0%,#0e0e10,#000)] px-3 py-6 sm:px-4 sm:py-8 lg:py-10">
-        <InsertPreview insert={insert} settings={previewForInsert} />
-      </div>
+      <SkContextMenu build={() => buildInsertMenu(insert, { inPreview: true, extra: previewExtras, onDelete: () => setDeleteOpen(true) })}>
+        <div className="flex min-w-0 items-center justify-center overflow-hidden rounded-3xl border border-panel-border bg-[radial-gradient(120%_120%_at_50%_0%,#0e0e10,#000)] px-3 py-6 sm:px-4 sm:py-8 lg:py-10">
+          <InsertPreview insert={insert} settings={previewForInsert} />
+        </div>
+      </SkContextMenu>
+      <DeleteInsertDialog id={deleteOpen ? insert.id : null} onOpenChange={setDeleteOpen} />
 
       {/* open as screen-state */}
       <Link

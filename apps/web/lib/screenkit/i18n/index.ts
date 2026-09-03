@@ -3,6 +3,7 @@ import cloudManager from "./cloud-manager"
 import glass from "./glass"
 import layout from "./layout"
 import local from "./local"
+import menu from "./menu"
 import palette from "./palette"
 import player from "./player"
 import rpc from "./rpc"
@@ -26,6 +27,7 @@ export const FEATURE_DICTIONARIES: FeatureDictionary[] = [
   glass,
   layout,
   local,
+  menu,
   palette,
   player,
   rpc,
