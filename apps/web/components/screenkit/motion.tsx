@@ -101,7 +101,7 @@ function autoReduceMotion(): boolean {
  * laggy feel). Default it off on touch-first / narrow viewports and on
  * everywhere else; an explicit stored choice (below) always wins.
  */
-function defaultScrollFeature(): boolean {
+export function defaultScrollFeature(): boolean {
   if (typeof window === "undefined") return true
   const coarsePointer = window.matchMedia?.("(pointer: coarse)").matches ?? false
   const narrow = window.innerWidth < 1024

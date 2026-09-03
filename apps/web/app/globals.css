@@ -238,9 +238,13 @@
 }
 
 :root {
-  /* narrow-screen bottom rail: one height so the rail's own row, the content's
-     reserved scroll padding and the collapse animation all agree on it. */
+  /* narrow-screen bottom rail: one height so the rail's own row and the
+     collapse animation agree on it. */
   --sk-bottom-rail-h: 4.5rem;
+  /* the no-javascript fallback for the site scale. must equal
+     SCALE_VALUE[DEFAULT_SCALE] in lib/screenkit/appearance.ts, otherwise every
+     first load reflows the whole rem-based layout once the providers hydrate. */
+  --app-scale: 1.08;
 }
 
 @layer utilities {
@@ -249,6 +253,12 @@
      `max-h-0` both hides the rail and lets main grow to fill the screen. */
   .sk-bottom-rail-collapse {
     max-height: calc(var(--sk-bottom-rail-h) + max(1rem, env(safe-area-inset-bottom)));
+  }
+  /* the pre-hydration script writes `data-rail` from storage, so a rail the
+     user had hidden never paints and then animates away; LayoutProvider keeps
+     the attribute in step with its state afterwards. */
+  html[data-rail="hidden"] .sk-bottom-rail-collapse {
+    max-height: 0;
   }
 
   .sk-resize {
@@ -361,6 +371,9 @@
   .sk-chips::-webkit-scrollbar { display: none; }
   .sk-safe-x { padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right)); }
   .sk-safe-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+  /* the inset on its own, with no minimum: for content that only has to clear
+     the home indicator, in a place that must not grow when there is none. */
+  .sk-safe-bottom-inset { padding-bottom: env(safe-area-inset-bottom, 0px); }
   .sk-wrap-anywhere { overflow-wrap: anywhere; }
 }
 
