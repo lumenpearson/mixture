@@ -108,14 +108,53 @@ export function maxRole(a: RoleName, b: RoleName): RoleName {
   return ROLE_RANK[a] >= ROLE_RANK[b] ? a : b
 }
 
+/** the visibility of a repository path, and whether a rule (not the default) decided it */
+export function visibilityRuleFor(
+  path: string,
+  config: CloudConfig,
+): { visibility: VisibilityName; explicit: boolean } {
+  const clean = normalizeCloudPath(path)
+  let visibility: VisibilityName = config.defaultVisibility
+  let explicit = false
+  for (const rule of config.rules) {
+    if (matchGlob(rule.pattern, clean)) {
+      visibility = rule.visibility
+      explicit = true
+    }
+  }
+  return { visibility, explicit }
+}
+
 /** the visibility of a repository path under the config rules (last match wins) */
 export function visibilityFor(path: string, config: CloudConfig): VisibilityName {
-  const clean = normalizeCloudPath(path)
-  let result: VisibilityName = config.defaultVisibility
-  for (const rule of config.rules) {
-    if (matchGlob(rule.pattern, clean)) result = rule.visibility
-  }
-  return result
+  return visibilityRuleFor(path, config).visibility
+}
+
+const VISIBILITY_RANK: Record<VisibilityName, number> = { hidden: 0, private: 1, public: 2 }
+
+/**
+ * The visibility of a *folder*, which is not the visibility of its own path:
+ * a folder exists to be walked into, so `public/**` has to keep the `public`
+ * folder itself reachable even when the default is stricter.
+ *
+ * Three cases, in this order:
+ *   1. a rule that names the folder itself and says `hidden` wins outright —
+ *      without it a folder could never be hidden, because the subtree probe
+ *      falls back to the (more permissive) default and widens it straight back,
+ *      and the folder name is often the whole secret;
+ *   2. nothing names the folder: its subtree decides, so `public/** public`
+ *      opens the folder and `secret/** hidden` closes it;
+ *   3. both are named: the more permissive of the two wins, so a private
+ *      folder holding a public subtree stays reachable.
+ */
+export function directoryVisibility(path: string, config: CloudConfig): VisibilityName {
+  const own = visibilityRuleFor(path, config)
+  // `${path}/*` stands for an arbitrary direct child: it matches the same
+  // subtree rules a real child would
+  const child = visibilityRuleFor(`${path}/*`, config)
+  if (own.explicit && own.visibility === "hidden") return "hidden"
+  if (!own.explicit && child.explicit) return child.visibility
+  return VISIBILITY_RANK[child.visibility] > VISIBILITY_RANK[own.visibility] ? child.visibility : own.visibility
 }
 
 /** whether a role may see (list and read) an entry with the given visibility */
