@@ -160,6 +160,16 @@ async function main() {
   }
 
   await fs.mkdir(path.dirname(MANIFEST), { recursive: true })
+  // keep the previous timestamp when nothing but the clock changed, so a
+  // build does not dirty the working tree
+  try {
+    const previous = JSON.parse(await fs.readFile(MANIFEST, "utf8"))
+    if (JSON.stringify(previous.packages) === JSON.stringify(manifest.packages)) {
+      manifest.generatedAt = previous.generatedAt
+    }
+  } catch {
+    // no previous manifest: write a fresh one
+  }
   await fs.writeFile(MANIFEST, JSON.stringify(manifest, null, 2) + "\n", "utf8")
 
   console.log(
