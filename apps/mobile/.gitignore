@@ -1,0 +1,9 @@
+# expo prebuild output — the native projects are generated, never committed
+/android
+/ios
+/.expo
+/dist
+*.jks
+*.keystore
+!debug.keystore
+expo-env.d.ts

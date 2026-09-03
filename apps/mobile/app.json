@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "screenkit",
+    "slug": "mixture-screenkit",
+    "scheme": "screenkit",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "platforms": ["android"],
+    "backgroundColor": "#05070C",
+    "android": {
+      "package": "ru.mixture.screenkit",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#05070C"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-video",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#05070C",
+          "dark": { "backgroundColor": "#05070C" },
+          "resizeMode": "contain"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "rpcBaseUrl": "https://mixture-codeilluminators.vercel.app"
+    }
+  }
+}
