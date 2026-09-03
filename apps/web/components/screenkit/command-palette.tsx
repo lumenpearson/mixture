@@ -44,7 +44,7 @@ import {
 import { useRouter } from "next/navigation"
 import * as React from "react"
 import { toast } from "sonner"
-import { COMMAND_PALETTE_EVENT, focusLibrarySearch } from "./hotkeys"
+import { CLOUD_ACTION_EVENT, CLOUD_OPEN_EVENT, COMMAND_PALETTE_EVENT, focusLibrarySearch } from "./hotkeys"
 import { iconForDevice } from "./icons"
 import { useCloudTree } from "./media/use-cloud-tree"
 import { openInsertWizard } from "./wizard/button"
@@ -76,8 +76,6 @@ const GROUP_LIMIT = 8
 const CLOUD_LIMIT = 10
 
 /** window events the cloud section may listen to when the palette opens things */
-export const CLOUD_OPEN_EVENT = "screenkit:cloud-open"
-export const CLOUD_ACTION_EVENT = "screenkit:cloud-action"
 
 type Group = "recent" | "sections" | "inserts" | "cloud" | "settings" | "actions"
 

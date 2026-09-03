@@ -1,32 +1,22 @@
 "use client"
 
-import { cn } from "@/lib/utils"
 import type { Entry } from "@mixture/protocol/cloud"
-import { Download, Loader2, X } from "lucide-react"
+import { Download, X } from "lucide-react"
 import * as React from "react"
+import { toast } from "sonner"
+import { FilePreview } from "../media/file-preview"
 import { useScreenkit } from "../store"
 import type { CloudProvider } from "./provider"
 
 /* ------------------------------------------------------------------ *
  * preview panel
  *
- * Deliberately narrow: `{ entry, provider, onClose }` and nothing else, so a
- * full player can replace the body of this file without touching the
- * manager. It fetches the bytes itself, keeps exactly one object url alive
- * and revokes it when the entry changes or the panel unmounts.
+ * Deliberately narrow: `{ entry, provider, onClose }` and nothing else. The
+ * body is the shared FilePreview (images with zoom, the media player, pdf,
+ * decoded text), fed by the provider so a local folder previews exactly
+ * like the GitHub repository. A direct stream url, when the provider has
+ * one, lets video seek without downloading the whole file first.
  * ------------------------------------------------------------------ */
-
-const TEXT_PREVIEW_LIMIT = 20_000
-
-type PreviewState =
-  | { kind: "loading" }
-  | { kind: "text"; text: string }
-  | { kind: "media"; url: string }
-  | { kind: "truncated" }
-  | { kind: "error"; message: string }
-
-const isTextual = (contentType: string) =>
-  contentType.startsWith("text/") || contentType === "application/json" || contentType === "image/svg+xml"
 
 export function PreviewPanel({
   entry,
@@ -38,51 +28,73 @@ export function PreviewPanel({
   onClose: () => void
 }) {
   const { t } = useScreenkit()
-  const [state, setState] = React.useState<PreviewState>({ kind: "loading" })
+  const [streamUrl, setStreamUrl] = React.useState<string | null | undefined>(undefined)
 
   React.useEffect(() => {
-    let objectUrl: string | null = null
     let cancelled = false
-    const controller = new AbortController()
-    setState({ kind: "loading" })
-
-    provider
-      .read(entry.path, { signal: controller.signal })
-      .then((result) => {
-        if (cancelled) return
-        if (result.truncated) {
-          setState({ kind: "truncated" })
-          return
-        }
-        if (isTextual(entry.contentType)) {
-          setState({ kind: "text", text: new TextDecoder().decode(result.content).slice(0, TEXT_PREVIEW_LIMIT) })
-          return
-        }
-        objectUrl = URL.createObjectURL(new Blob([result.content as BlobPart], { type: entry.contentType }))
-        setState({ kind: "media", url: objectUrl })
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return
-        setState({ kind: "error", message: error instanceof Error ? error.message : t("cloud.noPreview") })
-      })
-
-    return () => {
-      cancelled = true
-      controller.abort()
-      // the panel owns exactly one object url at a time
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-    }
-  }, [entry, provider, t])
-
-  const download = () => {
-    if (state.kind === "media") {
-      const anchor = document.createElement("a")
-      anchor.href = state.url
-      anchor.download = entry.name
-      anchor.click()
+    setStreamUrl(undefined)
+    if (!provider.streamUrl) {
+      setStreamUrl(null)
       return
     }
-    if (entry.downloadUrl) window.open(entry.downloadUrl, "_blank", "noopener")
+    provider
+      .streamUrl(entry)
+      .then((url) => {
+        if (!cancelled) setStreamUrl(url)
+      })
+      .catch(() => {
+        if (!cancelled) setStreamUrl(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [entry, provider])
+
+  const reader = React.useCallback(
+    async (path: string) => {
+      const result = await provider.read(path)
+      return {
+        content: result.content,
+        contentType: result.entry?.contentType || entry.contentType,
+        name: result.entry?.name || entry.name,
+        truncated: result.truncated,
+        downloadUrl: result.entry?.downloadUrl || entry.downloadUrl || undefined,
+      }
+    },
+    [provider, entry.contentType, entry.name, entry.downloadUrl],
+  )
+
+  const source = React.useMemo(
+    () => ({
+      path: entry.path,
+      sha: entry.sha,
+      name: entry.name,
+      contentType: entry.contentType,
+      url: streamUrl ?? undefined,
+      reader,
+      scope: provider.id,
+    }),
+    [entry.path, entry.sha, entry.name, entry.contentType, streamUrl, reader, provider.id],
+  )
+
+  const download = async () => {
+    try {
+      const result = await provider.read(entry.path)
+      if (result.truncated) {
+        const url = (await provider.streamUrl?.(entry)) ?? entry.downloadUrl
+        if (url) window.open(url, "_blank", "noopener")
+        else toast.error(t("cloud.largeFile"))
+        return
+      }
+      const url = URL.createObjectURL(new Blob([result.content as BlobPart], { type: entry.contentType }))
+      const anchor = document.createElement("a")
+      anchor.href = url
+      anchor.download = entry.name
+      anchor.click()
+      window.setTimeout(() => URL.revokeObjectURL(url), 2_000)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("cloud.noPreview"))
+    }
   }
 
   return (
@@ -95,7 +107,7 @@ export function PreviewPanel({
           {entry.path}
         </span>
         <div className="flex shrink-0 items-center gap-1">
-          <PanelButton label={t("cloud.download")} onClick={download}>
+          <PanelButton label={t("cloud.download")} onClick={() => void download()}>
             <Download className="size-3.5" aria-hidden="true" />
           </PanelButton>
           <PanelButton label={t("common.close")} onClick={onClose}>
@@ -104,48 +116,18 @@ export function PreviewPanel({
         </div>
       </header>
 
-      <div className="overflow-hidden rounded-2xl border border-panel-border bg-black">
-        <PreviewBody entry={entry} state={state} />
-      </div>
+      {streamUrl === undefined ? null : (
+        <FilePreview
+          key={`${provider.id}:${entry.path}:${entry.sha}`}
+          source={source}
+          name={entry.name}
+          contentType={entry.contentType}
+          size={Number(entry.size)}
+          mode="panel"
+        />
+      )}
     </section>
   )
-}
-
-function PreviewBody({ entry, state }: { entry: Entry; state: PreviewState }) {
-  const { t } = useScreenkit()
-  const note = (text: string, danger?: boolean) => (
-    <p className={cn("p-4 font-mono text-[12px] lowercase", danger ? "text-accent-red" : "text-text-muted")}>{text}</p>
-  )
-
-  if (state.kind === "loading") {
-    return (
-      <p className="flex items-center gap-2 p-4 font-mono text-[12px] lowercase text-text-muted" aria-live="polite">
-        <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> {t("cloud.loading")}
-      </p>
-    )
-  }
-  if (state.kind === "truncated") return note(t("cloud.largeFile"))
-  if (state.kind === "error") return note(state.message, true)
-  if (state.kind === "text") {
-    return (
-      <pre className="sk-scroll max-h-96 overflow-auto whitespace-pre-wrap p-4 font-mono text-[12px] leading-relaxed text-text-secondary">
-        {state.text}
-      </pre>
-    )
-  }
-
-  const type = entry.contentType
-  if (type.startsWith("image/")) {
-    return <img src={state.url} alt={entry.name} className="mx-auto max-h-[70vh] w-auto max-w-full object-contain" />
-  }
-  if (type.startsWith("video/")) {
-    return <video src={state.url} controls playsInline className="mx-auto max-h-[70vh] w-full" />
-  }
-  if (type.startsWith("audio/")) return <audio src={state.url} controls className="w-full p-4" />
-  if (type === "application/pdf") {
-    return <iframe src={state.url} title={entry.name} className="h-[70vh] w-full" />
-  }
-  return note(t("cloud.noPreview"))
 }
 
 function PanelButton({

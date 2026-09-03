@@ -70,6 +70,10 @@ export interface CloudProvider {
   mkdir(path: string, options?: CloudCall): Promise<Entry | null>
   /** optional: a direct url for previews and downloads */
   streamUrl?(entry: Entry, options?: CloudCall): Promise<string | null>
+  /** optional: false while the source needs a permission or a setup step */
+  ready?(): Promise<boolean>
+  /** optional: the screen shown while `ready()` is false; calls onReady when done */
+  Gate?: React.ComponentType<{ onReady: () => void }>
 }
 
 /* ------------------------------- github ------------------------------- */

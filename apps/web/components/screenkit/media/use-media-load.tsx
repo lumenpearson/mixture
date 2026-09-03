@@ -16,15 +16,40 @@ import { usePlayerSettings } from "./player-settings"
  * so switching between files does not re-download them.
  * ------------------------------------------------------------------ */
 
+export type MediaRead = {
+  content: Uint8Array
+  contentType?: string
+  name?: string
+  /** true when the backend refused to inline the bytes */
+  truncated?: boolean
+  /** a direct url to fall back to when truncated */
+  downloadUrl?: string
+}
+
 export type MediaSource = {
   /** a url the browser can fetch directly */
   url?: string
-  /** a cloud-drive path read through the rpc */
+  /** a path read through `reader` (or the cloud rpc when no reader is given) */
   path?: string
   /** blob sha, part of the cache key when known */
   sha?: string
   name?: string
   contentType?: string
+  /** how to read the bytes of `path`; defaults to CloudService.ReadFile */
+  reader?: (path: string) => Promise<MediaRead>
+  /** cache namespace, e.g. the provider id, so equal paths from two sources stay apart */
+  scope?: string
+}
+
+const rpcReader = async (path: string): Promise<MediaRead> => {
+  const response = await cloudClient().readFile({ path })
+  return {
+    content: response.content,
+    contentType: response.entry?.contentType,
+    name: response.entry?.name,
+    truncated: response.truncated,
+    downloadUrl: response.entry?.downloadUrl,
+  }
 }
 
 export type MediaLoad =
@@ -59,9 +84,9 @@ function remember(key: string, entry: CacheEntry) {
 }
 
 /** drop a cached blob (after the file changed on the drive) */
-export function forgetMedia(path: string) {
+export function forgetMedia(path: string, scope = "") {
   for (const key of [...cache.keys()]) {
-    if (key.startsWith(`${path}#`)) {
+    if (key.startsWith(`${scope}:${path}#`)) {
       const entry = cache.get(key)
       cache.delete(key)
       if (entry) URL.revokeObjectURL(entry.url)
@@ -72,9 +97,11 @@ export function forgetMedia(path: string) {
 const nameOf = (source: MediaSource) =>
   source.name ?? (source.path ?? source.url ?? "file").split("?")[0].split("/").pop() ?? "file"
 
-function pickDelivery(source: MediaSource, streaming: StreamingMode): "url" | "rpc" | "none" {
+function pickDelivery(source: MediaSource, streaming: StreamingMode, wantBytes: boolean): "url" | "rpc" | "none" {
   const hasUrl = Boolean(source.url)
   const hasPath = Boolean(source.path)
+  // text previews need the bytes; a cross-origin url may refuse them
+  if (wantBytes && hasPath) return "rpc"
   if (streaming === "progressive") return hasUrl ? "url" : hasPath ? "rpc" : "none"
   if (streaming === "inline") return hasPath ? "rpc" : hasUrl ? "url" : "none"
   return hasUrl ? "url" : hasPath ? "rpc" : "none"
@@ -89,14 +116,14 @@ export function useMediaLoad(source: MediaSource | null, options?: { wantBytes?:
   const { settings } = usePlayerSettings()
   const wantBytes = options?.wantBytes ?? false
   const [state, setState] = React.useState<MediaLoad>({ status: "idle" })
-  const key = source ? `${source.path ?? ""}#${source.sha ?? ""}#${source.url ?? ""}#${settings.streaming}#${wantBytes ? 1 : 0}` : ""
+  const key = source ? `${source.scope ?? ""}#${source.path ?? ""}#${source.sha ?? ""}#${source.url ?? ""}#${settings.streaming}#${wantBytes ? 1 : 0}` : ""
 
   React.useEffect(() => {
     if (!source) {
       setState({ status: "idle" })
       return
     }
-    const delivery = pickDelivery(source, settings.streaming)
+    const delivery = pickDelivery(source, settings.streaming, wantBytes)
     if (delivery === "none") {
       setState({ status: "error", reason: "missing" })
       return
@@ -138,7 +165,7 @@ export function useMediaLoad(source: MediaSource | null, options?: { wantBytes?:
     }
 
     const path = source.path as string
-    const cacheKey = `${path}#${source.sha ?? ""}`
+    const cacheKey = `${source.scope ?? ""}:${path}#${source.sha ?? ""}`
     const cached = cache.get(cacheKey)
     if (cached) {
       setState({
@@ -153,19 +180,18 @@ export function useMediaLoad(source: MediaSource | null, options?: { wantBytes?:
       return
     }
     setState({ status: "loading" })
-    cloudClient()
-      .readFile({ path })
+    ;(source.reader ?? rpcReader)(path)
       .then((response) => {
         if (cancelled) return
         if (response.truncated) {
-          const fallback = response.entry?.downloadUrl
+          const fallback = response.downloadUrl
           if (fallback && settings.streaming !== "inline") {
             setState({
               status: "ready",
               url: fallback,
-              contentType: response.entry?.contentType || contentTypeOf(name),
+              contentType: response.contentType || contentTypeOf(name),
               name,
-              size: Number(response.entry?.size ?? -1),
+              size: -1,
               via: "url",
             })
           } else {
@@ -174,13 +200,13 @@ export function useMediaLoad(source: MediaSource | null, options?: { wantBytes?:
           return
         }
         const bytes = response.content
-        const contentType = response.entry?.contentType || source.contentType || contentTypeOf(name)
+        const contentType = response.contentType || source.contentType || contentTypeOf(name)
         const blob = new Blob([bytes as BlobPart], { type: contentType })
         const entry: CacheEntry = {
           url: URL.createObjectURL(blob),
           bytes,
           contentType,
-          name: response.entry?.name || name,
+          name: response.name || name,
           size: bytes.byteLength,
         }
         remember(cacheKey, entry)

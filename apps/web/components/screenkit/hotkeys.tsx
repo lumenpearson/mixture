@@ -27,6 +27,11 @@ export function openCommandPalette(detail?: { query?: string }) {
   window.dispatchEvent(new CustomEvent(COMMAND_PALETTE_EVENT, { detail }))
 }
 
+/** window event asking the cloud tab to show a folder or open a file: detail { path, open } */
+export const CLOUD_OPEN_EVENT = "screenkit:cloud-open"
+/** window event asking the cloud tab to start an action: detail { action: "upload" | "new-folder" } */
+export const CLOUD_ACTION_EVENT = "screenkit:cloud-action"
+
 const SECTION_KEYS: Record<string, Section> = {
   "1": "overview",
   "2": "library",

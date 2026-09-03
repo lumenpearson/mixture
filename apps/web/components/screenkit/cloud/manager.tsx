@@ -24,6 +24,8 @@ import {
 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
+import { CLOUD_ACTION_EVENT, CLOUD_OPEN_EVENT } from "../hotkeys"
+import "../local/provider"
 import { useScreenkit } from "../store"
 import { DeleteDialog, MoveDialog, NewFolderDialog, PropertiesDialog } from "./dialogs"
 import type { EntryActions } from "./entry-row"
@@ -107,13 +109,14 @@ export function CloudManager({
   const [moveState, setMoveState] = React.useState<{ initial: string; targets: Entry[] } | null>(null)
   const [deleteTargets, setDeleteTargets] = React.useState<Entry[]>([])
   const [hasToken, setHasToken] = React.useState(false)
+  const [gated, setGated] = React.useState(false)
 
   const fileInput = React.useRef<HTMLInputElement | null>(null)
   const folderInput = React.useRef<HTMLInputElement | null>(null)
   const uploadTarget = React.useRef("")
 
   const role = status?.role ?? Role.ANONYMOUS
-  const canEdit = role === Role.EDITOR || role === Role.OWNER
+  const canEdit = provider.capabilities.access ? role === Role.EDITOR || role === Role.OWNER : true
   const canUploadDirectly = Boolean(hasToken && canEdit && status?.repo && status?.branch)
 
   React.useEffect(() => {
@@ -136,6 +139,13 @@ export function CloudManager({
       if (!silent) setLoading(true)
       setError(null)
       try {
+        if (provider.ready && !(await provider.ready())) {
+          if (controller.signal.aborted) return
+          setGated(true)
+          setEntries([])
+          return
+        }
+        setGated(false)
         const result = await provider.list(target, { signal: controller.signal })
         if (controller.signal.aborted) return
         setEntries(result.entries)
@@ -208,6 +218,53 @@ export function CloudManager({
   const pickFiles = React.useCallback((target: string) => {
     uploadTarget.current = target
     fileInput.current?.click()
+  }, [])
+
+  /* the palette and the menus talk to the manager through window events */
+  React.useEffect(() => {
+    const onOpen = (event: Event) => {
+      // detail.path is the folder to show; detail.open, when set, a file to preview
+      const detail = (event as CustomEvent<{ path?: string; open?: string | null }>).detail ?? {}
+      const file = detail.open || ""
+      setSelection(new Set())
+      setPath(detail.path ?? (file ? parentPath(file) : ""))
+      if (!file) {
+        setPreview(null)
+        return
+      }
+      void provider
+        .stat(file)
+        .then((entry) => {
+          if (entry) setPreview(entry)
+        })
+        .catch(() => undefined)
+    }
+    const onAction = (event: Event) => {
+      const action = (event as CustomEvent<{ action?: string }>).detail?.action
+      if (action === "upload") pickFiles(path)
+      if (action === "new-folder") setNewFolder({ open: true, parent: path })
+    }
+    window.addEventListener(CLOUD_OPEN_EVENT, onOpen)
+    window.addEventListener(CLOUD_ACTION_EVENT, onAction)
+    return () => {
+      window.removeEventListener(CLOUD_OPEN_EVENT, onOpen)
+      window.removeEventListener(CLOUD_ACTION_EVENT, onAction)
+    }
+  }, [path, pickFiles, provider])
+
+  /* ?open=<file> deep-links straight into a preview */
+  React.useEffect(() => {
+    const open = readParam("open")
+    if (!open) return
+    writeParams({ open: "" })
+    void provider
+      .stat(open)
+      .then((entry) => {
+        if (entry) setPreview(entry)
+      })
+      .catch(() => undefined)
+    // once, on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   /* ------------------------------ search ------------------------------ */
@@ -515,7 +572,7 @@ export function CloudManager({
 
   const emptyLabel = searchActive || activeQuery.trim() || filters.categories.length || filters.visibility !== "all"
     ? t("cloudfm.search.empty")
-    : status?.configured
+    : status?.configured || !provider.capabilities.access
       ? t("cloud.empty")
       : t("cloud.notConfigured")
 
@@ -620,6 +677,15 @@ export function CloudManager({
         />
       ) : null}
 
+      {gated && provider.Gate ? (
+        <Gate
+          component={provider.Gate}
+          onReady={() => {
+            setGated(false)
+            void load(path)
+          }}
+        />
+      ) : (
       <Listing
         key={`${provider.id}:${path}:${searchActive ? "search" : "folder"}`}
         entries={visible}
@@ -639,6 +705,7 @@ export function CloudManager({
         emptyAreaMenu={emptyAreaMenu}
         emptyLabel={emptyLabel}
       />
+      )}
 
       {preview ? <PreviewPanel entry={preview} provider={provider} onClose={() => setPreview(null)} /> : null}
 
@@ -747,4 +814,10 @@ function SelectionBar({
       </div>
     </div>
   )
+}
+
+/** renders a provider's gate screen; a plain component so the lint rule
+   about components created during render stays quiet */
+function Gate({ component: Component, onReady }: { component: React.ComponentType<{ onReady: () => void }>; onReady: () => void }) {
+  return <Component onReady={onReady} />
 }
