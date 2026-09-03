@@ -1,7 +1,5 @@
 "use client"
 
-/* eslint-disable react-hooks/static-components -- the registry looks up an
-   existing module-level scene component; nothing is created during render */
 import { resolveScene } from "@/lib/screenkit/insert-registry"
 import type { ResolvedInsert } from "@/lib/screenkit/types"
 import * as React from "react"
@@ -29,5 +27,6 @@ export function InsertCanvas({
   if (insert.kind === "site") return <SiteScreen insert={insert} />
   if (insert.kind === "file") return <FileScreen insert={insert} />
   if (!Scene) return null
+  // eslint-disable-next-line react-hooks/static-components -- a module-level component of an insert package, never a fresh identity
   return <Scene insert={insert} settings={settings as unknown as Record<string, unknown>} />
 }

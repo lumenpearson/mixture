@@ -1,3 +1,4 @@
+import { isHttpUrl } from "@/lib/media/url"
 import { normalizeCloudPath } from "@/lib/rpc/cloud/glob"
 import type { Insert, InsertKind, InsertSource } from "./types"
 
@@ -203,13 +204,15 @@ export const parseInsertKind = (value: unknown): InsertKind => (isInsertKind(val
 /**
  * A source read back from the `source` jsonb column: only the known fields
  * with the right types survive, and an empty result is `undefined` so scene
- * rows stay sourceless.
+ * rows stay sourceless. The url is held to the same scheme rule as on the
+ * way in — a row that never passed `validateSource` (a restored backup, a
+ * direct sql write) must not put `javascript:` in front of a visitor.
  */
 export function parseInsertSource(value: unknown): InsertSource | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined
   const raw = value as Record<string, unknown>
   const out: InsertSource = {}
-  if (typeof raw.url === "string" && raw.url) out.url = raw.url
+  if (typeof raw.url === "string" && isHttpUrl(raw.url)) out.url = raw.url
   if (typeof raw.path === "string" && raw.path) out.path = raw.path
   if (raw.fit === "contain" || raw.fit === "cover") out.fit = raw.fit
   if (typeof raw.zoom === "number" && Number.isFinite(raw.zoom)) out.zoom = raw.zoom

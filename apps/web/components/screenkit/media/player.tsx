@@ -106,25 +106,28 @@ export function MediaPlayer({
   const [dropped, setDropped] = React.useState<number | null>(null)
   const [readyState, setReadyState] = React.useState(0)
 
+  /* what autoplay currently wants, read by the listeners below without
+     re-registering them: changing the volume must not restart the element */
+  const wishes = React.useRef({ autoplay: wantAutoplay, bufferAhead: settings.bufferAhead })
+  React.useEffect(() => {
+    wishes.current = { autoplay: wantAutoplay, bufferAhead: settings.bufferAhead }
+  }, [wantAutoplay, settings.bufferAhead])
+
   /* ------------------------------ element events ------------------------------ */
 
+  /* only a new file re-arms autoplay and re-registers the listeners; volume,
+     speed, loop and mute are applied by the small effects further down, so a
+     drag of the volume slider cannot undo a speed or loop the user chose */
   React.useEffect(() => {
     const media = mediaRef.current
     if (!media) return
     startedRef.current = false
-    media.volume = settings.volume / 100
-    media.muted = wantMuted
-    media.playbackRate = settings.playbackRate
-    media.loop = wantLoop
-    setIsMuted(wantMuted)
-    setLooping(wantLoop)
-    setRate(settings.playbackRate)
 
     const tryStart = () => {
-      if (!wantAutoplay || startedRef.current) return
+      if (!wishes.current.autoplay || startedRef.current) return
       const ahead = bufferedAhead(readBuffered(media), media.currentTime)
       const remaining = Number.isFinite(media.duration) ? media.duration - media.currentTime : Infinity
-      const enough = ahead >= Math.min(settings.bufferAhead, remaining) || media.readyState >= 4
+      const enough = ahead >= Math.min(wishes.current.bufferAhead, remaining) || media.readyState >= 4
       if (!enough) return
       startedRef.current = true
       media.play().catch(() => {
@@ -193,7 +196,35 @@ export function MediaPlayer({
       media.removeEventListener("enterpictureinpicture", onEnterPip)
       media.removeEventListener("leavepictureinpicture", onLeavePip)
     }
-  }, [src, wantAutoplay, wantLoop, wantMuted, settings.bufferAhead, settings.playbackRate, settings.volume])
+  }, [src])
+
+  /* the stored defaults, each applied on its own: a new value here must not
+     drag the others back to the store's opinion */
+  React.useEffect(() => {
+    const media = mediaRef.current
+    if (media) media.volume = settings.volume / 100
+  }, [src, settings.volume])
+
+  React.useEffect(() => {
+    const media = mediaRef.current
+    if (!media) return
+    media.muted = wantMuted
+    setIsMuted(wantMuted)
+  }, [src, wantMuted])
+
+  React.useEffect(() => {
+    const media = mediaRef.current
+    if (!media) return
+    media.loop = wantLoop
+    setLooping(wantLoop)
+  }, [src, wantLoop])
+
+  React.useEffect(() => {
+    const media = mediaRef.current
+    if (!media) return
+    media.playbackRate = settings.playbackRate
+    setRate(settings.playbackRate)
+  }, [src, settings.playbackRate])
 
   /* stats: dropped frames are polled, there is no event for them */
   React.useEffect(() => {
@@ -297,6 +328,9 @@ export function MediaPlayer({
 
   const onKeyDown = (event: React.KeyboardEvent) => {
     if (!settings.hotkeys) return
+    // a key pressed on the volume slider or a control button belongs to that
+    // control: only the player box itself answers the player hotkeys
+    if (event.target !== event.currentTarget) return
     const media = mediaRef.current
     if (!media) return
     switch (event.key) {
@@ -394,6 +428,8 @@ export function MediaPlayer({
     <div
       ref={boxRef}
       tabIndex={0}
+      role="group"
+      aria-label={name ? `${t("player.region")} — ${name}` : t("player.region")}
       onKeyDown={onKeyDown}
       onPointerMove={showControls}
       onPointerLeave={() => playing && setControls(false)}
@@ -438,7 +474,10 @@ export function MediaPlayer({
         </div>
       )}
 
+      {/* faded out after 2.4 s of stillness: `inert` takes the invisible
+          controls out of the tab order instead of hiding a focus ring */}
       <div
+        inert={hideBar}
         className={cn(
           "flex flex-col gap-2 px-3 pb-3 pt-2 transition-opacity duration-300",
           kind === "video" && "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent",
@@ -558,6 +597,40 @@ function SeekBar({
     return (x / rect.width) * duration
   }
 
+  /* a slider must be operable from the keyboard, not only announced as one */
+  const onKeyDown = (event: React.KeyboardEvent) => {
+    if (duration <= 0) return
+    const step = event.shiftKey ? 10 : 5
+    let next: number
+    switch (event.key) {
+      case "ArrowLeft":
+      case "ArrowDown":
+        next = time - step
+        break
+      case "ArrowRight":
+      case "ArrowUp":
+        next = time + step
+        break
+      case "PageDown":
+        next = time - 60
+        break
+      case "PageUp":
+        next = time + 60
+        break
+      case "Home":
+        next = 0
+        break
+      case "End":
+        next = duration
+        break
+      default:
+        return
+    }
+    event.preventDefault()
+    event.stopPropagation()
+    onSeek(Math.max(0, Math.min(duration, next)))
+  }
+
   return (
     <div
       ref={barRef}
@@ -567,7 +640,9 @@ function SeekBar({
       aria-valuemax={Math.round(duration)}
       aria-valuenow={Math.round(time)}
       aria-valuetext={formatTime(time)}
-      tabIndex={-1}
+      aria-orientation="horizontal"
+      tabIndex={0}
+      onKeyDown={onKeyDown}
       onPointerDown={(event) => {
         event.stopPropagation()
         event.currentTarget.setPointerCapture(event.pointerId)
@@ -579,7 +654,7 @@ function SeekBar({
       }}
       onPointerLeave={() => setHover(null)}
       onClick={(event) => event.stopPropagation()}
-      className="group/seek relative h-4 w-full cursor-pointer touch-none"
+      className="group/seek relative h-4 w-full cursor-pointer touch-none rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-full bg-white/20 transition-[height] group-hover/seek:h-1.5">
         {duration > 0

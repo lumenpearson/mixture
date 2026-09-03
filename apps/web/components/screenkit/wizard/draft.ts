@@ -1,3 +1,6 @@
+import { normalizeHttpUrl } from "@/lib/media/url"
+import { ASPECTS, DEVICES, STATUSES } from "@/lib/screenkit/data"
+import { MAX_SOURCE_URL_LENGTH, isInsertKind, parseInsertSource } from "@/lib/screenkit/insert-kinds"
 import type { AspectRatio, DeviceType, InsertKind, InsertSource, InsertStatus } from "@/lib/screenkit/types"
 
 /* ------------------------------------------------------------------ *
@@ -91,15 +94,74 @@ export function isDraftStarted(draft: WizardDraft, defaults: DraftDefaults): boo
   })
 }
 
-export function loadDraft(): WizardDraft | null {
+const DEVICE_IDS = DEVICES.map((device) => device.id)
+const STATUS_IDS = STATUSES.map((status) => status.id)
+
+const text = (value: unknown, fallback = ""): string => (typeof value === "string" ? value : fallback)
+
+const oneOf = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
+  (allowed as readonly string[]).includes(String(value)) ? (value as T) : fallback
+
+/**
+ * The source of a stored draft: the shape `parseInsertSource` accepts, with
+ * the url kept as typed — the author may be halfway through "example.com",
+ * and every consumer (the live preview, the review step, the submit) runs it
+ * through `normalizeHttpUrl` before it reaches an element.
+ */
+function parseDraftSource(value: unknown): InsertSource {
+  const parsed = parseInsertSource(value) ?? {}
+  const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {}
+  const url = text(raw.url).slice(0, MAX_SOURCE_URL_LENGTH)
+  return url ? { ...parsed, url } : parsed
+}
+
+/**
+ * A draft read back from an unstructured store, field by field. A truncated
+ * write or a hand-edited value must not reach the dialog: `isDraftStarted`
+ * reads `draft.source` and the steps read every string, so one missing field
+ * used to kill the wizard on open — with the same draft still in storage.
+ */
+export function parseDraft(value: unknown, defaults: DraftDefaults): WizardDraft | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  const raw = value as Record<string, unknown>
+  if (raw.version !== 1) return null
+  const blank = emptyDraft(defaults)
+  return {
+    version: 1,
+    step: oneOf(raw.step, WIZARD_STEPS, blank.step),
+    kind: isInsertKind(raw.kind) ? raw.kind : blank.kind,
+    source: parseDraftSource(raw.source),
+    sceneKey: text(raw.sceneKey),
+    titleRu: text(raw.titleRu),
+    titleEn: text(raw.titleEn),
+    slug: text(raw.slug),
+    category: text(raw.category, blank.category),
+    device: oneOf(raw.device, DEVICE_IDS, blank.device),
+    aspect: oneOf(raw.aspect, ASPECTS, blank.aspect),
+    status: oneOf(raw.status, STATUS_IDS, blank.status),
+    episode: text(raw.episode, blank.episode),
+    scene: text(raw.scene, blank.scene),
+    date: text(raw.date, blank.date),
+    descriptionRu: text(raw.descriptionRu),
+    descriptionEn: text(raw.descriptionEn),
+    promptRu: text(raw.promptRu),
+    promptEn: text(raw.promptEn),
+    shortPromptRu: text(raw.shortPromptRu),
+    shortPromptEn: text(raw.shortPromptEn),
+    negativePromptRu: text(raw.negativePromptRu),
+    negativePromptEn: text(raw.negativePromptEn),
+    technicalNotesRu: text(raw.technicalNotesRu),
+    technicalNotesEn: text(raw.technicalNotesEn),
+    updatedAt: typeof raw.updatedAt === "number" && Number.isFinite(raw.updatedAt) ? raw.updatedAt : Date.now(),
+  }
+}
+
+export function loadDraft(defaults: DraftDefaults): WizardDraft | null {
   if (typeof window === "undefined") return null
   try {
     const raw = window.localStorage.getItem(WIZARD_DRAFT_KEY)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as Partial<WizardDraft>
-    if (!parsed || parsed.version !== 1 || typeof parsed.titleRu !== "string") return null
-    if (!WIZARD_STEPS.includes(parsed.step as WizardStep)) parsed.step = "kind"
-    return parsed as WizardDraft
+    return parseDraft(JSON.parse(raw), defaults)
   } catch {
     return null
   }
@@ -120,20 +182,6 @@ export function clearDraft() {
     window.localStorage.removeItem(WIZARD_DRAFT_KEY)
   } catch {
     // ignore
-  }
-}
-
-/** accept bare hosts and refuse anything but http(s); "" when invalid */
-export function normalizeHttpUrl(value: string | undefined): string {
-  const raw = (value ?? "").trim()
-  if (!raw) return ""
-  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `https://${raw}`
-  try {
-    const parsed = new URL(withScheme)
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return ""
-    return parsed.toString()
-  } catch {
-    return ""
   }
 }
 

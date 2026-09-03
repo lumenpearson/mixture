@@ -13,6 +13,7 @@ import {
   type MediaKind,
   type TextEncoding,
 } from "@/lib/media/kinds"
+import { canOpenInNewTab, isActiveContentType } from "@/lib/media/url"
 import { cn } from "@/lib/utils"
 import {
   Archive,
@@ -130,6 +131,7 @@ export function FilePreview({
     return (
       <ImagePreview
         url={ready.url}
+        contentType={ready.contentType}
         name={name}
         screen={screen}
         fit={effectiveFit}
@@ -158,18 +160,31 @@ export function FilePreview({
     )
   }
 
-  if (kind === "pdf") {
+  // the frame renders whatever the bytes turn out to be, not what the file
+  // name promised: an active document never gets a frame, only a download
+  if (kind === "pdf" && !isActiveContentType(ready.contentType)) {
     return (
       <div className={cn("flex flex-col gap-2", screen ? "h-full w-full" : "", className)}>
         {!screen ? (
           <Toolbar>
-            <ToolLink href={ready.url} label={t("player.preview.open")} icon={ExternalLink} />
+            {canOpenInNewTab(ready.url, ready.contentType) ? (
+              <ToolLink href={ready.url} label={t("player.preview.open")} icon={ExternalLink} />
+            ) : null}
             <ToolLink href={ready.url} download={name} label={t("player.preview.download")} icon={Download} />
           </Toolbar>
         ) : null}
+        {/* sandboxed like the site insert (kinds/site-screen.tsx), so a url
+            that answers with html instead of a pdf cannot take the top frame
+            or post a form. Our own bytes arrive as a blob of this origin and
+            need `allow-same-origin` to load at all; a foreign url is framed
+            with an opaque origin, where its scripts see nothing of ours.
+            `allow-scripts` stays in both: the built-in pdf viewers are
+            script-driven and a frame without it stays blank */}
         <iframe
           src={ready.url}
           title={name}
+          sandbox={ready.via === "rpc" ? "allow-scripts allow-same-origin" : "allow-scripts allow-popups"}
+          referrerPolicy="no-referrer"
           className={cn("w-full border-0 bg-white", screen ? "h-full" : "h-[70vh] rounded-2xl border border-panel-border")}
         />
       </div>
@@ -213,6 +228,7 @@ export function FilePreview({
 
 function ImagePreview({
   url,
+  contentType,
   name,
   screen,
   fit,
@@ -221,6 +237,7 @@ function ImagePreview({
   className,
 }: {
   url: string
+  contentType?: string
   name: string
   screen: boolean
   fit: "contain" | "cover"
@@ -230,9 +247,11 @@ function ImagePreview({
 }) {
   const { t } = useScreenkit()
   const [localZoom, setLocalZoom] = React.useState(100)
-  const [localFit, setLocalFit] = React.useState(fit)
+  // null until the toolbar button is used, so a change of the global image fit
+  // in the style section still reaches an open preview
+  const [localFit, setLocalFit] = React.useState<"contain" | "cover" | null>(null)
   const scale = screen ? (zoom ?? 1) : localZoom / 100
-  const objectFit = screen ? fit : localFit
+  const objectFit = screen ? fit : (localFit ?? fit)
 
   if (screen) {
     return (
@@ -267,22 +286,24 @@ function ImagePreview({
         <span className="w-10 font-mono text-[11px] tabular-nums text-text-secondary">{localZoom}%</span>
         <button
           type="button"
-          onClick={() => setLocalFit((current) => (current === "cover" ? "contain" : "cover"))}
+          onClick={() => setLocalFit(objectFit === "cover" ? "contain" : "cover")}
           className="rounded-full border border-panel-border bg-control px-2.5 py-1 font-mono text-[11px] lowercase text-text-secondary transition-colors hover:bg-panel-hover hover:text-foreground"
         >
-          {t("player.preview.fit")}: {localFit === "cover" ? t("player.settings.fit.cover") : t("player.settings.fit.contain")}
+          {t("player.preview.fit")}: {objectFit === "cover" ? t("player.settings.fit.cover") : t("player.settings.fit.contain")}
         </button>
         <span className="ml-auto flex items-center gap-1">
-          <ToolLink href={url} label={t("player.preview.open")} icon={ExternalLink} />
+          {/* an uploaded svg opened at a blob: url would run on this origin */}
+          {canOpenInNewTab(url, contentType) ? <ToolLink href={url} label={t("player.preview.open")} icon={ExternalLink} /> : null}
           <ToolLink href={url} download={name} label={t("player.preview.download")} icon={Download} />
         </span>
       </Toolbar>
-      <div className="sk-scroll flex max-h-[70vh] items-center justify-center overflow-auto rounded-2xl border border-panel-border bg-black/90 p-2">
+      {/* a fixed box: the picture arrives late and must not move the panel */}
+      <div className="sk-scroll flex h-[60vh] items-center justify-center overflow-auto rounded-2xl border border-panel-border bg-black/90 p-2">
         <img
           src={url}
           alt={name}
           draggable={false}
-          className={cn("max-h-[66vh] max-w-full transition-transform", localFit === "cover" ? "object-cover" : "object-contain")}
+          className={cn("max-h-full max-w-full transition-transform", objectFit === "cover" ? "object-cover" : "object-contain")}
           style={{ transform: `scale(${scale})`, transformOrigin: "center" }}
         />
       </div>
@@ -336,7 +357,7 @@ function TextPreview({
       className={cn(
         "sk-scroll font-mono text-[12px] leading-relaxed text-text-secondary",
         wrap ? "whitespace-pre-wrap [overflow-wrap:anywhere]" : "whitespace-pre",
-        screen ? "h-full w-full overflow-auto bg-[#0b0b0c] p-3 text-white/85" : "max-h-[70vh] overflow-auto rounded-2xl border border-panel-border bg-panel-soft p-4",
+        screen ? "h-full w-full overflow-auto bg-black p-3 text-white/85" : "max-h-[70vh] overflow-auto rounded-2xl border border-panel-border bg-panel-soft p-4",
       )}
     >
       {kind === "code"

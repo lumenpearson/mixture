@@ -1,5 +1,6 @@
 "use client"
 
+import { mediaBlobCache, type BlobCacheHandle } from "@/lib/media/blob-cache"
 import { contentTypeOf } from "@/lib/media/kinds"
 import type { StreamingMode } from "@/lib/media/player-settings"
 import { cloudClient, rpcErrorMessage } from "@/lib/rpc/client"
@@ -13,7 +14,9 @@ import { usePlayerSettings } from "./player-settings"
  * local object url) or from the cloud drive by path through the ReadFile
  * rpc. The hook turns either into something an <img>, <video> or a text
  * decoder can use, honouring the streaming setting, and caches blob urls
- * so switching between files does not re-download them.
+ * (lib/media/blob-cache.ts) so switching between files does not re-download
+ * them. The cache lease is tied to this hook's effect: a url stays alive as
+ * long as a component may still be showing it.
  * ------------------------------------------------------------------ */
 
 export type MediaRead = {
@@ -66,34 +69,6 @@ export type MediaLoad =
     }
   | { status: "error"; reason: "too-large" | "failed" | "missing"; message?: string }
 
-type CacheEntry = { url: string; bytes: Uint8Array; contentType: string; name: string; size: number }
-
-const CACHE_LIMIT = 24
-const cache = new Map<string, CacheEntry>()
-
-function remember(key: string, entry: CacheEntry) {
-  if (cache.has(key)) cache.delete(key)
-  cache.set(key, entry)
-  while (cache.size > CACHE_LIMIT) {
-    const oldest = cache.keys().next().value
-    if (oldest === undefined) break
-    const evicted = cache.get(oldest)
-    cache.delete(oldest)
-    if (evicted) URL.revokeObjectURL(evicted.url)
-  }
-}
-
-/** drop a cached blob (after the file changed on the drive) */
-export function forgetMedia(path: string, scope = "") {
-  for (const key of [...cache.keys()]) {
-    if (key.startsWith(`${scope}:${path}#`)) {
-      const entry = cache.get(key)
-      cache.delete(key)
-      if (entry) URL.revokeObjectURL(entry.url)
-    }
-  }
-}
-
 const nameOf = (source: MediaSource) =>
   source.name ?? (source.path ?? source.url ?? "file").split("?")[0].split("/").pop() ?? "file"
 
@@ -129,6 +104,8 @@ export function useMediaLoad(source: MediaSource | null, options?: { wantBytes?:
       return
     }
     let cancelled = false
+    /** the cache lease this effect holds; released when it re-runs */
+    let handle: BlobCacheHandle | undefined
     const name = nameOf(source)
 
     if (delivery === "url") {
@@ -166,19 +143,26 @@ export function useMediaLoad(source: MediaSource | null, options?: { wantBytes?:
 
     const path = source.path as string
     const cacheKey = `${source.scope ?? ""}:${path}#${source.sha ?? ""}`
-    const cached = cache.get(cacheKey)
-    if (cached) {
+    const cached = mediaBlobCache.take(cacheKey)
+    // an entry cached for a media element carries no bytes: a text preview
+    // that finds one has to read the file again
+    if (cached && (!wantBytes || cached.entry.bytes)) {
+      handle = cached
       setState({
         status: "ready",
-        url: cached.url,
-        bytes: wantBytes ? cached.bytes : undefined,
-        contentType: cached.contentType,
-        name: cached.name,
-        size: cached.size,
+        url: cached.entry.url,
+        bytes: wantBytes ? cached.entry.bytes : undefined,
+        contentType: cached.entry.contentType,
+        name: cached.entry.name,
+        size: cached.entry.size,
         via: "rpc",
       })
-      return
+      return () => {
+        cancelled = true
+        handle?.release()
+      }
     }
+    cached?.release()
     setState({ status: "loading" })
     ;(source.reader ?? rpcReader)(path)
       .then((response) => {
@@ -202,21 +186,22 @@ export function useMediaLoad(source: MediaSource | null, options?: { wantBytes?:
         const bytes = response.content
         const contentType = response.contentType || source.contentType || contentTypeOf(name)
         const blob = new Blob([bytes as BlobPart], { type: contentType })
-        const entry: CacheEntry = {
+        handle = mediaBlobCache.put(cacheKey, {
           url: URL.createObjectURL(blob),
-          bytes,
+          // the decoded bytes are kept only where they are read, so a shelf
+          // of watched clips does not also sit in the js heap
+          bytes: wantBytes ? bytes : undefined,
           contentType,
           name: response.name || name,
           size: bytes.byteLength,
-        }
-        remember(cacheKey, entry)
+        })
         setState({
           status: "ready",
-          url: entry.url,
+          url: handle.entry.url,
           bytes: wantBytes ? bytes : undefined,
           contentType,
-          name: entry.name,
-          size: entry.size,
+          name: handle.entry.name,
+          size: handle.entry.size,
           via: "rpc",
         })
       })
@@ -226,6 +211,7 @@ export function useMediaLoad(source: MediaSource | null, options?: { wantBytes?:
       })
     return () => {
       cancelled = true
+      handle?.release()
     }
     // the key captures every field of `source` the effect reads
     // eslint-disable-next-line react-hooks/exhaustive-deps

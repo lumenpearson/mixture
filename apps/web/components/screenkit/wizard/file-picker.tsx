@@ -67,6 +67,9 @@ export function FilePicker({ value, onPick }: { value?: string; onPick: (entry: 
           onChange={(event) => setQuery(event.target.value)}
           placeholder={t("wizard.file.search")}
           aria-label={t("wizard.file.search")}
+          type="search"
+          /* Enter in a search field means "search", not "next step" */
+          data-wizard-no-enter=""
           className="h-10 rounded-xl border-panel-border bg-control pl-9 font-mono text-sm text-foreground placeholder:text-text-faint focus-visible:ring-ring"
         />
       </div>
