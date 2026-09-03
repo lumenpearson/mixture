@@ -36,7 +36,7 @@ const PALETTE_PREVIEW: { id: Palette; tokens: string[] }[] = [
 function ThemeControls() {
   const { t } = useScreenkit()
   const { theme, setTheme } = useThemeMode()
-  const { palette, setPalette, gradients, setGradients, scale, setScale, glow, setGlow } = usePalette()
+  const { palette, setPalette, gradients, setGradients, scale, setScale } = usePalette()
   const transition = useThemeTransition()
   const [mounted, setMounted] = React.useState(false)
   React.useEffect(() => setMounted(true), [])
@@ -138,19 +138,6 @@ function ThemeControls() {
           ))}
         </div>
         <Explain>{t("theme.gradientsDesc")}</Explain>
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <SectionHeading title={t("style.glow")} />
-        <SegmentedControl<"on" | "off">
-          options={[
-            { value: "on", label: t("style.glowOn") },
-            { value: "off", label: t("style.glowOff") },
-          ]}
-          value={glow ? "on" : "off"}
-          onChange={(value) => setGlow(value === "on")}
-        />
-        <Explain>{t("style.glowDesc")}</Explain>
       </div>
 
       <div className="flex flex-col gap-3">
