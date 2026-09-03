@@ -6,6 +6,7 @@ import {
   nextPending,
   patchItem,
   resolveConflict,
+  takenPaths,
   type ConflictResolution,
   type ExistingEntry,
   type UploadCandidate,
@@ -13,7 +14,7 @@ import {
 } from "@/lib/cloud/upload-queue"
 import { rpcErrorMessage } from "@/lib/rpc/client"
 import * as React from "react"
-import type { CloudProvider } from "./provider"
+import { GITHUB_PROVIDER_ID, type CloudProvider } from "./provider"
 
 /* ------------------------------------------------------------------ *
  * the upload runner
@@ -31,6 +32,13 @@ export type UploadEnvironment = {
   branch: string
   /** the caller's own GitHub token; "" when they only hold an access key */
   token: string
+  /**
+   * whether the direct PUT to api.github.com is available *for this provider*.
+   * The manager computes it; the runner checks it again before sending,
+   * because a route chosen when the queue was built must never outlive the
+   * source it was chosen for — the bytes would land in the cloud repository
+   * while the manager is pointed at a folder on the user's disk.
+   */
   canUploadDirectly: boolean
 }
 
@@ -51,8 +59,13 @@ export function useUploads(environment: UploadEnvironment, onQueueDrained: () =>
     drainedRef.current = onQueueDrained
   })
 
+  // the folder listing that built the queue, kept for "keep both": a name has
+  // to dodge what is already in the folder, not only what is queued
+  const folderRef = React.useRef<string[]>([])
+
   const enqueue = React.useCallback(
     (candidates: readonly UploadCandidate[], basePath: string, existing: readonly ExistingEntry[]) => {
+      folderRef.current = existing.map((entry) => entry.path)
       const built = buildUploadItems(candidates, {
         basePath,
         existing,
@@ -80,6 +93,11 @@ export function useUploads(environment: UploadEnvironment, onQueueDrained: () =>
 
     try {
       if (item.route === "direct") {
+        // the direct route talks to api.github.com and nothing else: it is
+        // only ever right for the GitHub source
+        if (!env.canUploadDirectly || env.provider.id !== GITHUB_PROVIDER_ID) {
+          throw new Error("the direct upload route is not available for this source")
+        }
         if (!env.token || !env.repo || !env.branch) {
           throw new Error("a github token is required for a file this large")
         }
@@ -156,14 +174,16 @@ export function useUploads(environment: UploadEnvironment, onQueueDrained: () =>
   }, [])
 
   const resolve = React.useCallback((id: string, resolution: ConflictResolution) => {
-    setItems((current) => resolveConflict(current, id, resolution, current.map((item) => item.path)))
+    setItems((current) => resolveConflict(current, id, resolution, takenPaths(current, folderRef.current)))
   }, [])
 
   const resolveAll = React.useCallback((resolution: ConflictResolution) => {
     setItems((current) =>
       current.reduce(
         (acc, item) =>
-          item.status === "conflict" ? resolveConflict(acc, item.id, resolution, acc.map((i) => i.path)) : acc,
+          item.status === "conflict"
+            ? resolveConflict(acc, item.id, resolution, takenPaths(acc, folderRef.current))
+            : acc,
         current,
       ),
     )

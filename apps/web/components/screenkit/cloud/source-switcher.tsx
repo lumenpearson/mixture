@@ -26,8 +26,10 @@ export function SourceSwitcher({
   const providers = useProviders()
   if (providers.length < 2) return null
   return (
+    /* a group of toggle buttons, not a tablist: there is no tabpanel to point
+       at and the strip does not own the content below it */
     <div
-      role="tablist"
+      role="group"
       aria-label={t("cloudfm.source.label")}
       className={cn("flex w-fit max-w-full gap-1 rounded-2xl border border-panel-border bg-control p-1", className)}
     >
@@ -38,17 +40,16 @@ export function SourceSwitcher({
           <button
             key={provider.id}
             type="button"
-            role="tab"
-            aria-selected={active}
+            aria-pressed={active}
             onClick={() => onChange(provider.id)}
             className={cn(
-              "inline-flex min-w-0 items-center gap-2 rounded-xl px-3 py-2 font-mono text-xs lowercase transition-colors",
+              "inline-flex min-w-0 items-center gap-2 rounded-xl px-3 py-2 font-mono text-xs lowercase transition-colors focus-visible:ring-2 focus-visible:ring-ring",
               active
                 ? "bg-control-active text-control-active-foreground"
                 : "text-text-secondary hover:bg-panel-hover hover:text-foreground",
             )}
           >
-            <Icon className="size-3.5 shrink-0" />
+            <Icon className="size-3.5 shrink-0" aria-hidden="true" />
             <span className="truncate">{t(provider.labelKey)}</span>
           </button>
         )

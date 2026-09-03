@@ -17,7 +17,20 @@ import { joinPath, normalizePath, pathProblem, uniqueName, type PathProblem } fr
 /** GitHub refuses a contents-API write well before this; it is the ceiling we admit to */
 export const DIRECT_UPLOAD_LIMIT = 90 * 1024 * 1024
 
-export const UPLOAD_LIMIT_RPC = RPC_MAX_MESSAGE_BYTES
+/**
+ * The largest file the rpc route may carry.
+ *
+ * `RPC_MAX_MESSAGE_BYTES` caps the whole serialized `WriteFileRequest`, not
+ * the payload: the content field carries a tag and a length varint, and
+ * `path`, `sha` and `message` ride along. A file of exactly the cap therefore
+ * produced a message a few bytes over it and the transport answered
+ * `resource_exhausted` before the handler ran — an english transport error
+ * instead of the queue's own "too large". The reserve covers the envelope plus
+ * the longest path the service accepts (512) and a commit message.
+ */
+const RPC_ENVELOPE_RESERVE = 4096
+
+export const UPLOAD_LIMIT_RPC = RPC_MAX_MESSAGE_BYTES - RPC_ENVELOPE_RESERVE
 
 export type UploadRoute = "rpc" | "direct" | "too-large"
 
@@ -110,6 +123,17 @@ export function patchItem(items: readonly UploadItem[], id: string, patch: Parti
 }
 
 export type ConflictResolution = "overwrite" | "keep-both" | "skip"
+
+/**
+ * Every name "keep both" has to steer around: what the folder already holds
+ * *and* what the queue is about to write. Passing only the queue was the bug —
+ * the repository holding `a.png` and `a (copy).png` turned "keep both" into a
+ * silent overwrite of `a (copy).png`, because the server fills in a missing
+ * blob sha from the existing file.
+ */
+export function takenPaths(items: readonly UploadItem[], existing: readonly string[]): string[] {
+  return [...existing, ...items.map((item) => item.path)]
+}
 
 /** apply an overwrite prompt answer to one queued item */
 export function resolveConflict(

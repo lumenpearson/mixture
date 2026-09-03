@@ -24,7 +24,7 @@ import {
 } from "lucide-react"
 import * as React from "react"
 import { toast } from "sonner"
-import { CLOUD_ACTION_EVENT, CLOUD_OPEN_EVENT } from "../hotkeys"
+import { CLOUD_ACTION_EVENT, CLOUD_OPEN_EVENT, takePendingCloudAction } from "../hotkeys"
 import "../local/provider"
 import { useScreenkit } from "../store"
 import { DeleteDialog, MoveDialog, NewFolderDialog, PropertiesDialog } from "./dialogs"
@@ -117,7 +117,17 @@ export function CloudManager({
 
   const role = status?.role ?? Role.ANONYMOUS
   const canEdit = provider.capabilities.access ? role === Role.EDITOR || role === Role.OWNER : true
-  const canUploadDirectly = Boolean(hasToken && canEdit && status?.repo && status?.branch)
+  /*
+   * The direct route is a PUT to api.github.com against `status.repo`, so it
+   * belongs to the GitHub source alone. Without the provider check a large
+   * file dropped on «локальные файлы» took it — `status` is only ever written
+   * by the GitHub provider's listing, so repo, branch and token were still
+   * there — and the bytes went to the private cloud repository instead of the
+   * folder on the user's disk.
+   */
+  const canUploadDirectly = Boolean(
+    provider.id === GITHUB_PROVIDER_ID && hasToken && canEdit && status?.repo && status?.branch,
+  )
 
   React.useEffect(() => {
     // localStorage is only readable after mount; the cap explanation and the
@@ -195,6 +205,32 @@ export function CloudManager({
     refresh,
   )
 
+  /*
+   * Switching the source starts over. Nothing one backend produced may be read
+   * while another is showing: `status` decides the upload route and the role,
+   * the clipboard and the preview hold paths that mean nothing on the other
+   * side, and a queued item carries a route chosen for the source it was
+   * dropped on. The first run is skipped so `?path` still deep-links.
+   */
+  const shownProvider = React.useRef(provider.id)
+  const clearUploads = uploads.clear
+  React.useEffect(() => {
+    if (shownProvider.current === provider.id) return
+    shownProvider.current = provider.id
+    clearUploads()
+    invalidateTreeCache()
+    setStatus(null)
+    setEntries([])
+    setPath("")
+    setQuery("")
+    setSelection(new Set())
+    setClipboard(null)
+    setPreview(null)
+    setProperties(null)
+    setRenamingPath(null)
+    setError(null)
+  }, [provider.id, clearUploads])
+
   const enqueue = React.useCallback(
     (candidates: ReturnType<typeof candidatesFromInput>, base: string) => {
       if (!candidates.length) return
@@ -241,6 +277,9 @@ export function CloudManager({
     }
     const onAction = (event: Event) => {
       const action = (event as CustomEvent<{ action?: string }>).detail?.action
+      // the palette parks the same request for a manager that is not mounted
+      // yet; taking it here keeps an already-mounted manager from doing it twice
+      takePendingCloudAction()
       if (action === "upload") pickFiles(path)
       if (action === "new-folder") setNewFolder({ open: true, parent: path })
     }
@@ -252,8 +291,13 @@ export function CloudManager({
     }
   }, [path, pickFiles, provider])
 
-  /* ?open=<file> deep-links straight into a preview */
+  /* ?open=<file> deep-links straight into a preview, and the command palette
+     may have parked an action while this component was still unmounted */
   React.useEffect(() => {
+    const action = takePendingCloudAction()
+    if (action === "upload") pickFiles(readParam("path"))
+    if (action === "new-folder") setNewFolder({ open: true, parent: readParam("path") })
+
     const open = readParam("open")
     if (!open) return
     writeParams({ open: "" })
@@ -271,7 +315,10 @@ export function CloudManager({
 
   const debouncedQuery = useDebounced(query)
   const searchActive = everywhere && debouncedQuery.trim().length >= SEARCH_MIN_CHARS
-  const tree = useTreeSearch(provider, searchActive)
+  // reloadToken doubles as the credential generation: saving or clearing a
+  // token in the connect panel bumps it, and the cached recursive listing —
+  // taken as whoever was signed in then — goes with it
+  const tree = useTreeSearch(provider, searchActive, reloadToken)
 
   const source = searchActive ? tree.entries : entries
   const activeQuery = everywhere ? debouncedQuery : query
@@ -357,11 +404,20 @@ export function CloudManager({
     [],
   )
 
+  /*
+   * "copy link" always copies the in-app deep link. `entry.downloadUrl` on a
+   * private repository is a raw.githubusercontent.com address carrying a
+   * short-lived `?token=` credential: copying it puts that credential in the
+   * clipboard and in whatever chat the link is pasted into, and it stops
+   * working within minutes anyway. The download url keeps its job — the <a>
+   * and window.open paths — and does not become a shareable link.
+   */
   const linkFor = React.useCallback((entry: Entry) => {
-    if (entry.downloadUrl) return entry.downloadUrl
-    const target = entry.kind === EntryKind.DIRECTORY ? entry.path : parentPath(entry.path)
+    const isDirectory = entry.kind === EntryKind.DIRECTORY
     const params = new URLSearchParams({ view: "cloud" })
-    if (target) params.set("path", target)
+    const folder = isDirectory ? entry.path : parentPath(entry.path)
+    if (folder) params.set("path", folder)
+    if (!isDirectory) params.set("open", entry.path)
     return `${window.location.origin}${window.location.pathname}?${params.toString()}`
   }, [])
 

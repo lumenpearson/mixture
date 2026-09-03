@@ -1,13 +1,17 @@
 import { Code, ConnectError, type HandlerContext } from "@connectrpc/connect"
 import { create } from "@bufbuild/protobuf"
 import {
+  ConfigSchema,
   CreateDirectoryRequestSchema,
   DeleteEntryRequestSchema,
+  GetConfigRequestSchema,
+  GetStatusRequestSchema,
   ListEntriesRequestSchema,
   MoveEntryRequestSchema,
   ReadFileRequestSchema,
   Role,
   StatEntryRequestSchema,
+  UpdateConfigRequestSchema,
   WriteFileRequestSchema,
 } from "@mixture/protocol/cloud"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -128,7 +132,7 @@ function githubStub(files: Files, recorder: Recorder, login: string) {
       return { sha: "head", entries, truncated: false }
     }
 
-    async putFile(path: string, content: Uint8Array, message: string) {
+    async putFile(path: string, content: Uint8Array, _message: string) {
       recorder.writes.push(path)
       files[path] = Buffer.from(content).toString("utf8")
       return {
@@ -203,7 +207,13 @@ async function loadService(options: {
   return { service: cloudServiceImpl, recorder, files }
 }
 
-const codeOf = async (call: Promise<unknown>): Promise<Code | undefined> => {
+/*
+ * A ServiceImpl handler is declared as returning `MessageInit<T> | Promise<…>`
+ * — what the router accepts, not what it hands back. The two helpers below are
+ * the whole adaptation: `codeOf` awaits a call for its ConnectError code, and
+ * `done` awaits it for the response.
+ */
+const codeOf = async (call: unknown): Promise<Code | undefined> => {
   try {
     await call
     return undefined
@@ -211,6 +221,8 @@ const codeOf = async (call: Promise<unknown>): Promise<Code | undefined> => {
     return error instanceof ConnectError ? error.code : undefined
   }
 }
+
+const done = async <T>(call: T | Promise<T>): Promise<T> => call
 
 beforeEach(() => {
   vi.stubEnv("MIXTURE_CLOUD_REPO", `${OWNER}/${REPO}`)
@@ -249,9 +261,8 @@ describe("path validation", () => {
   // the negative twin of the loop above: an ordinary path is not refused
   it("accepts an ordinary path", async () => {
     const { service } = await loadService({ files: { "renders/a.png": "x" }, login: OWNER })
-    const response = await service.statEntry(
-      create(StatEntryRequestSchema, { path: "renders/a.png" }),
-      context({ token: "t" }),
+    const response = await done(
+      service.statEntry(create(StatEntryRequestSchema, { path: "renders/a.png" }), context({ token: "t" })),
     )
     expect(response.entry?.path).toBe("renders/a.png")
   })
@@ -273,8 +284,8 @@ describe("roles", () => {
   it("lets a viewer read and refuses every mutation", async () => {
     const { service, recorder } = await loadService({ files, config: viewerConfig, login: "watcher" })
     const caller = context({ token: "t" })
-    const read = await service.readFile(create(ReadFileRequestSchema, { path: "renders/a.png" }), caller)
-    expect(Buffer.from(read.content).toString("utf8")).toBe("bytes")
+    const read = await done(service.readFile(create(ReadFileRequestSchema, { path: "renders/a.png" }), caller))
+    expect(Buffer.from(read.content ?? new Uint8Array()).toString("utf8")).toBe("bytes")
 
     const write = service.writeFile(
       create(WriteFileRequestSchema, { path: "renders/a.png", content: new Uint8Array([1]) }),
@@ -300,9 +311,11 @@ describe("roles", () => {
       config: { access: { owners: [OWNER], editors: ["hand"], viewers: [], allowAnonymousPublic: true, keys: [] } },
       login: "hand",
     })
-    const response = await service.writeFile(
-      create(WriteFileRequestSchema, { path: "renders/b.png", content: new Uint8Array([1, 2]) }),
-      context({ token: "t" }),
+    const response = await done(
+      service.writeFile(
+        create(WriteFileRequestSchema, { path: "renders/b.png", content: new Uint8Array([1, 2]) }),
+        context({ token: "t" }),
+      ),
     )
     expect(response.entry?.path).toBe("renders/b.png")
     expect(recorder.writes).toEqual(["renders/b.png"])
@@ -310,7 +323,7 @@ describe("roles", () => {
 
   it("reports the caller's role in the status", async () => {
     const { service } = await loadService({ config: viewerConfig, login: "watcher" })
-    const status = await service.getStatus({ $typeName: "mixture.cloud.v1.GetStatusRequest" }, context({ token: "t" }))
+    const status = await done(service.getStatus(create(GetStatusRequestSchema, {}), context({ token: "t" })))
     expect(status.status?.role).toBe(Role.VIEWER)
     expect(status.status?.login).toBe("watcher")
   })
@@ -340,8 +353,8 @@ describe("hidden entries answer like missing ones", () => {
     expect(await codeOf(service.readFile(create(ReadFileRequestSchema, { path: "private/notes.txt" }), caller))).toBe(
       Code.NotFound,
     )
-    const listing = await service.listEntries(create(ListEntriesRequestSchema, { path: "" }), caller)
-    expect(listing.entries.map((entry) => entry.path)).toEqual(["public"])
+    const listing = await done(service.listEntries(create(ListEntriesRequestSchema, { path: "" }), caller))
+    expect((listing.entries ?? []).map((entry) => entry.path)).toEqual(["public"])
   })
 
   it("refuses to overwrite, delete or move a hidden entry, and touches nothing", async () => {
@@ -394,7 +407,7 @@ describe("hidden entries answer like missing ones", () => {
   it("lets the owner read and edit the hidden tree", async () => {
     const { service, recorder } = await loadService({ ...hidden, login: OWNER })
     const caller = context({ token: "t" })
-    const stat = await service.statEntry(create(StatEntryRequestSchema, { path: "private/notes.txt" }), caller)
+    const stat = await done(service.statEntry(create(StatEntryRequestSchema, { path: "private/notes.txt" }), caller))
     expect(stat.entry?.path).toBe("private/notes.txt")
     await service.writeFile(
       create(WriteFileRequestSchema, { path: "private/notes.txt", content: new Uint8Array([1]) }),
@@ -403,25 +416,52 @@ describe("hidden entries answer like missing ones", () => {
     expect(recorder.writes).toEqual(["private/notes.txt"])
   })
 
-  it("hides a folder named by a hidden rule from the listing and from ListEntries", async () => {
+  /*
+   * One rule, written the two ways an owner would write it. Both used to leave
+   * the folder listed to every viewer: the folder resolved to the (more
+   * permissive) default, and the folder name is usually the secret.
+   */
+  for (const pattern of ["secret", "secret/**"]) {
+    it(`hides a folder and its files behind the "${pattern}" rule`, async () => {
+      const { service } = await loadService({
+        files: { "secret/plan.txt": "x", "public/a.png": "y" },
+        config: {
+          rules: [
+            { pattern: "public/**", visibility: "public" as const },
+            { pattern, visibility: "hidden" as const },
+          ],
+          access: { owners: [OWNER], editors: [], viewers: ["watcher"], allowAnonymousPublic: true, keys: [] },
+        },
+        login: "watcher",
+      })
+      const caller = context({ token: "t" })
+      const root = await done(service.listEntries(create(ListEntriesRequestSchema, { path: "" }), caller))
+      expect((root.entries ?? []).map((entry) => entry.name)).not.toContain("secret")
+      expect(await codeOf(service.listEntries(create(ListEntriesRequestSchema, { path: "secret" }), caller))).toBe(
+        Code.NotFound,
+      )
+      // and the files inside it, for a viewer who already knows a name
+      expect(await codeOf(service.readFile(create(ReadFileRequestSchema, { path: "secret/plan.txt" }), caller))).toBe(
+        Code.NotFound,
+      )
+    })
+  }
+
+  // the negative twin: the same viewer walks a folder nobody hid
+  it("lists a folder no rule hides", async () => {
     const { service } = await loadService({
-      files: { "secret/plan.txt": "x", "public/a.png": "y" },
+      files: { "renders/plan.txt": "x" },
       config: {
-        rules: [
-          { pattern: "public/**", visibility: "public" as const },
-          { pattern: "secret", visibility: "hidden" as const },
-          { pattern: "secret/**", visibility: "hidden" as const },
-        ],
+        rules: [{ pattern: "public/**", visibility: "public" as const }],
         access: { owners: [OWNER], editors: [], viewers: ["watcher"], allowAnonymousPublic: true, keys: [] },
       },
       login: "watcher",
     })
     const caller = context({ token: "t" })
-    const root = await service.listEntries(create(ListEntriesRequestSchema, { path: "" }), caller)
-    expect(root.entries.map((entry) => entry.name)).not.toContain("secret")
-    expect(await codeOf(service.listEntries(create(ListEntriesRequestSchema, { path: "secret" }), caller))).toBe(
-      Code.NotFound,
-    )
+    const root = await done(service.listEntries(create(ListEntriesRequestSchema, { path: "" }), caller))
+    expect((root.entries ?? []).map((entry) => entry.name)).toContain("renders")
+    const inside = await done(service.listEntries(create(ListEntriesRequestSchema, { path: "renders" }), caller))
+    expect((inside.entries ?? []).map((entry) => entry.name)).toEqual(["plan.txt"])
   })
 })
 
@@ -434,8 +474,8 @@ describe("anonymous callers", () => {
       config: { rules: [{ pattern: "public/**", visibility: "public" as const }] },
     })
     const caller = context({})
-    const listing = await service.listEntries(create(ListEntriesRequestSchema, { path: "" }), caller)
-    expect(listing.entries.map((entry) => entry.name)).toEqual(["public"])
+    const listing = await done(service.listEntries(create(ListEntriesRequestSchema, { path: "" }), caller))
+    expect((listing.entries ?? []).map((entry) => entry.name)).toEqual(["public"])
     expect(await codeOf(service.readFile(create(ReadFileRequestSchema, { path: "renders/b.png" }), caller))).toBe(
       Code.NotFound,
     )
@@ -451,8 +491,8 @@ describe("anonymous callers", () => {
       },
     })
     const caller = context({})
-    const listing = await service.listEntries(create(ListEntriesRequestSchema, { path: "" }), caller)
-    expect(listing.entries).toEqual([])
+    const listing = await done(service.listEntries(create(ListEntriesRequestSchema, { path: "" }), caller))
+    expect(listing.entries ?? []).toEqual([])
     expect(await codeOf(service.readFile(create(ReadFileRequestSchema, { path: "public/a.png" }), caller))).toBe(
       Code.NotFound,
     )
@@ -463,8 +503,8 @@ describe("anonymous callers", () => {
       files: { "public/a.png": "x" },
       config: { rules: [{ pattern: "public/**", visibility: "public" as const }] },
     })
-    const listing = await service.listEntries(create(ListEntriesRequestSchema, { path: "public" }), context({}))
-    expect(listing.entries[0]?.downloadUrl).toBe("")
+    const listing = await done(service.listEntries(create(ListEntriesRequestSchema, { path: "public" }), context({})))
+    expect(listing.entries?.[0]?.downloadUrl).toBe("")
   })
 })
 
@@ -473,8 +513,10 @@ describe("anonymous callers", () => {
 describe("cloud.config.json", () => {
   it("is not listed as a file", async () => {
     const { service } = await loadService({ files: { "a.png": "x" }, login: OWNER })
-    const listing = await service.listEntries(create(ListEntriesRequestSchema, { path: "" }), context({ token: "t" }))
-    expect(listing.entries.map((entry) => entry.name)).toEqual(["a.png"])
+    const listing = await done(
+      service.listEntries(create(ListEntriesRequestSchema, { path: "" }), context({ token: "t" })),
+    )
+    expect((listing.entries ?? []).map((entry) => entry.name)).toEqual(["a.png"])
   })
 
   it("needs the owner role to be written", async () => {
@@ -483,14 +525,11 @@ describe("cloud.config.json", () => {
       login: "hand",
     })
     const caller = context({ token: "t" })
-    const config = await service.getConfig({ $typeName: "mixture.cloud.v1.GetConfigRequest" }, caller)
+    const config = await done(service.getConfig(create(GetConfigRequestSchema, {}), caller))
     expect(config.config).toBeDefined()
     expect(
       await codeOf(
-        service.updateConfig(
-          { $typeName: "mixture.cloud.v1.UpdateConfigRequest", config: config.config, sha: "" },
-          caller,
-        ),
+        service.updateConfig(create(UpdateConfigRequestSchema, { config: config.config, sha: "" }), caller),
       ),
     ).toBe(Code.PermissionDenied)
     expect(recorder.writes).toEqual([])
@@ -499,12 +538,10 @@ describe("cloud.config.json", () => {
   it("never lets the last owner lock everyone out", async () => {
     const { service, files } = await loadService({ login: OWNER })
     const caller = context({ token: "t" })
-    const current = await service.getConfig({ $typeName: "mixture.cloud.v1.GetConfigRequest" }, caller)
-    const emptied = { ...current.config!, access: { ...current.config!.access!, owners: [] } }
-    await service.updateConfig(
-      { $typeName: "mixture.cloud.v1.UpdateConfigRequest", config: emptied, sha: "" },
-      caller,
-    )
+    const current = await done(service.getConfig(create(GetConfigRequestSchema, {}), caller))
+    const emptied = create(ConfigSchema, current.config)
+    if (emptied.access) emptied.access.owners = []
+    await done(service.updateConfig(create(UpdateConfigRequestSchema, { config: emptied, sha: "" }), caller))
     const written = JSON.parse(files["cloud.config.json"] as string) as CloudConfig
     expect(written.access.owners).toEqual([OWNER])
   })

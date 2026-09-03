@@ -130,6 +130,7 @@ export function FilePreview({
     return (
       <ImagePreview
         url={ready.url}
+        contentType={ready.contentType}
         name={name}
         screen={screen}
         fit={effectiveFit}
@@ -163,7 +164,7 @@ export function FilePreview({
       <div className={cn("flex flex-col gap-2", screen ? "h-full w-full" : "", className)}>
         {!screen ? (
           <Toolbar>
-            <ToolLink href={ready.url} label={t("player.preview.open")} icon={ExternalLink} />
+            <OpenLink url={ready.url} contentType={ready.contentType} name={name} label={t("player.preview.open")} />
             <ToolLink href={ready.url} download={name} label={t("player.preview.download")} icon={Download} />
           </Toolbar>
         ) : null}
@@ -213,6 +214,7 @@ export function FilePreview({
 
 function ImagePreview({
   url,
+  contentType,
   name,
   screen,
   fit,
@@ -221,6 +223,7 @@ function ImagePreview({
   className,
 }: {
   url: string
+  contentType: string
   name: string
   screen: boolean
   fit: "contain" | "cover"
@@ -273,7 +276,7 @@ function ImagePreview({
           {t("player.preview.fit")}: {localFit === "cover" ? t("player.settings.fit.cover") : t("player.settings.fit.contain")}
         </button>
         <span className="ml-auto flex items-center gap-1">
-          <ToolLink href={url} label={t("player.preview.open")} icon={ExternalLink} />
+          <OpenLink url={url} contentType={contentType} name={name} label={t("player.preview.open")} />
           <ToolLink href={url} download={name} label={t("player.preview.download")} icon={Download} />
         </span>
       </Toolbar>
@@ -424,6 +427,48 @@ function Shell({
 
 function Toolbar({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-panel-border bg-control px-3 py-2">{children}</div>
+}
+
+/*
+ * Types a top-level navigation would *run* instead of display. A blob url is
+ * same-origin by construction, so opening one in a tab puts the file on the
+ * app's own origin, next to `mixture-cloud-token` in localStorage: an uploaded
+ * `logo.svg` with a <script> inside would execute there. `/api/cloud/stream`
+ * already neutralises the same list on its way out.
+ */
+const ACTIVE_TYPES = new Set([
+  "image/svg+xml",
+  "text/html",
+  "application/xhtml+xml",
+  "text/xml",
+  "application/xml",
+])
+
+const isActiveDocument = (contentType: string, name: string) => {
+  if (ACTIVE_TYPES.has(contentType.split(";")[0]?.trim().toLowerCase() ?? "")) return true
+  const extension = name.toLowerCase().split(".").pop() ?? ""
+  return extension === "svg" || extension === "html" || extension === "htm" || extension === "xhtml" || extension === "xml"
+}
+
+/**
+ * "open in a new tab". A remote https url belongs to someone else's origin and
+ * opens as it is; a same-origin blob url of an active type is handed over as a
+ * download instead, so the file still leaves the app but nothing of it is
+ * parsed as a document on our origin.
+ */
+function OpenLink({
+  url,
+  contentType,
+  name,
+  label,
+}: {
+  url: string
+  contentType: string
+  name: string
+  label: string
+}) {
+  const neutralise = url.startsWith("blob:") && isActiveDocument(contentType, name)
+  return <ToolLink href={url} download={neutralise ? name : undefined} label={label} icon={ExternalLink} />
 }
 
 function ToolLink({

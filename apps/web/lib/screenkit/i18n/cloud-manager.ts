@@ -147,6 +147,12 @@ const dictionary: FeatureDictionary = {
     "cloudfm.settings.thumbnails": "миниатюры изображений",
     "cloudfm.settings.reset": "вернуть по умолчанию",
     "cloudfm.settings.saved": "настройки облака сохранены",
+
+    /* status: the server sends these keys in Status.message, never a sentence */
+    "cloud.status.noToken": "облако не подключено: вставьте свой github-токен или ключ доступа",
+    "cloud.status.unreachable": "репозиторий облака недоступен с текущим доступом",
+    "cloud.status.configInvalid": "настройки доступа повреждены, действуют значения по умолчанию",
+    "cloud.status.signIn": "войдите с github-токеном или ключом доступа, чтобы увидеть файлы",
   },
   en: {
     /* sources */
@@ -290,6 +296,18 @@ const dictionary: FeatureDictionary = {
     "cloudfm.settings.thumbnails": "image thumbnails",
     "cloudfm.settings.reset": "back to defaults",
     "cloudfm.settings.saved": "cloud settings saved",
+
+    /* status: the server sends these keys in Status.message, never a sentence */
+    "cloud.status.noToken": "the cloud is not connected: paste your github token or an access key",
+    "cloud.status.unreachable": "the cloud repository is not reachable with the current access",
+    "cloud.status.configInvalid": "the access settings are damaged, defaults are in effect",
+    "cloud.status.signIn": "sign in with a github token or an access key to see files",
+  },
+  snark: {
+    "cloud.status.noToken": "облако молчит: токена или ключа не завезли",
+    "cloud.status.unreachable": "репозиторий облака не отвечает — с таким доступом его как бы и нет",
+    "cloud.status.configInvalid": "настройки доступа сломаны, работают значения по умолчанию",
+    "cloud.status.signIn": "покажите токен или ключ — иначе файлов не будет",
   },
 }
 

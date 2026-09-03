@@ -106,7 +106,15 @@ export function UploadPanel({
         {canUploadDirectly ? t("cloudfm.upload.capNoteToken") : t("cloudfm.upload.capNote")}
       </p>
 
-      <ul className="flex min-w-0 flex-col gap-1.5" aria-live="polite">
+      {/* one line of progress, not the whole queue: every row re-renders on
+          each progress tick, and a live region around them made a screen
+          reader read the list out again from the top for the whole upload */}
+      <p className="sr-only" aria-live="polite">
+        {t("cloudfm.upload.queue")}: {summary.done}/{summary.total}
+        {summary.failed ? ` · ${t("cloudfm.upload.statusError")}: ${summary.failed}` : ""}
+      </p>
+
+      <ul className="flex min-w-0 flex-col gap-1.5">
         {items.map((item) => (
           <UploadRow key={item.id} item={item} onResolve={onResolve} onRetry={onRetry} onCancel={onCancel} />
         ))}

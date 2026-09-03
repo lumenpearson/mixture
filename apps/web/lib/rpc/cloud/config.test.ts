@@ -56,6 +56,28 @@ describe("visibilityFor", () => {
     expect(visibilityFor("public/secret/a.png", layered)).toBe("hidden")
     expect(visibilityFor("nested/.gitkeep", layered)).toBe("hidden")
   })
+
+  it("hides what is inside a folder a rule hides", () => {
+    // `secret` is a name pattern: it matches the folder and nothing else, so
+    // without inheritance the folder name would be hidden while its files
+    // stayed readable to any viewer who guessed one
+    const config = withRules([{ pattern: "secret", visibility: "hidden" }])
+    expect(visibilityFor("secret/plan.txt", config)).toBe("hidden")
+    expect(visibilityFor("secret/notes/tomorrow.txt", config)).toBe("hidden")
+  })
+
+  // the negative twin: inheritance carries `hidden` and only where no rule
+  // speaks for the path itself
+  it("carries nothing but hidden, and nothing past a rule of the path's own", () => {
+    expect(visibilityFor("renders/a.png", withRules([{ pattern: "renders", visibility: "private" }], "public"))).toBe(
+      "public",
+    )
+    const opened = withRules([
+      { pattern: "secret", visibility: "hidden" },
+      { pattern: "secret/brief.pdf", visibility: "public" },
+    ])
+    expect(visibilityFor("secret/brief.pdf", opened)).toBe("public")
+  })
 })
 
 describe("directoryVisibility", () => {

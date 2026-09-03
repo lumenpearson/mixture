@@ -34,10 +34,22 @@ export type TreeSearchState = {
 
 const IDLE: TreeSearchState = { loading: false, entries: [], truncated: false, error: null }
 
-export function useTreeSearch(provider: CloudProvider, enabled: boolean): TreeSearchState {
+/**
+ * @param generation bumped whenever the credentials change. The cached tree
+ *   was walked as whoever was signed in at the time — for an owner it lists
+ *   hidden entries — so both the cache and the state held here are dropped
+ *   when it moves, or clearing the token would leave that listing on screen
+ *   for the rest of the ttl.
+ */
+export function useTreeSearch(provider: CloudProvider, enabled: boolean, generation = 0): TreeSearchState {
   const [state, setState] = React.useState<TreeSearchState>(IDLE)
+  const seen = React.useRef(generation)
 
   React.useEffect(() => {
+    if (seen.current !== generation) {
+      seen.current = generation
+      invalidateTreeCache()
+    }
     if (!enabled || !provider.capabilities.tree) {
       setState(IDLE)
       return
@@ -61,7 +73,7 @@ export function useTreeSearch(provider: CloudProvider, enabled: boolean): TreeSe
         setState({ loading: false, entries: [], truncated: false, error: rpcErrorMessage(error) })
       })
     return () => controller.abort()
-  }, [provider, enabled])
+  }, [provider, enabled, generation])
 
   return state
 }
