@@ -130,13 +130,79 @@ export function normalizeRpcSettings(input: unknown): RpcSettings {
 /* ---------------------------- retry policy ---------------------------- */
 
 /**
- * codes worth another attempt. A dropped connection, an expired deadline and
- * a server fault are transient. `permission_denied`, `invalid_argument`,
- * `failed_precondition`, `not_found` and `unauthenticated` are answers, not
- * failures: repeating them cannot change the outcome and only multiplies the
- * load and the GitHub rate-limit spend.
+ * which rpcs may be replayed after a transient failure.
+ *
+ * A retry is only safe when a second attempt cannot change the world twice.
+ * `AddInsert` derives a fresh id per attempt (`uniqueId` in
+ * `library.service.ts`), so replaying it after the row was already committed
+ * — a gateway 502/504 can arrive long after the write finished — inserts a
+ * second copy under `<slug>-2` and the user sees no error at all. The cloud
+ * mutations commit to GitHub the same way: replaying a `MoveEntry` that
+ * already succeeded answers `not_found` for an operation that worked.
+ *
+ * The decision is an explicit per-method list, not a guess from the verb: the
+ * proto carries no idempotency level, and inferring one from a name would put
+ * the safety of a mutation in the hands of whoever names the next rpc. The key
+ * is `<service type name>/<method name>` — exactly the pair the interceptor
+ * reads off the request.
  */
-export const RPC_RETRYABLE_CODES: readonly Code[] = [Code.Unavailable, Code.DeadlineExceeded, Code.Internal]
+export const RPC_REPLAYABLE_METHODS: readonly string[] = [
+  "mixture.library.v1.LibraryService/GetLibrary",
+  "mixture.changelog.v1.ChangelogService/GetChangelog",
+  "mixture.cloud.v1.CloudService/GetStatus",
+  "mixture.cloud.v1.CloudService/ListEntries",
+  "mixture.cloud.v1.CloudService/GetTree",
+  "mixture.cloud.v1.CloudService/StatEntry",
+  "mixture.cloud.v1.CloudService/ReadFile",
+  "mixture.cloud.v1.CloudService/CreateStreamTicket",
+  "mixture.cloud.v1.CloudService/GetConfig",
+]
+
+/**
+ * the other half of the same decision: every rpc that writes. Nothing reads
+ * this list at runtime — it exists so that adding an rpc without classifying
+ * it is a test failure rather than a silent replay (`settings.test.ts` walks
+ * the generated service descriptors and asserts the two lists together cover
+ * every method exactly once).
+ */
+export const RPC_MUTATING_METHODS: readonly string[] = [
+  "mixture.library.v1.LibraryService/AddCategory",
+  "mixture.library.v1.LibraryService/AddInsert",
+  "mixture.library.v1.LibraryService/DeleteInsert",
+  "mixture.library.v1.LibraryService/DeleteCategory",
+  "mixture.library.v1.LibraryService/ResetLibrary",
+  "mixture.cloud.v1.CloudService/InitRepository",
+  "mixture.cloud.v1.CloudService/WriteFile",
+  "mixture.cloud.v1.CloudService/DeleteEntry",
+  "mixture.cloud.v1.CloudService/MoveEntry",
+  "mixture.cloud.v1.CloudService/CreateDirectory",
+  "mixture.cloud.v1.CloudService/UpdateConfig",
+]
+
+const replayableMethods = new Set(RPC_REPLAYABLE_METHODS)
+
+/** may a failed call of this method be sent again? Unknown methods may not. */
+export function isReplayableMethod(service: string, method: string): boolean {
+  return replayableMethods.has(`${service}/${method}`)
+}
+
+/**
+ * codes worth another attempt. A dropped connection and a server fault are
+ * transient; a Vercel gateway 502/503/504 arrives as `unavailable`.
+ *
+ * `deadline_exceeded` is deliberately absent. The deadline is the budget for
+ * the whole call, not for one attempt: connect links the transport's timeout
+ * signal into `req.signal` once per unary call, so by the time the rejection
+ * reaches the interceptor that signal is already aborted and the replay would
+ * die before it reached the wire. Listing the code would only buy a sleep and
+ * the same failure.
+ *
+ * `permission_denied`, `invalid_argument`, `failed_precondition`, `not_found`
+ * and `unauthenticated` are answers, not failures: repeating them cannot
+ * change the outcome and only multiplies the load and the GitHub rate-limit
+ * spend.
+ */
+export const RPC_RETRYABLE_CODES: readonly Code[] = [Code.Unavailable, Code.Internal]
 
 /** first backoff step; doubles per attempt up to the ceiling */
 export const RPC_RETRY_BASE_MS = 250
@@ -159,6 +225,12 @@ export function retryDelayMs(attempt: number, random: () => number = Math.random
 export type RetryInput = {
   /** the Connect code of the failure, if it has one */
   code: unknown
+  /**
+   * whether sending this call a second time is safe — `isReplayableMethod`
+   * for the method that failed. Required rather than optional: a caller that
+   * forgets it must not fall into replaying a mutation.
+   */
+  replayable: boolean
   /** zero-based index of the attempt that just failed */
   attempt: number
   /** how many extra attempts the settings allow */
@@ -174,8 +246,11 @@ export type RetryDecision = { retry: boolean; delayMs: number }
 
 /** the single place that decides whether a failed unary call is tried again */
 export function decideRetry(input: RetryInput): RetryDecision {
-  const { code, attempt, retries, stream = false, aborted = false, random } = input
+  const { code, replayable, attempt, retries, stream = false, aborted = false, random } = input
   if (stream || aborted) return { retry: false, delayMs: 0 }
+  // a mutation is never replayed, however transient the failure looks: the
+  // server may have committed it and answered through a gateway that gave up
+  if (!replayable) return { retry: false, delayMs: 0 }
   if (attempt >= Math.min(retries, RPC_RETRIES_MAX)) return { retry: false, delayMs: 0 }
   if (!isRetryableCode(code)) return { retry: false, delayMs: 0 }
   return { retry: true, delayMs: retryDelayMs(attempt, random) }

@@ -12,7 +12,7 @@ import { CloudService } from "@mixture/protocol/cloud"
 import { LibraryService } from "@mixture/protocol/library"
 import { CLOUD_KEY_HEADER, CLOUD_TOKEN_HEADER, EDIT_TOKEN_HEADER, RPC_BASE_PATH } from "./headers"
 import { rpcLog } from "./log"
-import { decideRetry, rpcSettingsStore, type RpcSettings } from "./settings"
+import { decideRetry, isReplayableMethod, rpcSettingsStore, type RpcSettings } from "./settings"
 
 /* ------------------------------------------------------------------ *
  * browser-side RPC clients
@@ -71,14 +71,22 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 const attemptOf = new WeakMap<object, number>()
 
 /**
- * replay a failed unary call while `settings.retries` allows it. Only a
- * transient code is retried (see `decideRetry`); a permission or validation
- * answer is final. Streaming calls are passed through untouched — their
- * request iterable is already consumed by the first attempt.
+ * replay a failed unary call while `settings.retries` allows it.
+ *
+ * Two conditions have to hold. The method must be on the read-only side of
+ * `RPC_REPLAYABLE_METHODS`: a mutation that already reached the database or
+ * GitHub must not be sent twice because the answer was lost on the way back.
+ * And the code must be transient (see `decideRetry`); a permission or
+ * validation answer is final. Streaming calls are passed through untouched —
+ * their request iterable is already consumed by the first attempt.
+ *
+ * Exported so `client.test.ts` can drive it with a fake transport instead of
+ * only exercising the pure decision function.
  */
-const retry: Interceptor = (next) => async (req) => {
+export const retryInterceptor: Interceptor = (next) => async (req) => {
   const { retries } = rpcSettingsStore.get()
   if (req.stream || retries <= 0) return next(req)
+  const replayable = isReplayableMethod(req.service.typeName, req.method.name)
   for (let attempt = 0; ; attempt++) {
     attemptOf.set(req, attempt)
     try {
@@ -86,6 +94,7 @@ const retry: Interceptor = (next) => async (req) => {
     } catch (error) {
       const decision = decideRetry({
         code: ConnectError.from(error).code,
+        replayable,
         attempt,
         retries,
         aborted: req.signal.aborted,
@@ -172,7 +181,7 @@ function build(settings: RpcSettings): Transport {
     useBinaryFormat: settings.format === "binary",
     // outermost first: credentials are set once, the retry replays the call,
     // and the log sees each individual attempt
-    interceptors: [credentials, retry, logging],
+    interceptors: [credentials, retryInterceptor, logging],
     defaultTimeoutMs: settings.timeoutMs,
   }
   return settings.protocol === "connect" ? createConnectTransport(options) : createGrpcWebTransport(options)

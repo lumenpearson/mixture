@@ -1,6 +1,6 @@
 import { contentTypeOf, extensionOf } from "@/lib/media/kinds"
-import type { LocalEntry, LocalFsBridge, LocalPermission, LocalScan } from "./bridge"
-import { baseNameOf, joinPath, parentOf, segmentsOf } from "./paths"
+import { LocalAccessError, type LocalEntry, type LocalFsBridge, type LocalPermission, type LocalScan } from "./bridge"
+import { baseNameOf, isWithin, joinRelative, normalizeRelative, parentOf, segmentsOf } from "./paths"
 
 /* ------------------------------------------------------------------ *
  * the web runtime of the local file bridge: the File System Access API.
@@ -17,16 +17,17 @@ const STORE = "handles"
 const ROOT_KEY = "root"
 const SCAN_LIMIT = 5000
 
-/* the api is chromium-only and not in every typescript lib: minimal shapes */
+/* the api is chromium-only and not in every typescript lib: minimal shapes.
+   Exported so the tests can stand an in-memory folder up against them. */
 type Mode = "read" | "readwrite"
 type PermissionResult = "granted" | "denied" | "prompt"
 type Handle = { kind: "file" | "directory"; name: string }
-type FileHandle = Handle & {
+export type FileHandle = Handle & {
   kind: "file"
   getFile(): Promise<File>
   createWritable(): Promise<{ write(data: Uint8Array | Blob): Promise<void>; close(): Promise<void> }>
 }
-type DirHandle = Handle & {
+export type DirHandle = Handle & {
   kind: "directory"
   values(): AsyncIterable<FileHandle | DirHandle>
   getDirectoryHandle(name: string, options?: { create?: boolean }): Promise<DirHandle>
@@ -85,12 +86,61 @@ async function storeHandle(handle: DirHandle | null): Promise<void> {
   }
 }
 
+/* ---------------------------- copy helpers ---------------------------- */
+
+/** replace the contents of `handle` with `data` */
+async function writeInto(handle: FileHandle, data: Uint8Array | Blob): Promise<void> {
+  const writable = await handle.createWritable()
+  await writable.write(data)
+  await writable.close()
+}
+
+/** the child named `name`, whichever kind it is, or null when there is none.
+ *  `getFileHandle` throws TypeMismatchError for a directory rather than
+ *  answering, so both lookups have to be tried. */
+async function childOf(parent: DirHandle, name: string): Promise<FileHandle | DirHandle | null> {
+  try {
+    return await parent.getFileHandle(name)
+  } catch {
+    try {
+      return await parent.getDirectoryHandle(name)
+    } catch {
+      return null
+    }
+  }
+}
+
+/**
+ * copy every file and folder of `source` into the existing `target`.
+ *
+ * The File System Access API has no recursive copy and no move on a directory
+ * handle, so renaming a folder is copy-then-remove. The copy runs first: if it
+ * fails halfway the original folder is still there, and a half-written target
+ * is easier to recover from than a deleted source.
+ */
+async function copyTree(source: DirHandle, target: DirHandle): Promise<void> {
+  for await (const child of source.values()) {
+    if (child.kind === "directory") {
+      await copyTree(child, await target.getDirectoryHandle(child.name, { create: true }))
+      continue
+    }
+    await writeInto(await target.getFileHandle(child.name, { create: true }), await child.getFile())
+  }
+}
+
 /* ------------------------------ the bridge ------------------------------ */
 
 export class WebLocalBridge implements LocalFsBridge {
   readonly runtime = "web" as const
   private root: DirHandle | null = null
   private loaded = false
+
+  /** the app calls `webLocalBridge()`; the argument exists so a test can hand
+   *  in an in-memory root instead of going through IndexedDB and the picker */
+  constructor(root: DirHandle | null = null) {
+    this.root = root
+    this.loaded = root !== null
+  }
 
   isSupported(): boolean {
     return picker() !== null
@@ -106,11 +156,12 @@ export class WebLocalBridge implements LocalFsBridge {
 
   private async requireRoot(): Promise<DirHandle> {
     const root = await this.rootHandle()
-    if (!root) throw new Error("no local folder granted")
+    // a code, not a sentence: the permission screen translates it
+    if (!root) throw new LocalAccessError("no-root")
     const state = await root.queryPermission({ mode: "readwrite" })
     if (state !== "granted") {
       const asked = await root.requestPermission({ mode: "readwrite" })
-      if (asked !== "granted") throw new Error("local folder access denied")
+      if (asked !== "granted") throw new LocalAccessError("denied")
     }
     return root
   }
@@ -138,6 +189,21 @@ export class WebLocalBridge implements LocalFsBridge {
     } catch {
       // the picker was cancelled or refused
       return null
+    }
+  }
+
+  /** re-grant the remembered handle from a user gesture. After a reload
+   *  Chromium answers `queryPermission` with "prompt" for a persisted handle,
+   *  and only `requestPermission` can turn that back into "granted". */
+  async regrant(): Promise<LocalPermission> {
+    const root = await this.rootHandle()
+    // nothing remembered: the folder still has to be picked
+    if (!root) return "prompt"
+    try {
+      return await root.requestPermission({ mode: "readwrite" })
+    } catch {
+      // the call has to happen inside a user gesture; outside one it throws
+      return "prompt"
     }
   }
 
@@ -213,8 +279,11 @@ export class WebLocalBridge implements LocalFsBridge {
 
   async list(path: string): Promise<LocalEntry[]> {
     const dir = await this.dirAt(path)
+    const parent = normalizeRelative(path)
     const entries: LocalEntry[] = []
-    for await (const child of dir.values()) entries.push(await this.entryOf(child, joinPath(path, child.name)))
+    // the child name is concatenated, not normalised: a file the bridge would
+    // refuse to open must still appear in its folder instead of failing it
+    for await (const child of dir.values()) entries.push(await this.entryOf(child, joinRelative(parent, child.name)))
     return entries.sort((a, b) => (a.kind !== b.kind ? (a.kind === "directory" ? -1 : 1) : a.name.localeCompare(b.name)))
   }
 
@@ -248,9 +317,7 @@ export class WebLocalBridge implements LocalFsBridge {
 
   async write(path: string, content: Uint8Array): Promise<LocalEntry> {
     const handle = await this.fileAt(path, true)
-    const writable = await handle.createWritable()
-    await writable.write(content)
-    await writable.close()
+    await writeInto(handle, content)
     return this.entryOf(handle, path)
   }
 
@@ -259,16 +326,35 @@ export class WebLocalBridge implements LocalFsBridge {
     return this.entryOf(dir, path)
   }
 
+  /**
+   * rename or move one entry. Directories are copied recursively and then
+   * removed, because the api offers no directory move: the file manager
+   * advertises `move: true` for every kind, and a folder rename used to reach
+   * `getFileHandle` and die with a raw TypeMismatchError.
+   */
   async move(from: string, to: string): Promise<LocalEntry> {
-    const source = await this.fileAt(from)
-    const file = await source.getFile()
-    const target = await this.fileAt(to, true)
-    const writable = await target.createWritable()
-    await writable.write(file)
-    await writable.close()
-    const parent = await this.dirAt(parentOf(from))
-    await parent.removeEntry(baseNameOf(from))
-    return this.entryOf(target, to)
+    const source = normalizeRelative(from)
+    const destination = normalizeRelative(to)
+    if (!source || !destination) throw new LocalAccessError("path", "the root cannot be moved")
+    // a folder copied into its own subtree would recurse until the disk fills
+    if (isWithin(destination, source)) throw new LocalAccessError("move-into-self")
+
+    const sourceParent = await this.dirAt(parentOf(source))
+    const name = baseNameOf(source)
+    const entry = await childOf(sourceParent, name)
+    if (!entry) throw new LocalAccessError("not-found", source)
+
+    if (entry.kind === "file") {
+      const target = await this.fileAt(destination, true)
+      await writeInto(target, await entry.getFile())
+      await sourceParent.removeEntry(name)
+      return this.entryOf(target, destination)
+    }
+
+    const target = await this.dirAt(destination, true)
+    await copyTree(entry, target)
+    await sourceParent.removeEntry(name, { recursive: true })
+    return this.entryOf(target, destination)
   }
 
   async remove(path: string): Promise<void> {

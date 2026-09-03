@@ -12,7 +12,7 @@ const dictionary: FeatureDictionary = {
     "rpc.explain.format":
       "binary — protobuf в двоичном виде: меньше байт, быстрее разбор. json — те же сообщения текстом: читаются во вкладке network и в curl, но тяжелее.",
     "rpc.explain.retries":
-      "повтор делается только когда сервер недоступен, не успел или упал (unavailable, deadline_exceeded, internal). ошибки прав и валидации не повторяются никогда.",
+      "повторяются только чтения — библиотека, история, список облака. запись (добавить вставку, залить файл, переименовать) не повторяется никогда: сервер мог её выполнить, а ответ потеряться по дороге. и только когда сервер недоступен или упал (unavailable, internal); ошибки прав и валидации не повторяются.",
     "rpc.protocol": "протокол",
     "rpc.protocol.grpc-web": "grpc-web",
     "rpc.protocol.connect": "connect",
@@ -67,7 +67,7 @@ const dictionary: FeatureDictionary = {
     "rpc.explain.format":
       "binary is protobuf as bytes: fewer bytes, faster parsing. json is the same messages as text: readable in the network tab and in curl, but heavier.",
     "rpc.explain.retries":
-      "a retry happens only when the server is unavailable, ran out of time or crashed (unavailable, deadline_exceeded, internal). permission and validation errors are never retried.",
+      "only reads are retried — the library, the changelog, a cloud listing. a write (add an insert, upload a file, rename one) is never sent twice: the server may have done it and lost the answer on the way back. and only when the server is unavailable or crashed (unavailable, internal); permission and validation errors are never retried.",
     "rpc.protocol": "protocol",
     "rpc.protocol.grpc-web": "grpc-web",
     "rpc.protocol.connect": "connect",
@@ -122,7 +122,7 @@ const dictionary: FeatureDictionary = {
     "rpc.explain.format":
       "binary — protobuf байтами: мало, быстро, нечитаемо. json — то же самое текстом: читается во вкладке network, зато весит как совесть.",
     "rpc.explain.retries":
-      "повторяем только когда сервер упал, не успел или недоступен. ошибки прав и валидации повторять бессмысленно — сервер не передумает ¯\\_(ツ)_/¯.",
+      "повторяем только чтения. запись не повторяем никогда: сервер мог всё сделать, а ответ утонул — и вы получите вторую копию вставки вместо ошибки. ошибки прав и валидации повторять тоже бессмысленно — сервер не передумает ¯\\_(ツ)_/¯.",
     "rpc.protocol": "протокол",
     "rpc.protocol.grpc-web": "grpc-web",
     "rpc.protocol.connect": "connect",
