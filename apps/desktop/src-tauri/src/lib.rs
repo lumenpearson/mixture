@@ -1,10 +1,18 @@
 /* ------------------------------------------------------------------ *
  * mixture · screenkit — the windows desktop shell
  *
- * The shell is a window around the deployed site: the whole interface is the
- * same Next.js app, and the only thing the desktop adds is local file access.
- * The url is baked in at build time (MIXTURE_DESKTOP_URL), falls back to the
- * production deployment, and points at the dev server in a debug build.
+ * The shell is a local application, not a browser pointed at the site. The
+ * interface is a static export of apps/web that ships inside the bundle
+ * (`frontendDist` in tauri.conf.json, produced by `pnpm --filter web
+ * build:desktop`), so the window opens with no network at all; only the
+ * business operations — the library, the changelog, the cloud drive — go out
+ * to the deployment over rpc. `tauri dev` still loads `devUrl`, which is what
+ * `WebviewUrl::default()` resolves to in a debug build.
+ *
+ * The window is frameless: `decorations(false)` plus the title bar the web
+ * side draws (apps/web/components/screenkit/desktop/titlebar.tsx). Windows
+ * keeps its resize borders and snapping on an undecorated window as long as
+ * it stays resizable, which is why `resizable(true)` is spelled out here.
  *
  * The commands below are the desktop half of LocalFsBridge
  * (apps/web/lib/local/bridge.ts): their names are exactly TAURI_COMMANDS and
@@ -19,26 +27,21 @@ use std::path::PathBuf;
 
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_window_state::StateFlags;
 
 use local::{LocalEntry, LocalResult, LocalScan};
-
-/// where the shell points when nothing else is configured
-const DEFAULT_URL: &str = "https://mixture-codeilluminators.vercel.app";
-/// where a debug build points, so `pnpm --filter @mixture/desktop dev` meets `pnpm dev`
-const DEV_URL: &str = "http://localhost:3000";
 
 const WINDOW_LABEL: &str = "main";
 const WINDOW_TITLE: &str = "mixture · screenkit";
 
-/// the site this binary was built against; `option_env!` reads MIXTURE_DESKTOP_URL
-/// at compile time, so the shipped exe carries no runtime switch for its origin
-fn target_url() -> &'static str {
-    match option_env!("MIXTURE_DESKTOP_URL") {
-        Some(url) if !url.is_empty() => url,
-        _ if cfg!(debug_assertions) => DEV_URL,
-        _ => DEFAULT_URL,
-    }
-}
+/// what the window-state plugin remembers.
+///
+/// Deliberately not `StateFlags::all()`: DECORATIONS would restore the system
+/// frame this build exists to remove, and VISIBLE / FULLSCREEN are not what
+/// the "remember size and position" setting promises.
+const REMEMBERED_STATE: StateFlags = StateFlags::SIZE
+    .union(StateFlags::POSITION)
+    .union(StateFlags::MAXIMIZED);
 
 /* ------------------------- the granted root ------------------------- */
 
@@ -165,6 +168,19 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        // the plugin owns the window geometry: it tracks and saves size,
+        // position and maximized state on its own, next to the app data.
+        // Restoring is not automatic — `skip_initial_state` hands that
+        // decision to the "remember size and position" setting, which calls
+        // `plugin:window-state|restore_state` from use-window.ts. Without the
+        // skip the plugin would restore before the page loads and the setting
+        // would be a switch that changes nothing.
+        .plugin(
+            tauri_plugin_window_state::Builder::new()
+                .with_state_flags(REMEMBERED_STATE)
+                .skip_initial_state(WINDOW_LABEL)
+                .build(),
+        )
         .invoke_handler(tauri::generate_handler![
             local_permission,
             local_request_root,
@@ -185,14 +201,18 @@ pub fn run() {
             if let Ok(root) = granted_root(&handle) {
                 allow_asset_access(&handle, &root);
             }
-            // the window is built here rather than in tauri.conf.json because the
-            // url is a compile-time constant, not a static config value
-            let url = tauri::Url::parse(target_url())?;
-            WebviewWindowBuilder::new(app, WINDOW_LABEL, WebviewUrl::External(url))
+            // the window is built here rather than in tauri.conf.json so the
+            // asset-protocol grant above is in place before the page loads.
+            // `WebviewUrl::default()` is the bundled index.html in a release
+            // build and `devUrl` under `tauri dev`.
+            WebviewWindowBuilder::new(app, WINDOW_LABEL, WebviewUrl::default())
                 .title(WINDOW_TITLE)
                 .inner_size(1280.0, 800.0)
                 .min_inner_size(720.0, 560.0)
-                .decorations(true)
+                // no system frame: the title bar is drawn by the page, and a
+                // resizable undecorated window keeps the Windows resize
+                // borders, snapping and the Aero shake
+                .decorations(false)
                 .resizable(true)
                 .center()
                 .build()?;

@@ -1,10 +1,10 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "dev",
-  "description": "the same permissions as `default`, for the origins only a developer loads: the dev server on localhost:3000 and any Vercel preview deployment reached through MIXTURE_DESKTOP_URL. `https://*.vercel.app` matches every preview of every Vercel account, so this capability is never part of a released build: .github/workflows/release.yml overrides app.security.capabilities with `[\"default\"]`, and a build that does not name a capability set enables every file in this directory.",
+  "description": "the same permissions as `default`, for the one origin a developer loads instead of the bundle: the Next dev server that `tauri dev` opens through `build.devUrl`. A released build loads its interface from disk and never reaches this origin, so this capability is not part of it: .github/workflows/release.yml overrides app.security.capabilities with `[\"default\"]`, and a build that does not name a capability set enables every file in this directory. `https://*.vercel.app` used to be here for shells built against a preview deployment through MIXTURE_DESKTOP_URL; that build mode is gone, and with it a wildcard that matched every preview of every Vercel account.",
   "windows": ["main"],
   "remote": {
-    "urls": ["http://localhost:3000", "https://*.vercel.app"]
+    "urls": ["http://localhost:3000"]
   },
   "permissions": [
     "core:default",
@@ -14,6 +14,18 @@
     {
       "identifier": "fs:scope",
       "allow": [{ "path": "$APPDATA" }, { "path": "$APPDATA/**" }]
-    }
+    },
+
+    "core:window:allow-start-dragging",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-close",
+    "core:window:allow-set-always-on-top",
+    "core:window:allow-set-min-size",
+    "core:window:allow-set-size",
+    "core:window:allow-set-position",
+
+    "window-state:allow-restore-state"
   ]
 }

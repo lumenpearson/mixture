@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest"
 import {
   DEFAULT_DESKTOP_SETTINGS,
-  MIN_WINDOW_PX,
   TITLEBAR_COMPACT_HEIGHT_PX,
   TITLEBAR_HEIGHT_PX,
   minSizeOf,
-  normalizeBounds,
   normalizeDesktopSettings,
   titlebarHeight,
 } from "./desktop-settings"
@@ -37,9 +35,19 @@ describe("normalizeDesktopSettings", () => {
       compact: true,
       controlsSide: "left" as const,
       minSize: "1280x800" as const,
-      bounds: { width: 1000, height: 700, x: 12, y: 34 },
     }
     expect(normalizeDesktopSettings(input)).toEqual(input)
+  })
+
+  // the geometry moved to tauri-plugin-window-state; a settings record left
+  // over from a build that stored it must not carry the field back in
+  it("drops the geometry an older build persisted", () => {
+    const result = normalizeDesktopSettings({
+      ...DEFAULT_DESKTOP_SETTINGS,
+      bounds: { width: 1000, height: 700, x: 12, y: 34 },
+    })
+    expect(result).toEqual(DEFAULT_DESKTOP_SETTINGS)
+    expect("bounds" in result).toBe(false)
   })
 
   it("falls back per field instead of discarding the whole record", () => {
@@ -53,37 +61,6 @@ describe("normalizeDesktopSettings", () => {
     expect(result.controlsSide).toBe("right")
     expect(result.minSize).toBe(DEFAULT_DESKTOP_SETTINGS.minSize)
     expect(result.clock).toBe(true)
-  })
-})
-
-describe("normalizeBounds", () => {
-  it("drops a record with a non-finite or missing field", () => {
-    expect(normalizeBounds(null)).toBeNull()
-    expect(normalizeBounds({ width: 900, height: 700, x: 0 })).toBeNull()
-    expect(normalizeBounds({ width: 900, height: 700, x: 0, y: Number.NaN })).toBeNull()
-  })
-
-  it("refuses a window too small to show the shell", () => {
-    expect(normalizeBounds({ width: MIN_WINDOW_PX - 1, height: 700, x: 0, y: 0 })).toBeNull()
-    expect(normalizeBounds({ width: 900, height: 4, x: 0, y: 0 })).toBeNull()
-  })
-
-  it("clamps a position that would put the window off every monitor", () => {
-    expect(normalizeBounds({ width: 900, height: 700, x: 9e9, y: -9e9 })).toEqual({
-      width: 900,
-      height: 700,
-      x: 10_000,
-      y: -10_000,
-    })
-  })
-
-  it("rounds fractional logical pixels", () => {
-    expect(normalizeBounds({ width: 900.4, height: 700.6, x: 1.5, y: -1.5 })).toEqual({
-      width: 900,
-      height: 701,
-      x: 2,
-      y: -1,
-    })
   })
 })
 

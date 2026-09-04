@@ -8,6 +8,7 @@
     "prepare:assets": "node scripts/sync-inserts.mjs && node scripts/collect-licenses.mjs",
     "dev": "pnpm prepare:assets && next dev",
     "build": "pnpm prepare:assets && next build",
+    "build:desktop": "pnpm prepare:assets && node scripts/build-desktop.mjs",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",

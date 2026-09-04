@@ -23,7 +23,7 @@ const dictionary: FeatureDictionary = {
     "desktop.settings.startMaximizedDesc": "при запуске окно сразу занимает весь экран.",
     "desktop.settings.remember": "запоминать размер и положение",
     "desktop.settings.rememberDesc":
-      "размер и координаты сохраняются при перемещении окна и восстанавливаются при следующем запуске. развёрнутое окно не запоминается.",
+      "оболочка сама сохраняет размер, положение и развёрнутое состояние окна рядом с данными приложения; переключатель решает, восстанавливать ли их при запуске.",
     "desktop.settings.minSize": "минимальный размер",
     "desktop.settings.minSizeDesc": "ниже этого предела окно не сжимается — рельса и контент перестают помещаться рядом.",
     "desktop.settings.minSize.none": "без ограничения",
@@ -75,7 +75,7 @@ const dictionary: FeatureDictionary = {
     "desktop.settings.startMaximizedDesc": "the window fills the screen as soon as it opens.",
     "desktop.settings.remember": "remember size and position",
     "desktop.settings.rememberDesc":
-      "the size and coordinates are saved while the window is moved and restored on the next start. a maximized window is not remembered.",
+      "the shell saves the window size, position and maximized state next to the app data on its own; this switch decides whether they are restored on start.",
     "desktop.settings.minSize": "minimum size",
     "desktop.settings.minSizeDesc": "below this the window stops shrinking — the rail and the content no longer fit side by side.",
     "desktop.settings.minSize.none": "no minimum",
@@ -127,7 +127,7 @@ const dictionary: FeatureDictionary = {
     "desktop.settings.startMaximizedDesc": "при запуске окно сразу забирает весь экран.",
     "desktop.settings.remember": "запоминать размер и положение",
     "desktop.settings.rememberDesc":
-      "размер и координаты сохраняются, когда вы наконец перестаёте таскать окно, и восстанавливаются при следующем запуске. развёрнутое не запоминаем — иначе получится странное.",
+      "оболочка запоминает размер, положение и развёрнутое состояние окна сама, даже когда вы об этом не просили. переключатель решает только одно: возвращать ли всё это при запуске.",
     "desktop.settings.minSize": "минимальный размер",
     "desktop.settings.minSizeDesc": "дальше окно не сжимается: рельса и контент рядом уже не помещаются.",
     "desktop.settings.minSize.none": "без ограничения",

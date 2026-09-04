@@ -52,7 +52,7 @@ export const DEFAULT_RPC_SETTINGS: RpcSettings = {
   format: "binary",
   timeoutMs: 30_000,
   retries: 2,
-  baseUrl: "",
+  baseUrl: buildBaseUrl(),
   // on in development so a broken handler shows up in the settings card
   // without anyone opening devtools; off in production, where the log would
   // only grow while nobody reads it
@@ -67,6 +67,24 @@ const num = (value: unknown): number =>
   typeof value === "number" ? value : typeof value === "string" && value.trim() !== "" ? Number(value) : Number.NaN
 
 /* ---------------------------- base url ---------------------------- */
+
+/**
+ * the api this build was compiled against.
+ *
+ * `next build` inlines NEXT_PUBLIC_MIXTURE_API_URL. The web build leaves it
+ * unset, so the default stays `""` — "the origin this page was served from",
+ * which is exactly right for a page the deployment served. The desktop bundle
+ * is a static export loaded from disk over `tauri://localhost`, an origin with
+ * no api behind it, so its export is built with the deployment's origin here
+ * and every transport it creates carries an absolute base url.
+ *
+ * A function declaration rather than a const so `DEFAULT_RPC_SETTINGS` above
+ * can call it: declarations hoist, `const` initialisers do not.
+ */
+function buildBaseUrl(): string {
+  const check = checkBaseUrl(process.env.NEXT_PUBLIC_MIXTURE_API_URL ?? "")
+  return check.ok ? check.value : ""
+}
 
 export type RpcBaseUrlProblem = "invalid" | "insecure" | "credentials"
 
@@ -120,9 +138,12 @@ export function normalizeRpcSettings(input: unknown): RpcSettings {
       ? clamp(Math.round(timeout), RPC_TIMEOUT_MIN_MS, RPC_TIMEOUT_MAX_MS)
       : DEFAULT_RPC_SETTINGS.timeoutMs,
     retries: Number.isFinite(retries) ? clamp(Math.round(retries), 0, RPC_RETRIES_MAX) : DEFAULT_RPC_SETTINGS.retries,
-    // a rejected override falls back to the same origin rather than to the
-    // previous value: an unusable url must never keep sending tokens anywhere
-    baseUrl: baseUrl.ok ? baseUrl.value : "",
+    // a rejected or cleared override falls back to the url this build was
+    // compiled against, never to the previous value: an unusable url must not
+    // keep sending tokens anywhere. On the web that fallback is `""` — the
+    // same origin, as before — and in the desktop bundle it is the api,
+    // because there `""` would mean tauri://localhost and nothing answers there
+    baseUrl: (baseUrl.ok && baseUrl.value) || DEFAULT_RPC_SETTINGS.baseUrl,
     log: typeof raw.log === "boolean" ? raw.log : DEFAULT_RPC_SETTINGS.log,
   }
 }
