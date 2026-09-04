@@ -5,6 +5,7 @@ import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import * as React from "react"
 import { MotionNumber } from "../motion-number"
+import { useMotion } from "../motion"
 import { Explain, SectionHeading, SegmentedControl } from "../primitives"
 import { useScreenkit } from "../store"
 import {
@@ -94,6 +95,22 @@ function ToggleCard({
 function GlassPreview() {
   const { t } = useScreenkit()
   const { glass } = useGlass()
+  const { reduceMotion } = useMotion()
+
+  /* The blur is dropped on the same two conditions that drop it everywhere
+     else (glass.css): reduce-motion, which also stands in for a weak device,
+     and the transparency preference. A preview that keeps blurring while no
+     surface in the app does is a picture of someone else's settings. */
+  const [reducedTransparency, setReducedTransparency] = React.useState(false)
+  React.useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return
+    const mq = window.matchMedia("(prefers-reduced-transparency: reduce)")
+    setReducedTransparency(mq.matches)
+    const onChange = (event: MediaQueryListEvent) => setReducedTransparency(event.matches)
+    mq.addEventListener("change", onChange)
+    return () => mq.removeEventListener("change", onChange)
+  }, [])
+  const blurred = !reduceMotion && !reducedTransparency
 
   const glowColor = GLOW_COLOR_VALUE[glass.glowColor]
   const ring = `color-mix(in srgb, ${glowColor} ${glass.borderGlow * 70}%, transparent)`
@@ -112,9 +129,16 @@ function GlassPreview() {
         <div
           className="flex flex-col gap-1 rounded-xl px-4 py-3"
           style={{
-            backdropFilter: `blur(${glass.blur}px) saturate(${glass.saturate})`,
-            WebkitBackdropFilter: `blur(${glass.blur}px) saturate(${glass.saturate})`,
-            backgroundColor: `color-mix(in srgb, var(--panel-soft) ${Math.round(glass.alpha * 100)}%, transparent)`,
+            backdropFilter: blurred ? `blur(${glass.blur}px) saturate(${glass.saturate})` : "none",
+            WebkitBackdropFilter: blurred
+              ? `blur(${glass.blur}px) saturate(${glass.saturate})`
+              : "none",
+            /* `--glass-alpha-floor` is the live value glass.css resolves per
+               colour scheme (0.5 dark, 0.78 light), so the sample thins out
+               exactly as far as a real surface does and no further. Reading
+               the variable instead of copying the numbers keeps the two from
+               drifting. */
+            backgroundColor: `color-mix(in srgb, var(--panel-soft) calc(max(${glass.alpha}, var(--glass-alpha-floor)) * 100%), transparent)`,
             backgroundImage: glass.noise ? GLASS_NOISE_IMAGE : "none",
             backgroundBlendMode: "overlay",
             boxShadow: `inset 0 0 0 1px ${ring}, 0 0 12px ${halo}`,
@@ -144,12 +168,17 @@ export function GlassControls() {
   // `activePreset` is null as soon as the numbers stop matching a preset.
   // Rendering "glass" as selected then is a claim the tablist also makes to a
   // screen reader through aria-selected, so hand-tuned values get a segment of
-  // their own, which appears only while it is true.
+  // their own.
   const presetOptions: { value: PresetSegment; label: string }[] = [
     ...GLASS_PRESETS.map((preset) => ({
       value: preset as PresetSegment,
       label: t(`glass.preset.${preset}`),
     })),
+    /* Rendered only while it is the truth. A segment that is visible is
+       therefore always the selected one, so the `custom` branch of `onChange`
+       below can never fire from a click on an unselected tab — there is no
+       dead affordance, only a status the tablist can also state to a screen
+       reader through `aria-selected`. */
     ...(activePreset === null
       ? [{ value: "custom" as PresetSegment, label: t("glass.preset.custom") }]
       : []),

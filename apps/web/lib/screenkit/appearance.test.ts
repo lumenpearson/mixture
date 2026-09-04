@@ -156,6 +156,20 @@ describe("APPEARANCE_BOOT_SCRIPT", () => {
     expect(attributes.has("data-rail")).toBe(false)
   })
 
+  it("ignores the pre-glass flag when the glass payload is present but corrupt", () => {
+    /* `readGlassSettings` consults `screenkit-glow` only when GLASS_KEY is
+       absent — a payload that fails to parse falls back to the defaults. The
+       boot script used to treat "unparseable" as "absent", so a truncated
+       payload next to a legacy "off" painted opaque for one frame and then
+       turned translucent on hydration: the exact flash this script exists to
+       prevent. */
+    const { attributes } = runBootScript({
+      [GLASS_KEY]: "{ not json",
+      [LEGACY_GLOW_KEY]: "off",
+    })
+    expect(attributes.get("data-glass")).toBe(DEFAULT_GLASS.enabled ? "on" : "off")
+  })
+
   it("does not throw when localStorage itself is unavailable", () => {
     expect(() => runBootScript({}, true)).not.toThrow()
   })

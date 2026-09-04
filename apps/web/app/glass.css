@@ -68,7 +68,14 @@ html[data-glass="on"] {
      which firefox does not implement, so glass had no blur there at all. */
 
   /* ---------------------------- panels ---------------------------- */
-  html[data-glass="on"][data-glass-panels="on"] :where(.bg-panel-soft, .bg-panel, .bg-control) {
+  /* `data-glass-surface="flat"` opts an element out of the blur half while
+     keeping the colour and the border highlight. Long lists set it: the
+     library grid paints up to 24 cards at once, and one compositing layer per
+     card repaints on every scroll frame to blur a page background that is
+     flat anyway. The nested-surface rule below cannot help there — the cards
+     sit in a bare `<ul>`, not inside another glass surface. */
+  html[data-glass="on"][data-glass-panels="on"]
+    :where(.bg-panel-soft, .bg-panel, .bg-control):not([data-glass-surface="flat"]) {
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
     backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
     background-image: var(--glass-noise-image);
@@ -98,7 +105,7 @@ html[data-glass="on"] {
      rounded-2xl button over the flat page background pays for a blur nobody
      can see. */
   html[data-glass="on"][data-glass-cards="on"]
-    :where(.rounded-2xl, .rounded-3xl):where(.bg-panel-soft, .bg-panel, .bg-control, [data-glass-surface="card"]):not(aside):not(nav) {
+    :where(.rounded-2xl, .rounded-3xl):where(.bg-panel-soft, .bg-panel, .bg-control, [data-glass-surface="card"]):not([data-glass-surface="flat"]):not(aside):not(nav) {
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
     backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
     background-image: var(--glass-noise-image);
@@ -204,16 +211,14 @@ html[data-glass="on"] {
    * cloud file row) set `outline-none` and rely on a ring that is itself a
    * box-shadow — the same property every rule above writes. give focused glass
    * surfaces an outline, which composes instead of competing. */
+  /* Only the surfaces a user can actually focus. The overlay content slots are
+     deliberately left out: radix focuses a popover or a menu panel itself when
+     it opens, and the vendored popover sets `outline-hidden` on exactly that
+     element — a rule here outranks it and draws a ring around a container
+     nobody is interacting with. */
   html[data-glass="on"] :where(
     .bg-panel-soft, .bg-panel, .bg-control,
-    .rounded-2xl, .rounded-3xl,
-    nav[aria-label="primary"], .sk-glass-rail,
-    [data-slot="context-menu-content"], [data-slot="dropdown-menu-content"],
-    [data-slot="popover-content"], [data-slot="select-content"],
-    [data-slot="tooltip-content"], [data-slot="hover-card-content"],
-    [data-slot="menubar-content"], [data-slot="navigation-menu-content"],
-    [data-slot="dialog-content"], [data-slot="alert-dialog-content"],
-    [data-slot="sheet-content"], [data-slot="drawer-content"]
+    .rounded-2xl, .rounded-3xl
   ):focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;

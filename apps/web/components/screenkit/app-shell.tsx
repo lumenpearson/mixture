@@ -62,7 +62,13 @@ function RailToggleButton() {
 /** how close to the bottom edge a touch has to start to count as the gesture */
 const SWIPE_EDGE_PX = 24
 /** and how far up it has to travel before the rail comes back */
-const SWIPE_DISTANCE_PX = 28
+const SWIPE_DISTANCE_PX = 56
+/** a scroll flick that drifts sideways is not this gesture */
+const SWIPE_AXIS_RATIO = 1.5
+/** the viewport may not move under the finger at all */
+const SWIPE_SCROLL_TOLERANCE_PX = 2
+/** below this the finger has not chosen a direction yet */
+const SWIPE_NOISE_PX = 8
 
 /**
  * Swipe up from the bottom edge to bring the rail back, without hunting for
@@ -71,53 +77,101 @@ const SWIPE_DISTANCE_PX = 28
  * bottom band of the screen — the last row of the library grid, the last cloud
  * entry — while looking like nothing was there.
  *
+ * Listening on the document is also what makes the gesture easy to confuse
+ * with reading: moving a thumb up from the bottom bezel is how a phone scrolls
+ * down. So the gesture has to prove it is not a scroll. It arms only on a
+ * touch that starts in the bottom band, and it is cancelled the moment the
+ * scroller under the finger moves, the finger drifts sideways, or a second
+ * finger joins. What is left is an upward drag over content that cannot
+ * scroll any further — which is what the gesture looks like when it is meant.
+ *
  * The first time the rail goes away on a touch device the gesture announces
- * itself once (`layout.swipeHint`); an invisible affordance nobody is told
- * about is not an affordance.
+ * itself once per browser (`layout.swipeHint`, remembered in
+ * `screenkit-layout-v1`); an invisible affordance nobody is told about is not
+ * an affordance, and one that re-announces itself every visit is a nag.
  */
 function SwipeReveal() {
-  const { railVisible, showRail } = useLayout()
+  const { railVisible, showRail, swipeHintSeen, markSwipeHintSeen } = useLayout()
   const { t } = useScreenkit()
-  const hinted = React.useRef(false)
 
   React.useEffect(() => {
     if (railVisible) return
+    if (typeof window === "undefined" || !window.matchMedia) return
 
-    const coarse = window.matchMedia?.("(pointer: coarse)").matches ?? false
-    if (coarse && !hinted.current) {
-      hinted.current = true
+    /* the bottom rail — and with it this gesture — only exists below `md`;
+       the query is in rem because that is the unit tailwind's breakpoints use */
+    const narrow = window.matchMedia("(max-width: 47.99rem)").matches
+    if (!narrow) return
+
+    const coarse = window.matchMedia("(pointer: coarse)").matches
+    if (coarse && !swipeHintSeen) {
+      markSwipeHintSeen()
       toast(t("layout.swipeHint"))
     }
 
+    let startX = 0
     let startY: number | null = null
+    let scroller: HTMLElement | null = null
+    let scrollTop = 0
+
+    /** the scrollable box under the finger, so its movement can veto the gesture */
+    const scrollerFor = (target: EventTarget | null): HTMLElement | null => {
+      let node = target instanceof Element ? target : null
+      while (node) {
+        if (node instanceof HTMLElement && node.dataset.radixScrollAreaViewport !== undefined) {
+          return node
+        }
+        node = node.parentElement
+      }
+      return null
+    }
+
+    const cancel = () => {
+      startY = null
+      scroller = null
+    }
+
     const onStart = (event: TouchEvent) => {
       const touch = event.touches[0]
-      startY =
-        touch && touch.clientY > window.innerHeight - SWIPE_EDGE_PX ? touch.clientY : null
+      if (!touch || event.touches.length > 1) return cancel()
+      if (touch.clientY <= window.innerHeight - SWIPE_EDGE_PX) return cancel()
+      startX = touch.clientX
+      startY = touch.clientY
+      scroller = scrollerFor(event.target)
+      scrollTop = scroller?.scrollTop ?? 0
     }
+
     const onMove = (event: TouchEvent) => {
       if (startY == null) return
-      const y = event.touches[0]?.clientY ?? startY
-      if (startY - y > SWIPE_DISTANCE_PX) {
-        startY = null
+      if (event.touches.length > 1) return cancel()
+      const touch = event.touches[0]
+      if (!touch) return cancel()
+      if (scroller && Math.abs(scroller.scrollTop - scrollTop) > SWIPE_SCROLL_TOLERANCE_PX) {
+        return cancel()
+      }
+      const up = startY - touch.clientY
+      const sideways = Math.abs(touch.clientX - startX)
+      /* below the noise floor there is no direction to judge yet: a finger
+         that has moved three pixels is still deciding */
+      if (Math.max(up, sideways) < SWIPE_NOISE_PX) return
+      if (up <= 0 || sideways * SWIPE_AXIS_RATIO > up) return cancel()
+      if (up > SWIPE_DISTANCE_PX) {
+        cancel()
         showRail()
       }
-    }
-    const onEnd = () => {
-      startY = null
     }
 
     document.addEventListener("touchstart", onStart, { passive: true })
     document.addEventListener("touchmove", onMove, { passive: true })
-    document.addEventListener("touchend", onEnd, { passive: true })
-    document.addEventListener("touchcancel", onEnd, { passive: true })
+    document.addEventListener("touchend", cancel, { passive: true })
+    document.addEventListener("touchcancel", cancel, { passive: true })
     return () => {
       document.removeEventListener("touchstart", onStart)
       document.removeEventListener("touchmove", onMove)
-      document.removeEventListener("touchend", onEnd)
-      document.removeEventListener("touchcancel", onEnd)
+      document.removeEventListener("touchend", cancel)
+      document.removeEventListener("touchcancel", cancel)
     }
-  }, [railVisible, showRail, t])
+  }, [railVisible, showRail, swipeHintSeen, markSwipeHintSeen, t])
 
   return null
 }

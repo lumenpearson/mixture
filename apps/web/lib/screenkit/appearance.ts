@@ -102,8 +102,8 @@ var json=function(k){var r=read(k);if(!r)return null;try{var p=JSON.parse(r);ret
 e.setAttribute("data-palette",one(read(C.paletteKey),C.palettes,C.defaults.palette));
 e.setAttribute("data-gradients",one(read(C.gradientKey),C.gradients,C.defaults.gradients));
 st.setProperty("--app-scale",String(C.scaleValue[one(read(C.scaleKey),C.scales,C.defaults.scale)]));
-var g=C.glass,s=json(C.glassKey);
-if(!s)s=read(C.legacyGlowKey)==="on"?{enabled:true}:read(C.legacyGlowKey)==="off"?{enabled:false}:{};
+var g=C.glass,raw=read(C.glassKey),s=json(C.glassKey);
+if(!s)s=raw?{}:read(C.legacyGlowKey)==="on"?{enabled:true}:read(C.legacyGlowKey)==="off"?{enabled:false}:{};
 var bool=function(v,fb){return typeof v==="boolean"?v:fb};
 var num=function(k){var v=s[k],b=C.bounds[k];return typeof v==="number"&&isFinite(v)?Math.min(b[1],Math.max(b[0],v)):g[k]};
 e.setAttribute("data-glass",bool(s.enabled,g.enabled)?"on":"off");

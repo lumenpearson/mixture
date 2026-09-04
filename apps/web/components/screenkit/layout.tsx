@@ -27,15 +27,20 @@ export type StoredLayout = {
   side: RailSide
   railVisible: boolean
   autoHideOnScroll: boolean
+  /** the edge-swipe hint has been shown once on this browser */
+  swipeHintSeen: boolean
 }
 
 export const DEFAULT_LAYOUT: StoredLayout = {
   side: "left",
   railVisible: true,
   autoHideOnScroll: false,
+  swipeHintSeen: false,
 }
 
 type LayoutCtx = StoredLayout & {
+  /** the visibility the user chose, as opposed to what scrolling left on screen */
+  storedRailVisible: boolean
   setSide: (side: RailSide) => void
   /** explicit reveal (toggle button, edge swipe) — persisted */
   showRail: () => void
@@ -44,6 +49,8 @@ type LayoutCtx = StoredLayout & {
   /** scroll-driven show/hide — live state only, never written to storage */
   setRailVisibleTransient: (visible: boolean) => void
   setAutoHideOnScroll: (enabled: boolean) => void
+  /** remember that the swipe hint has been shown, so it never toasts twice */
+  markSwipeHintSeen: () => void
 }
 
 const LayoutContext = React.createContext<LayoutCtx | null>(null)
@@ -73,6 +80,10 @@ export function readLayout(store: StorageLike | null = browserStorage()): Stored
         typeof parsed.autoHideOnScroll === "boolean"
           ? parsed.autoHideOnScroll
           : DEFAULT_LAYOUT.autoHideOnScroll,
+      swipeHintSeen:
+        typeof parsed.swipeHintSeen === "boolean"
+          ? parsed.swipeHintSeen
+          : DEFAULT_LAYOUT.swipeHintSeen,
     }
   } catch {
     return DEFAULT_LAYOUT
@@ -107,15 +118,25 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
   const [autoHideOnScroll, setAutoHideOnScrollState] = React.useState(
     DEFAULT_LAYOUT.autoHideOnScroll,
   )
-  /** the value that goes back to storage — see the note at the top of the file */
-  const storedRailVisible = React.useRef(DEFAULT_LAYOUT.railVisible)
+  const [swipeHintSeen, setSwipeHintSeenState] = React.useState(DEFAULT_LAYOUT.swipeHintSeen)
+  /* The value that goes back to storage — see the note at the top of the file.
+     It is state as well as a ref: the scroll listener reads the ref (it must
+     not be re-attached on every change), while `content.tsx` renders against
+     the state to decide whether an upward flick may reveal a rail the user
+     put away on purpose. */
+  const storedRailVisibleRef = React.useRef(DEFAULT_LAYOUT.railVisible)
+  const [storedRailVisible, setStoredRailVisibleState] = React.useState(
+    DEFAULT_LAYOUT.railVisible,
+  )
 
   React.useEffect(() => {
     const stored = readLayout()
     setSideState(stored.side)
     setRailVisibleState(stored.railVisible)
     setAutoHideOnScrollState(stored.autoHideOnScroll)
-    storedRailVisible.current = stored.railVisible
+    setSwipeHintSeenState(stored.swipeHintSeen)
+    storedRailVisibleRef.current = stored.railVisible
+    setStoredRailVisibleState(stored.railVisible)
     applyRailToDocument(stored.railVisible)
   }, [])
 
@@ -123,12 +144,13 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
     (next: Partial<StoredLayout>) => {
       writeLayout({
         side,
-        railVisible: storedRailVisible.current,
+        railVisible: storedRailVisibleRef.current,
         autoHideOnScroll,
+        swipeHintSeen,
         ...next,
       })
     },
-    [side, autoHideOnScroll],
+    [side, autoHideOnScroll, swipeHintSeen],
   )
 
   const setSide = React.useCallback(
@@ -143,7 +165,8 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
     (next: boolean) => {
       setRailVisibleState(next)
       applyRailToDocument(next)
-      storedRailVisible.current = next
+      storedRailVisibleRef.current = next
+      setStoredRailVisibleState(next)
       persist({ railVisible: next })
     },
     [persist],
@@ -168,31 +191,42 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
       persist({ autoHideOnScroll: enabled })
       // switching auto-hide off drops whatever the last scroll left behind and
       // returns the rail to the state the user actually chose
-      if (!enabled) setRailVisibleTransient(storedRailVisible.current)
+      if (!enabled) setRailVisibleTransient(storedRailVisibleRef.current)
     },
     [persist, setRailVisibleTransient],
   )
+
+  const markSwipeHintSeen = React.useCallback(() => {
+    setSwipeHintSeenState(true)
+    persist({ swipeHintSeen: true })
+  }, [persist])
 
   const value = React.useMemo<LayoutCtx>(
     () => ({
       side,
       railVisible,
       autoHideOnScroll,
+      swipeHintSeen,
+      storedRailVisible,
       setSide,
       showRail,
       toggleRail,
       setRailVisibleTransient,
       setAutoHideOnScroll,
+      markSwipeHintSeen,
     }),
     [
       side,
       railVisible,
       autoHideOnScroll,
+      swipeHintSeen,
+      storedRailVisible,
       setSide,
       showRail,
       toggleRail,
       setRailVisibleTransient,
       setAutoHideOnScroll,
+      markSwipeHintSeen,
     ],
   )
 

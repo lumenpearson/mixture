@@ -238,7 +238,14 @@ export function LibrarySection() {
       <SkContextMenu build={buildLibraryMenu}>
       <ul className={listCls(viewMode)}>
         {paged.map((insert, idx) => (
-          <li key={insert.id} className="min-w-0 sk-animate-in" style={staggerDelay(idx)}>
+          <li
+            key={insert.id}
+            /* `content-visibility` lets the browser skip layout and paint for
+               the rows below the fold; `contain-intrinsic-size` keeps the
+               scrollbar honest while they are skipped. */
+            className="min-w-0 sk-animate-in [content-visibility:auto] [contain-intrinsic-size:auto_180px]"
+            style={staggerDelay(idx)}
+          >
             <InsertCard
               insert={insert}
               contentLocale={contentLocale}
@@ -317,7 +324,10 @@ function InsertCard({
 
   return (
     <SkContextMenu build={menu}>
-    <div className={cn(cardCls(viewMode), "relative")}>
+    {/* One blur layer per card would mean up to 24 compositing layers
+        repainting on every scroll frame, to blur a page background that is
+        flat behind them. The colour and the border highlight stay. */}
+    <div className={cn(cardCls(viewMode), "relative")} data-glass-surface="flat">
       <button
         type="button"
         onClick={(event) => {

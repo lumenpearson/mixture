@@ -24,7 +24,12 @@ describe("readLayout", () => {
   })
 
   it("reads a complete stored value back", () => {
-    const stored = { side: "right" as const, railVisible: false, autoHideOnScroll: true }
+    const stored = {
+      side: "right" as const,
+      railVisible: false,
+      autoHideOnScroll: true,
+      swipeHintSeen: true,
+    }
     expect(readLayout(fakeStorage({ [RAIL_LAYOUT_KEY]: JSON.stringify(stored) }))).toEqual(stored)
   })
 
@@ -34,6 +39,7 @@ describe("readLayout", () => {
       side: "right",
       railVisible: DEFAULT_LAYOUT.railVisible,
       autoHideOnScroll: DEFAULT_LAYOUT.autoHideOnScroll,
+      swipeHintSeen: DEFAULT_LAYOUT.swipeHintSeen,
     })
   })
 
@@ -43,6 +49,7 @@ describe("readLayout", () => {
         side: "top",
         railVisible: "no",
         autoHideOnScroll: 1,
+        swipeHintSeen: "yes",
       }),
     })
     expect(readLayout(store)).toEqual(DEFAULT_LAYOUT)
@@ -57,7 +64,12 @@ describe("readLayout", () => {
 describe("writeLayout", () => {
   it("round-trips through readLayout", () => {
     const store = fakeStorage()
-    const value = { side: "right" as const, railVisible: false, autoHideOnScroll: true }
+    const value = {
+      side: "right" as const,
+      railVisible: false,
+      autoHideOnScroll: true,
+      swipeHintSeen: true,
+    }
     writeLayout(value, store)
     expect(readLayout(store)).toEqual(value)
   })

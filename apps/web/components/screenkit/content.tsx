@@ -57,8 +57,12 @@ const CONTENT_WIDTH_CLASS: Record<ContentWidth, string> = {
   wide: "md:mx-auto md:max-w-full 2xl:max-w-full",
 }
 
-/** the bottom rail — and therefore this preference — only exists below `md` */
-const NARROW_QUERY = "(max-width: 767.98px)"
+/* The bottom rail — and therefore this preference — only exists below `md`.
+   The unit is rem because that is what tailwind emits for `md:`
+   (`min-width: 48rem`); in a media query rem is the browser's initial font
+   size, so a reader who set that to 20px keeps the two in step. A px query
+   would put this gate at 768px while the layout switched at 960px. */
+const NARROW_QUERY = "(max-width: 47.99rem)"
 /** ignore anything smaller than a deliberate flick */
 const SCROLL_EPSILON_PX = 4
 /** far enough down that the elastic bounce at the top of a section cannot hide the rail */
@@ -83,14 +87,19 @@ const SETTLE_MS = 500
  * every flick at the end of a section. Hence the settle window.
  */
 function useAutoHideRailOnScroll(containerRef: React.RefObject<HTMLDivElement | null>) {
-  const { autoHideOnScroll, railVisible, setRailVisibleTransient } = useLayout()
+  const { autoHideOnScroll, railVisible, storedRailVisible, setRailVisibleTransient } = useLayout()
   const [narrow, setNarrow] = React.useState(false)
   const railVisibleRef = React.useRef(railVisible)
+  const storedRailVisibleRef = React.useRef(storedRailVisible)
   const settleUntil = React.useRef(0)
 
   React.useEffect(() => {
     railVisibleRef.current = railVisible
   }, [railVisible])
+
+  React.useEffect(() => {
+    storedRailVisibleRef.current = storedRailVisible
+  }, [storedRailVisible])
 
   React.useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return
@@ -120,7 +129,9 @@ function useAutoHideRailOnScroll(containerRef: React.RefObject<HTMLDivElement | 
       if (delta > 0 && top > HIDE_AFTER_PX && visible) {
         settleUntil.current = performance.now() + SETTLE_MS
         setRailVisibleTransient(false)
-      } else if (delta < -SHOW_DELTA_PX && !visible) {
+      } else if (delta < -SHOW_DELTA_PX && !visible && storedRailVisibleRef.current) {
+        /* scrolling may only undo what scrolling did. a rail the user put
+           away with the toggle stays away until they press it again. */
         settleUntil.current = performance.now() + SETTLE_MS
         setRailVisibleTransient(true)
       }
