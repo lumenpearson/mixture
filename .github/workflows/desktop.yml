@@ -10,9 +10,16 @@ on:
       - "apps/desktop/**"
       - ".github/workflows/desktop.yml"
       # the shell embeds a static export of the web app, so a change that
-      # breaks the export breaks the bundle
+      # breaks the export breaks the bundle. Besides the two files that define
+      # the export, these are what it removes and rewrites: a route handler or
+      # a route-segment directive that moves makes `build-desktop.mjs` fail.
       - "apps/web/next.config.mjs"
       - "apps/web/scripts/build-desktop.mjs"
+      - "apps/web/package.json"
+      - "apps/web/app/page.tsx"
+      - "apps/web/app/manifest.ts"
+      - "apps/web/app/api/**"
+      - "apps/web/app/insert/**"
 
 concurrency:
   group: desktop-${{ github.ref }}

@@ -28,13 +28,6 @@ concurrency:
 permissions:
   contents: write
 
-env:
-  # inlined into the desktop bundle's interface at export time: the deployment
-  # its rpc calls go to. The window itself no longer opens a url — it loads a
-  # static export of apps/web from inside the bundle — so this is the api
-  # address, not the site address (apps/web/lib/rpc/settings.ts).
-  NEXT_PUBLIC_MIXTURE_API_URL: https://mixture-codeilluminators.vercel.app
-
 jobs:
   # Resolves the commit, computes the tag and refuses to touch a tag that
   # already exists. Everything else keys off its outputs.
@@ -187,6 +180,12 @@ jobs:
             offline: true
     env:
       TAG: ${{ needs.guard.outputs.tag }}
+      # inlined into the bundled interface at export time: the deployment its
+      # rpc calls go to. The window no longer opens a url — it loads a static
+      # export of apps/web from inside the bundle — so this is the api address,
+      # not the site address (apps/web/lib/rpc/settings.ts). It is scoped to
+      # this job because no other job builds the interface.
+      NEXT_PUBLIC_MIXTURE_API_URL: https://mixture-codeilluminators.vercel.app
     steps:
       - uses: actions/checkout@v4
         with:

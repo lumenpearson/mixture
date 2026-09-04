@@ -209,28 +209,41 @@ MSI собирается WiX для всех трёх архитектур. Яз
 Накладка задаёт `app.security.capabilities: ["default"]`. В
 `apps/desktop/src-tauri/capabilities/` файлов два:
 
-| Файл           | `remote.urls`                                       | Где действует                  |
-| -------------- | --------------------------------------------------- | ------------------------------ |
-| `default.json` | `https://mixture-codeilluminators.vercel.app`        | везде, в том числе в релизе    |
-| `dev.json`     | `http://localhost:3000`, `https://*.vercel.app`      | только локально                |
+| Файл           | Где действует                                             |
+| -------------- | --------------------------------------------------------- |
+| `default.json` | локальная страница из бандла (`tauri://localhost`); в релизе только он |
+| `dev.json`     | `http://localhost:3000` — адрес, который открывает `tauri dev`         |
 
 Сборка, которая набор не называет (`pnpm dev`, `cargo check`, локальный `tauri build`),
 включает оба файла; релиз называет `default`, и `dev.json` в опубликованный бинарник не
-попадает. Разница существенная: `https://*.vercel.app` совпадает с preview-развёртыванием
-**любого** аккаунта Vercel, а `http://localhost:3000` — с чем угодно, что слушает этот
-порт на машине пользователя. Права там не декоративные: `shell:allow-open`,
-`dialog:allow-open`, файловая система в каталоге данных и команды `local_*`, читающие
-выданную папку.
+попадает. Разница существенная: `http://localhost:3000` — это что угодно, что слушает
+этот порт на машине пользователя, а права там не декоративные: управление окном,
+`shell:allow-open`, `dialog:allow-open`, файловая система в каталоге данных и команды
+`local_*`, читающие выданную папку.
 
 Второй проход стоит времени: `--config` меняет `TAURI_CONFIG`, скрипт сборки
 `tauri-build` перезапускается и крейт перелинковывается. Зависимости при этом уже
 собраны и лежат в кэше `Swatinem/rust-cache`, поэтому пересобирается только приложение.
 
-Windows-задача ставит зависимости только оболочки —
-`pnpm install --frozen-lockfile --filter @mixture/desktop...`. Ей нужен один пакет,
-`@tauri-apps/cli`: интерфейс в бандл попадает из закоммиченного `apps/desktop/public`
-(`frontendDist`), `beforeBuildCommand` нет. `apps/web` и `apps/mobile` на Windows-раннер
-не приезжают вовсе.
+### Что лежит внутри артефактов
+
+Интерфейс больше не грузится с сайта — он лежит в самом установщике. Windows-задача
+поэтому ставит **два** рабочих пространства
+(`pnpm install --frozen-lockfile --filter web... --filter @mixture/desktop...`) и перед
+сборкой выполняет экспорт: `pnpm --filter web build:desktop` кладёт статический Next-экспорт
+в `apps/web/out/desktop`, а `frontendDist` в `tauri.conf.json` указывает туда. Шаг задан
+явно, а `beforeBuildCommand` в накладке очищен: бандлер запускается по два раза на
+архитектуру, и хук экспортировал бы сайт заново на каждый проход.
+
+Адрес api вшивается в экспорт на этом же шаге: `NEXT_PUBLIC_MIXTURE_API_URL`
+(`https://mixture-codeilluminators.vercel.app`) в окружении Windows-задачи. Это адрес
+**api**, а не сайта: окно открывает файл с диска, наружу уходят только вызовы rpc.
+Указать другой стенд можно и без пересборки — в настройках приложения, раздел «rpc».
+
+Итого в каждом установщике и в переносимом архиве: исполняемый файл оболочки,
+статический интерфейс (`.html`, `.js`, `.css`, шрифты, иконки, тексты лицензий) и
+встроенный каталог вставок на момент сборки. Ни `node_modules`, ни базы данных, ни
+токенов внутри нет; `apps/mobile` на Windows-раннер по-прежнему не приезжает.
 
 ## Подпись
 
@@ -357,10 +370,16 @@ cargo check --locked --manifest-path apps/desktop/src-tauri/Cargo.toml
 Собрать установщик локально (нужна Windows, Rust с MSVC и Node 22+):
 
 ```powershell
+pnpm install                                  # весь workspace: экспорт собирает apps/web
 pnpm --filter @mixture/desktop build:x64     # nsis + msi, x86_64-pc-windows-msvc
 pnpm --filter @mixture/desktop build:arm64   # nsis + msi, aarch64-pc-windows-msvc
 pnpm --filter @mixture/desktop build:x86     # nsis + msi, i686-pc-windows-msvc
 ```
+
+Экспорт интерфейса запускать руками не нужно: `beforeBuildCommand` в `tauri.conf.json`
+вызывает `pnpm --filter web build:desktop` сам. Без `NEXT_PUBLIC_MIXTURE_API_URL` бандл
+соберётся, но api в нём задан не будет — экспорт об этом предупреждает, а указать адрес
+можно потом в настройках приложения.
 
 ## Чего здесь нет
 

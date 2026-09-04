@@ -2,7 +2,12 @@
 
 import { isTauriRuntime } from "@/lib/local/bridge"
 import * as React from "react"
-import { desktopSettingsStore, minSizeOf, titlebarHeight, type DesktopSettings } from "./desktop-settings"
+import {
+  desktopSettingsStore,
+  minSizeOf,
+  titlebarHeight,
+  type DesktopSettings,
+} from "./desktop-settings"
 
 /* ------------------------------------------------------------------ *
  * the window, as react hooks

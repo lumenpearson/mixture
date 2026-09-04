@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "what the bundled interface is allowed to do. The window now loads a static export of apps/web from inside the bundle, so this capability is local: it carries no `remote.urls` block and no remote origin inherits it. Window control is enumerated command by command because the frameless window has no system frame to fall back on — every entry below is called by apps/web/components/screenkit/desktop. Also here: opening links in the system browser, the folder picker and the app data directory; the local files themselves are read through the local_* commands, and the granted root is added to the asset protocol scope at runtime (there is no static $ROOT to write here).",
+  "description": "what the bundled interface is allowed to do. The window loads a static export of apps/web from inside the bundle, so this capability is local: it carries no `remote.urls` block and no remote origin inherits it. Window control is enumerated command by command because the frameless window has no system frame to fall back on: start-dragging is the title bar's drag region, minimize / toggle-maximize / close are its buttons, maximize is the `start maximized` setting, set-always-on-top and set-min-size are the other two window settings, and restore-state is the `remember size and position` switch asking the window-state plugin to put the window back. Size and position are never set from the page — the plugin owns the geometry — so those two commands are not granted. Also here: opening links in the system browser, the folder picker and the app data directory; the local files themselves are read through the local_* commands, and the granted root is added to the asset protocol scope at runtime (there is no static $ROOT to write here).",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -20,8 +20,6 @@
     "core:window:allow-close",
     "core:window:allow-set-always-on-top",
     "core:window:allow-set-min-size",
-    "core:window:allow-set-size",
-    "core:window:allow-set-position",
 
     "window-state:allow-restore-state"
   ]
