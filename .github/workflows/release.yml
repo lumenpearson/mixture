@@ -29,9 +29,11 @@ permissions:
   contents: write
 
 env:
-  # baked into the binary at compile time: which deployment the desktop window
-  # opens (apps/desktop/src-tauri reads it through option_env!)
-  MIXTURE_DESKTOP_URL: https://mixture-codeilluminators.vercel.app
+  # inlined into the desktop bundle's interface at export time: the deployment
+  # its rpc calls go to. The window itself no longer opens a url — it loads a
+  # static export of apps/web from inside the bundle — so this is the api
+  # address, not the site address (apps/web/lib/rpc/settings.ts).
+  NEXT_PUBLIC_MIXTURE_API_URL: https://mixture-codeilluminators.vercel.app
 
 jobs:
   # Resolves the commit, computes the tag and refuses to touch a tag that
@@ -194,9 +196,15 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      # only the shell package: the bundle needs the Tauri CLI and the committed
-      # apps/desktop/public, nothing from apps/web or apps/mobile
-      - run: pnpm install --frozen-lockfile --filter @mixture/desktop...
+      # the shell and the app it now bundles: the interface is a static export
+      # of apps/web, so this runner needs the web workspace as well. apps/mobile
+      # is still not installed here.
+      - run: pnpm install --frozen-lockfile --filter web... --filter @mixture/desktop...
+      # Explicit rather than through `beforeBuildCommand`: the bundler runs
+      # twice per target (online and offline WebView2) and would export the
+      # site twice. The overlays below clear the hook for the same reason.
+      - name: export the interface the bundle ships
+        run: pnpm --filter web build:desktop
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -252,9 +260,10 @@ jobs:
           Remove-Item $pfx -Force
           "thumbprint=$($cert.Thumbprint)" >> $env:GITHUB_OUTPUT
       # One overlay per WebView2 mode. Besides the mode they carry the version
-      # of this release, and the capability set of a published build: the shell
-      # ships with `default` alone, so the preview and localhost origins of
-      # capabilities/dev.json never reach a released binary.
+      # of this release, an empty `beforeBuildCommand` because the export
+      # already ran once above, and the capability set of a published build:
+      # the shell ships with `default` alone, so the localhost origin of
+      # capabilities/dev.json never reaches a released binary.
       - name: write the bundler config overrides
         shell: bash
         run: |
@@ -273,7 +282,7 @@ jobs:
             if [ "$mode" = "embedBootstrapper" ]; then
               floor='"minimumWebview2Version": "110.0.0.0", '
             fi
-            printf '{ "version": "%s", "app": { "security": { "capabilities": ["default"] } }, "bundle": { "windows": { %s%s"webviewInstallMode": { "type": "%s", "silent": true } } } }\n' \
+            printf '{ "version": "%s", "build": { "beforeBuildCommand": "" }, "app": { "security": { "capabilities": ["default"] } }, "bundle": { "windows": { %s%s"webviewInstallMode": { "type": "%s", "silent": true } } } }\n' \
               "$VERSION" "$sign" "$floor" "$mode" > "$RUNNER_TEMP/$mode.json"
           done
           echo "offline overlay:"

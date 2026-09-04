@@ -2,12 +2,7 @@
 
 import { isTauriRuntime } from "@/lib/local/bridge"
 import * as React from "react"
-import {
-  desktopSettingsStore,
-  minSizeOf,
-  titlebarHeight,
-  type DesktopSettings,
-} from "./desktop-settings"
+import { desktopSettingsStore, minSizeOf, titlebarHeight, type DesktopSettings } from "./desktop-settings"
 
 /* ------------------------------------------------------------------ *
  * the window, as react hooks
@@ -143,8 +138,27 @@ export function useWindowControls(active: boolean): WindowControls {
 
 /* ------------------------------ the chrome ------------------------------ */
 
-/** how long the window has to sit still before its geometry is written down */
-const REMEMBER_DEBOUNCE_MS = 400
+/**
+ * ask the window-state plugin to put the window back where it was.
+ *
+ * The plugin (apps/desktop/src-tauri/src/lib.rs) tracks and saves size,
+ * position and maximized state by itself, but is registered with
+ * `skip_initial_state`, so nothing is restored until this runs — which is
+ * what makes the "remember size and position" switch mean something. The
+ * flags are deliberately not sent: the shell decides what is remembered, and
+ * a second list here would be a second answer to the same question.
+ */
+async function restoreWindowState(): Promise<void> {
+  try {
+    const [{ invoke }, { getCurrentWindow }] = await Promise.all([
+      import("@tauri-apps/api/core"),
+      api(),
+    ])
+    await invoke("plugin:window-state|restore_state", { label: getCurrentWindow().label })
+  } catch {
+    // nothing saved yet, or the command is not in this build's capabilities
+  }
+}
 
 /**
  * apply the desktop settings to the actual window and publish the title bar
@@ -192,63 +206,18 @@ export function useDesktopChrome(active: boolean, settings: DesktopSettings) {
     latest.current = settings
   })
 
+  // Restoring is the only geometry work left on this side: saving happens
+  // natively, on every move and resize and again when the window closes, so
+  // a crash cannot cost the user their layout and clearing localStorage
+  // cannot either.
   const restored = React.useRef(false)
   React.useEffect(() => {
     if (!active || restored.current) return
     restored.current = true
-    const { rememberBounds, bounds, startMaximized } = latest.current
-    void withWindow(async (win, { LogicalPosition, LogicalSize }) => {
-      if (rememberBounds && bounds) {
-        await win.setSize(new LogicalSize(bounds.width, bounds.height))
-        await win.setPosition(new LogicalPosition(bounds.x, bounds.y))
-      }
-      if (startMaximized) await win.maximize()
-    })
-  }, [active])
-
-  // remember the geometry while the window is moved or resized. A maximized
-  // window is skipped: its rect is the monitor, and restoring it as a normal
-  // window would open a screen-sized window that is not maximized.
-  React.useEffect(() => {
-    if (!active || !settings.rememberBounds) return
-    let alive = true
-    let timer: ReturnType<typeof setTimeout> | null = null
-    const unlisten: (() => void)[] = []
-
+    const { rememberBounds, startMaximized } = latest.current
     void (async () => {
-      try {
-        const { getCurrentWindow } = await api()
-        const win = getCurrentWindow()
-        const save = async () => {
-          if (await win.isMaximized()) return
-          const factor = await win.scaleFactor()
-          const size = (await win.outerSize()).toLogical(factor)
-          const position = (await win.outerPosition()).toLogical(factor)
-          desktopSettingsStore.rememberBounds({
-            width: size.width,
-            height: size.height,
-            x: position.x,
-            y: position.y,
-          })
-        }
-        const schedule = () => {
-          if (timer) clearTimeout(timer)
-          timer = setTimeout(() => {
-            timer = null
-            void save().catch(() => {})
-          }, REMEMBER_DEBOUNCE_MS)
-        }
-        unlisten.push(await win.onResized(schedule), await win.onMoved(schedule))
-        if (!alive) unlisten.forEach((stop) => stop())
-      } catch {
-        // no window permission: nothing to remember
-      }
+      if (rememberBounds) await restoreWindowState()
+      if (startMaximized) await withWindow((win) => win.maximize())
     })()
-
-    return () => {
-      alive = false
-      if (timer) clearTimeout(timer)
-      unlisten.forEach((stop) => stop())
-    }
-  }, [active, settings.rememberBounds])
+  }, [active])
 }

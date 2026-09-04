@@ -9,6 +9,10 @@ on:
     paths:
       - "apps/desktop/**"
       - ".github/workflows/desktop.yml"
+      # the shell embeds a static export of the web app, so a change that
+      # breaks the export breaks the bundle
+      - "apps/web/next.config.mjs"
+      - "apps/web/scripts/build-desktop.mjs"
 
 concurrency:
   group: desktop-${{ github.ref }}
@@ -16,12 +20,25 @@ concurrency:
 
 jobs:
   # every pull request that touches the shell compiles the rust side; linux is
-  # enough to catch the code, the windows bundle is only built for a release
+  # enough to catch the code, the windows bundle is only built for a release.
+  # The export runs too: a release build embeds it through `generate_context!`
+  # (a debug build resolves `devUrl` instead and never reads it), so without
+  # this step a broken export would only surface while cutting a release.
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter web...
+      # no NEXT_PUBLIC_MIXTURE_API_URL here on purpose: this job checks that
+      # the export builds, and only the release decides which api it points at
+      - name: export the interface the bundle ships
+        run: pnpm --filter web build:desktop
       - name: install webkit and gtk headers
         run: |
           sudo apt-get update

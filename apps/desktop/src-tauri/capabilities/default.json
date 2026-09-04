@@ -1,11 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "what the deployed site is allowed to do inside the desktop shell: core window control, opening links in the system browser, the folder picker and the app data directory. The local files themselves are read through the local_* commands, and the granted root is added to the asset protocol scope at runtime (there is no static $ROOT to write here). One origin only: a released build must not hand these permissions to whatever else answers on a matching address.",
+  "description": "what the bundled interface is allowed to do. The window now loads a static export of apps/web from inside the bundle, so this capability is local: it carries no `remote.urls` block and no remote origin inherits it. Window control is enumerated command by command because the frameless window has no system frame to fall back on — every entry below is called by apps/web/components/screenkit/desktop. Also here: opening links in the system browser, the folder picker and the app data directory; the local files themselves are read through the local_* commands, and the granted root is added to the asset protocol scope at runtime (there is no static $ROOT to write here).",
   "windows": ["main"],
-  "remote": {
-    "urls": ["https://mixture-codeilluminators.vercel.app"]
-  },
   "permissions": [
     "core:default",
     "shell:allow-open",
@@ -14,6 +11,18 @@
     {
       "identifier": "fs:scope",
       "allow": [{ "path": "$APPDATA" }, { "path": "$APPDATA/**" }]
-    }
+    },
+
+    "core:window:allow-start-dragging",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-close",
+    "core:window:allow-set-always-on-top",
+    "core:window:allow-set-min-size",
+    "core:window:allow-set-size",
+    "core:window:allow-set-position",
+
+    "window-state:allow-restore-state"
   ]
 }
