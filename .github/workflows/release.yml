@@ -426,11 +426,19 @@ jobs:
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "$KEYSTORE_BASE64" | base64 -d > release.keystore
+            # the delimiter form: a secret that happens to contain a newline
+            # would otherwise write further lines into the job environment
             {
               echo "MIXTURE_STORE_FILE=release.keystore"
-              echo "MIXTURE_STORE_PASSWORD=$KEYSTORE_PASSWORD"
-              echo "MIXTURE_KEY_ALIAS=$KEY_ALIAS"
-              echo "MIXTURE_KEY_PASSWORD=$KEY_PASSWORD"
+              echo "MIXTURE_STORE_PASSWORD<<MIXTURE_SECRET_EOF"
+              echo "$KEYSTORE_PASSWORD"
+              echo "MIXTURE_SECRET_EOF"
+              echo "MIXTURE_KEY_ALIAS<<MIXTURE_SECRET_EOF"
+              echo "$KEY_ALIAS"
+              echo "MIXTURE_SECRET_EOF"
+              echo "MIXTURE_KEY_PASSWORD<<MIXTURE_SECRET_EOF"
+              echo "$KEY_PASSWORD"
+              echo "MIXTURE_SECRET_EOF"
             } >> "$GITHUB_ENV"
           else
             keytool -genkeypair -v -keystore release.keystore -storetype JKS \
@@ -455,6 +463,13 @@ jobs:
             -Pandroid.injected.signing.store.password="$MIXTURE_STORE_PASSWORD" \
             -Pandroid.injected.signing.key.alias="$MIXTURE_KEY_ALIAS" \
             -Pandroid.injected.signing.key.password="$MIXTURE_KEY_PASSWORD"
+
+      # the runner is discarded either way, but a signing key has no business
+      # outliving the step that used it
+      - name: remove the signing key
+        if: always()
+        working-directory: apps/mobile/android/app
+        run: rm -f release.keystore
 
       - name: collect the apk
         run: |
