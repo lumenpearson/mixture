@@ -1,0 +1,180 @@
+syntax = "proto3";
+
+package mixture.library.v1;
+
+import "mixture/common/v1/common.proto";
+
+// A library category. Built-in categories are shipped with the app; custom
+// ones are stored in Postgres and carry `custom = true`.
+message CategoryDef {
+  string id = 1;
+  string accent = 2;
+  string tint = 3;
+  string icon = 4;
+  mixture.common.v1.LocalizedText label = 5;
+  bool custom = 6;
+}
+
+// What an insert renders inside the device frame: a packaged scene (the
+// historical and default case), a live website, or a file from the cloud
+// drive. UNSPECIFIED is read as SCENE so inserts written before this field
+// existed keep their meaning.
+enum InsertKind {
+  INSERT_KIND_UNSPECIFIED = 0;
+  INSERT_KIND_SCENE = 1;
+  INSERT_KIND_SITE = 2;
+  INSERT_KIND_FILE = 3;
+}
+
+// How content fills the screen. UNSPECIFIED means "not chosen"; the client
+// falls back to its own per-kind default.
+enum InsertFit {
+  INSERT_FIT_UNSPECIFIED = 0;
+  INSERT_FIT_CONTAIN = 1;
+  INSERT_FIT_COVER = 2;
+}
+
+// Where a `site` / `file` insert takes its content from and how it is framed.
+// Every field carries explicit presence: an author who switches a flag off
+// must be distinguishable from one who never touched it, because the per-kind
+// defaults are `true`.
+message InsertSource {
+  // website url for `site` inserts, a direct https file url for `file` ones
+  optional string url = 1;
+  // cloud-drive path for `file` inserts
+  optional string path = 2;
+  InsertFit fit = 3;
+  // zoom factor (1 = natural), validated to 0.25 .. 3 by the server — the
+  // same ceiling the zoom controls and the renderer clamp to
+  optional double zoom = 4;
+  // allow scrolling inside a site insert
+  optional bool scroll = 5;
+  optional bool autoplay = 6;
+  optional bool loop = 7;
+  optional bool muted = 8;
+  // background behind letterboxed content; a css color, validated server-side
+  optional string background = 9;
+  // which scene package renders a `scene` insert (a manifest key such as
+  // "cctv"). Absent means the registry picks by insert id, then by category,
+  // then the fallback package — the behaviour every insert had before this
+  // field existed.
+  optional string scene_key = 10;
+}
+
+// A screen insert: the library card plus its generation prompts.
+message Insert {
+  string id = 1;
+  string date = 2;
+  string episode = 3;
+  string scene = 4;
+  string category = 5;
+  mixture.common.v1.DeviceType device = 6;
+  mixture.common.v1.AspectRatio aspect = 7;
+  mixture.common.v1.InsertStatus status = 8;
+  mixture.common.v1.LocalizedText title = 9;
+  mixture.common.v1.LocalizedText description = 10;
+  mixture.common.v1.LocalizedText prompt = 11;
+  mixture.common.v1.LocalizedText short_prompt = 12;
+  mixture.common.v1.LocalizedText negative_prompt = 13;
+  mixture.common.v1.LocalizedList technical_notes = 14;
+  // true for rows stored in the database (as opposed to built-in / generated
+  // inserts that ship with the source tree).
+  bool custom = 15;
+  InsertKind kind = 16;
+  // absent for scene inserts
+  InsertSource source = 17;
+}
+
+// The full merged library: built-ins, generated packages and custom rows.
+message Library {
+  repeated CategoryDef categories = 1;
+  repeated Insert inserts = 2;
+  // false when the database is unreachable and only built-in data is served.
+  bool persistent = 3;
+  // true when the server requires an edit token for mutations.
+  bool edit_locked = 4;
+}
+
+message GetLibraryRequest {}
+
+message GetLibraryResponse {
+  Library library = 1;
+}
+
+message AddCategoryRequest {
+  string label_ru = 1;
+  string label_en = 2;
+  string slug = 3;
+  string accent = 4;
+  string tint = 5;
+  string icon = 6;
+}
+
+message AddCategoryResponse {
+  Library library = 1;
+  string id = 2;
+}
+
+message AddInsertRequest {
+  string slug = 1;
+  string category = 2;
+  mixture.common.v1.DeviceType device = 3;
+  mixture.common.v1.AspectRatio aspect = 4;
+  mixture.common.v1.InsertStatus status = 5;
+  string episode = 6;
+  string scene = 7;
+  string date = 8;
+  string title_ru = 9;
+  string title_en = 10;
+  string description_ru = 11;
+  string description_en = 12;
+  string prompt_ru = 13;
+  string prompt_en = 14;
+  string short_prompt_ru = 15;
+  string short_prompt_en = 16;
+  string negative_prompt_ru = 17;
+  string negative_prompt_en = 18;
+  repeated string technical_notes_ru = 19;
+  repeated string technical_notes_en = 20;
+  InsertKind kind = 21;
+  // must be absent for scene inserts
+  InsertSource source = 22;
+}
+
+message AddInsertResponse {
+  Library library = 1;
+  string id = 2;
+}
+
+message DeleteInsertRequest {
+  string id = 1;
+}
+
+message DeleteInsertResponse {
+  Library library = 1;
+}
+
+message DeleteCategoryRequest {
+  string id = 1;
+}
+
+message DeleteCategoryResponse {
+  Library library = 1;
+}
+
+message ResetLibraryRequest {}
+
+message ResetLibraryResponse {
+  Library library = 1;
+}
+
+// The insert library. Reads are public; mutations are gated by the optional
+// `x-mixture-edit-token` header when MIXTURE_EDIT_TOKEN is configured.
+service LibraryService {
+  rpc GetLibrary(GetLibraryRequest) returns (GetLibraryResponse);
+  rpc AddCategory(AddCategoryRequest) returns (AddCategoryResponse);
+  rpc AddInsert(AddInsertRequest) returns (AddInsertResponse);
+  rpc DeleteInsert(DeleteInsertRequest) returns (DeleteInsertResponse);
+  rpc DeleteCategory(DeleteCategoryRequest) returns (DeleteCategoryResponse);
+  rpc ResetLibrary(ResetLibraryRequest) returns (ResetLibraryResponse);
+}

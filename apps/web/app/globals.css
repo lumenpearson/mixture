@@ -237,7 +237,43 @@
   }
 }
 
+:root {
+  /* narrow-screen bottom rail: one height so the rail's own row and the
+     collapse animation agree on it. */
+  --sk-bottom-rail-h: 4.5rem;
+  /* the no-javascript fallback for the site scale. must equal
+     SCALE_VALUE[DEFAULT_SCALE] in lib/screenkit/appearance.ts, otherwise every
+     first load reflows the whole rem-based layout once the providers hydrate. */
+  --app-scale: 1.08;
+
+  /* height of the desktop title bar. Zero here and overwritten on <html> only
+     inside the Tauri shell, so an overlay that starts below the bar (the
+     offline screen) starts at the top of the viewport on the web. */
+  --sk-titlebar-h: 0px;
+}
+
+/* the title bar is a window handle: nothing inside it may start a text
+   selection or a native drag, and the pointer stays an arrow over it. */
+[data-tauri-drag-region] {
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
 @layer utilities {
+  /* The bottom rail below `md` is a real flex sibling of main (not an
+     overlay), so main's height already excludes it — collapsing this to
+     `max-h-0` both hides the rail and lets main grow to fill the screen. */
+  .sk-bottom-rail-collapse {
+    max-height: calc(var(--sk-bottom-rail-h) + max(1rem, env(safe-area-inset-bottom)));
+  }
+  /* the pre-hydration script writes `data-rail` from storage, so a rail the
+     user had hidden never paints and then animates away; LayoutProvider keeps
+     the attribute in step with its state afterwards. */
+  html[data-rail="hidden"] .sk-bottom-rail-collapse {
+    max-height: 0;
+  }
+
   .sk-resize {
     transition-property:
       width, min-width, max-width, height, max-height, min-height, aspect-ratio, flex-basis, padding, margin, gap,
@@ -348,6 +384,16 @@
   .sk-chips::-webkit-scrollbar { display: none; }
   .sk-safe-x { padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right)); }
   .sk-safe-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+  /* The inset on its own, with no minimum: for content that only has to clear
+     the home indicator, in a place that must not grow when there is none.
+     Only while the rail is away, though — the rail's own `sk-safe-bottom`
+     already clears the indicator, and adding this behind it leaves the last
+     row of a section floating a home indicator above a bar that is right
+     there. `data-rail` is set by the pre-hydration script and kept in step by
+     layout.tsx. */
+  html[data-rail="hidden"] .sk-safe-bottom-inset {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
   .sk-wrap-anywhere { overflow-wrap: anywhere; }
 }
 

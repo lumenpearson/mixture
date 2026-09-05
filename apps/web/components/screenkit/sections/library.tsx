@@ -11,10 +11,16 @@ import {
   ChevronRight,
   Eye,
   Search,
+  Star,
+  X,
 } from "lucide-react"
 import * as React from "react"
+import { useInsertMenuBuilder, useLibraryMenuBuilder } from "../context-menu/builders"
+import { SkContextMenu } from "../context-menu/menu"
+import type { MenuModel } from "../context-menu/model"
+import { SEARCH_INPUT_ID } from "../hotkeys"
 import { iconForDevice } from "../icons"
-import { LibraryEditor } from "../library-editor"
+import { DeleteInsertDialog, LibraryEditor } from "../library-editor"
 import { LibraryListControls } from "../library-list-controls"
 import {
   LIBRARY_LIST_UI,
@@ -38,43 +44,57 @@ export function LibrarySection() {
     filters,
     setFilters,
     openInPreview,
-    locale,
+    contentLocale,
     t,
     inserts,
     categories,
     catDef,
     catLabel,
     libraryListSettings,
+    favorites,
+    isFavorite,
+    toggleFavorite,
   } = useScreenkit()
 
-  const labels = LIBRARY_LIST_UI[locale]
+  const labels = LIBRARY_LIST_UI[contentLocale]
   const { sort: sortKey, view: viewMode, pageSize } = libraryListSettings
   const [page, setPage] = React.useState(1)
+  const [deleteId, setDeleteId] = React.useState<string | null>(null)
+  const buildInsertMenu = useInsertMenuBuilder()
+  const buildLibraryMenu = useLibraryMenuBuilder()
 
   const filtered = React.useMemo(
     () =>
       inserts.filter((i) => {
+        if (filters.favoritesOnly && !favorites.has(i.id)) return false
         if (filters.category !== "all" && i.category !== filters.category) return false
         if (filters.device !== "all" && i.device !== filters.device) return false
         if (filters.status !== "all" && i.status !== filters.status) return false
         if (filters.search) {
           const q = filters.search.toLowerCase()
-          const r = resolveInsert(i, locale)
+          const r = resolveInsert(i, contentLocale)
           const hay =
             `${i.title.ru} ${i.title.en ?? ""} ${r.title} ${r.description} ${i.episode} ${i.scene} ${i.id}`.toLowerCase()
           if (!hay.includes(q)) return false
         }
         return true
       }),
-    [filters, inserts, locale],
+    [filters, inserts, contentLocale, favorites],
   )
+
+  const hasActiveFilters =
+    filters.search !== "" ||
+    filters.category !== "all" ||
+    filters.device !== "all" ||
+    filters.status !== "all" ||
+    filters.favoritesOnly
 
   const sorted = React.useMemo(
     () =>
       filtered
-        .map((raw) => resolveInsert(raw, locale))
+        .map((raw) => resolveInsert(raw, contentLocale))
         .sort((a, b) => compareLibraryInserts(a, b, sortKey)),
-    [filtered, locale, sortKey],
+    [filtered, contentLocale, sortKey],
   )
 
   const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
@@ -106,11 +126,32 @@ export function LibrarySection() {
       <div className="relative min-w-0">
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-faint" />
         <Input
+          id={SEARCH_INPUT_ID}
           value={filters.search}
           onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
           placeholder={t("library.search")}
-          className="h-11 rounded-2xl border-panel-border bg-control pl-9 font-mono text-sm text-foreground placeholder:text-text-faint focus-visible:ring-ring"
+          aria-label={t("library.search")}
+          className="h-11 rounded-2xl border-panel-border bg-control pl-9 pr-24 font-mono text-sm text-foreground placeholder:text-text-faint focus-visible:ring-ring"
         />
+        <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              onClick={() =>
+                setFilters({ search: "", category: "all", device: "all", status: "all", favoritesOnly: false })
+              }
+              className="inline-flex items-center gap-1 rounded-full border border-panel-border bg-panel-soft px-2 py-1 font-mono text-[10px] lowercase text-text-secondary transition-colors hover:bg-panel-hover hover:text-foreground"
+              aria-label={t("library.clearFilters")}
+              title={t("library.clearFilters")}
+            >
+              <X className="size-3" />
+              <span className="hidden sm:inline">{t("library.clearFilters")}</span>
+            </button>
+          ) : null}
+          <kbd className="hidden rounded-md border border-panel-border bg-panel-soft px-1.5 py-0.5 font-mono text-[10px] text-text-faint sm:block">
+            /
+          </kbd>
+        </div>
       </div>
 
       <div className="flex min-w-0 flex-col gap-3">
@@ -140,9 +181,21 @@ export function LibrarySection() {
               active={filters.device === d.id}
               onClick={() => setFilters((f) => ({ ...f, device: d.id }))}
             >
-              {deviceLabel(d.id, locale)}
+              {deviceLabel(d.id, contentLocale)}
             </Pill>
           ))}
+        </FilterRow>
+
+        <FilterRow label={t("library.favorites")}>
+          <Pill
+            active={filters.favoritesOnly}
+            accent={filters.favoritesOnly ? "var(--accent-orange)" : undefined}
+            onClick={() => setFilters((f) => ({ ...f, favoritesOnly: !f.favoritesOnly }))}
+          >
+            <Star className="size-3" />
+            {t("library.favoritesOnly")}
+            <MotionNumber value={favorites.size} className="text-text-faint" />
+          </Pill>
         </FilterRow>
 
         <FilterRow label={t("library.status")}>
@@ -156,7 +209,7 @@ export function LibrarySection() {
               active={filters.status === s.id}
               onClick={() => setFilters((f) => ({ ...f, status: s.id }))}
             >
-              {statusLabel(s.id, locale)}
+              {statusLabel(s.id, contentLocale)}
             </Pill>
           ))}
         </FilterRow>
@@ -182,12 +235,20 @@ export function LibrarySection() {
         </span>
       </div>
 
+      <SkContextMenu build={buildLibraryMenu}>
       <ul className={listCls(viewMode)}>
         {paged.map((insert, idx) => (
-          <li key={insert.id} className="min-w-0 sk-animate-in" style={staggerDelay(idx)}>
+          <li
+            key={insert.id}
+            /* `content-visibility` lets the browser skip layout and paint for
+               the rows below the fold; `contain-intrinsic-size` keeps the
+               scrollbar honest while they are skipped. */
+            className="min-w-0 sk-animate-in [content-visibility:auto] [contain-intrinsic-size:auto_180px]"
+            style={staggerDelay(idx)}
+          >
             <InsertCard
               insert={insert}
-              locale={locale}
+              contentLocale={contentLocale}
               viewMode={viewMode}
               categoryAccent={catDef(insert.category)?.accent ?? "var(--accent-grey)"}
               categoryTint={catDef(insert.category)?.tint ?? "rgba(255,255,255,0.06)"}
@@ -196,6 +257,11 @@ export function LibrarySection() {
               previewLabel={t("library.preview")}
               ruOnlyLabel={t("common.ruOnly")}
               ruOnlyHint={t("common.ruOnlyHint")}
+              customLabel={t("common.custom")}
+              favorite={isFavorite(insert.id)}
+              favoriteLabel={isFavorite(insert.id) ? t("common.unfavorite") : t("common.favorite")}
+              onToggleFavorite={() => toggleFavorite(insert.id)}
+              menu={() => buildInsertMenu(insert, { onDelete: () => setDeleteId(insert.id) })}
             />
           </li>
         ))}
@@ -206,6 +272,8 @@ export function LibrarySection() {
           </li>
         )}
       </ul>
+      </SkContextMenu>
+      <DeleteInsertDialog id={deleteId} onOpenChange={(open) => !open && setDeleteId(null)} />
 
       {sorted.length > pageSize && (
         <PaginationBar
@@ -221,7 +289,7 @@ export function LibrarySection() {
 
 function InsertCard({
   insert,
-  locale,
+  contentLocale,
   viewMode,
   categoryAccent,
   categoryTint,
@@ -230,9 +298,14 @@ function InsertCard({
   previewLabel,
   ruOnlyLabel,
   ruOnlyHint,
+  customLabel,
+  favorite,
+  favoriteLabel,
+  onToggleFavorite,
+  menu,
 }: {
   insert: ResolvedInsert
-  locale: Locale
+  contentLocale: Locale
   viewMode: LibraryViewMode
   categoryAccent: string
   categoryTint: string
@@ -241,11 +314,37 @@ function InsertCard({
   previewLabel: string
   ruOnlyLabel: string
   ruOnlyHint: string
+  customLabel: string
+  favorite: boolean
+  favoriteLabel: string
+  onToggleFavorite: () => void
+  menu: () => MenuModel
 }) {
   const Icon = iconForDevice(insert.device)
 
   return (
-    <button type="button" onClick={onPreview} className={cardCls(viewMode)}>
+    <SkContextMenu build={menu}>
+    {/* One blur layer per card would mean up to 24 compositing layers
+        repainting on every scroll frame, to blur a page background that is
+        flat behind them. The colour and the border highlight stay. */}
+    <div className={cn(cardCls(viewMode), "relative")} data-glass-surface="flat">
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation()
+          onToggleFavorite()
+        }}
+        aria-pressed={favorite}
+        aria-label={favoriteLabel}
+        title={favoriteLabel}
+        className={cn(
+          "absolute right-2 top-2 z-10 inline-flex size-8 items-center justify-center rounded-full transition-colors",
+          favorite ? "text-accent-orange" : "text-text-faint opacity-0 hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100",
+        )}
+      >
+        <Star className="size-3.5" fill={favorite ? "currentColor" : "none"} />
+      </button>
+      <button type="button" onClick={onPreview} className={innerCls(viewMode)}>
       <IconTile
         icon={Icon}
         accent={categoryAccent}
@@ -258,9 +357,14 @@ function InsertCard({
           <span className="min-w-0 truncate font-mono text-sm lowercase text-foreground">
             {insert.title}
           </span>
-          <StatusBadge status={insert.status} label={statusLabel(insert.status, locale)} />
+          <StatusBadge status={insert.status} label={statusLabel(insert.status, contentLocale)} />
           {!insert.hasEnglish && (
             <RuOnlyBadge label={ruOnlyLabel} title={ruOnlyHint} />
+          )}
+          {insert.custom && (
+            <span className="rounded-full border border-panel-border bg-control px-2 py-0.5 font-mono text-[10px] lowercase text-text-faint">
+              {customLabel}
+            </span>
           )}
         </div>
 
@@ -274,19 +378,21 @@ function InsertCard({
           <span>{insert.date}</span>
           <span>· {insert.episode}</span>
           <span>· {insert.scene}</span>
-          <span>· {deviceLabel(insert.device, locale)}</span>
+          <span>· {deviceLabel(insert.device, contentLocale)}</span>
           <span>· {categoryLabel}</span>
           <span>· {insert.aspect}</span>
         </div>
       </div>
 
       {viewMode !== "grid" && (
-        <span className="hidden shrink-0 items-center gap-1 self-center rounded-full bg-control px-3 py-1.5 font-mono text-[11px] lowercase text-text-secondary group-hover:bg-control-active group-hover:text-control-active-foreground sm:flex">
+        <span className="mr-8 hidden shrink-0 items-center gap-1 self-center rounded-full bg-control px-3 py-1.5 font-mono text-[11px] lowercase text-text-secondary group-hover:bg-control-active group-hover:text-control-active-foreground sm:flex">
           <Eye className="size-3.5" /> {previewLabel}
           <ArrowUpRight className="size-3" />
         </span>
       )}
-    </button>
+      </button>
+    </div>
+    </SkContextMenu>
   )
 }
 
@@ -406,14 +512,16 @@ function listCls(viewMode: LibraryViewMode) {
 function cardCls(viewMode: LibraryViewMode) {
   const base =
     "group w-full min-w-0 rounded-2xl border border-panel-border bg-panel-soft text-left transition-colors hover:border-ring hover:bg-panel-hover"
+  return cn(base, viewMode === "grid" ? "h-full" : "")
+}
 
+function innerCls(viewMode: LibraryViewMode) {
+  const base = "w-full min-w-0 text-left"
   if (viewMode === "compact") {
     return cn(base, "flex items-center gap-3 p-2.5")
   }
-
   if (viewMode === "grid") {
     return cn(base, "flex h-full flex-col gap-3 p-3")
   }
-
   return cn(base, "flex items-start gap-3 p-3")
 }

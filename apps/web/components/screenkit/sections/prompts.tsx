@@ -7,9 +7,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { copyText } from "@/lib/clipboard"
 import { resolveInsert } from "@/lib/screenkit/data"
 import { deviceLabel, statusLabel } from "@/lib/screenkit/i18n"
-import { Check, Copy } from "lucide-react"
+import { buildPromptSheet, downloadText, exportPromptSheets } from "@/lib/screenkit/export"
+import { Check, Copy, Download, FileJson, Link2 } from "lucide-react"
 import * as React from "react"
 import { InsertLanguageToggle } from "../insert-language-toggle"
 import { Explain, KeyVal, SectionHeading, StatusBadge } from "../primitives"
@@ -20,11 +22,13 @@ function CopyBlock({
   value,
   copyLabel,
   copiedLabel,
+  failedLabel,
 }: {
   label: string
   value: string
   copyLabel: string
   copiedLabel: string
+  failedLabel: string
 }) {
   const [copied, setCopied] = React.useState(false)
   return (
@@ -33,9 +37,11 @@ function CopyBlock({
         <SectionHeading title={label} />
         <button
           onClick={() => {
-            navigator.clipboard?.writeText(value)
-            setCopied(true)
-            setTimeout(() => setCopied(false), 1400)
+            void copyText(value, copiedLabel, failedLabel).then((ok: boolean) => {
+              if (!ok) return
+              setCopied(true)
+              setTimeout(() => setCopied(false), 1400)
+            })
           }}
           className="inline-flex items-center gap-1.5 rounded-lg border border-panel-border bg-control px-2.5 py-1 font-mono text-[11px] lowercase text-text-secondary transition-colors hover:bg-panel-hover hover:text-foreground"
         >
@@ -50,8 +56,20 @@ function CopyBlock({
   )
 }
 
+function ToolbarButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded-xl border border-panel-border bg-control px-3 py-2 font-mono text-xs lowercase text-text-secondary transition-colors hover:bg-panel-hover hover:text-foreground"
+    >
+      {children}
+    </button>
+  )
+}
+
 export function PromptsSection() {
-  const { selectedId, setSelectedId, locale, insertLocaleFor, t, inserts, getInsert } =
+  const { selectedId, setSelectedId, contentLocale, insertLocaleFor, t, inserts, getInsert } =
     useScreenkit()
   const raw = getInsert(selectedId) ?? inserts[0]
   const insertLocale = insertLocaleFor(raw.id)
@@ -59,6 +77,23 @@ export function PromptsSection() {
 
   const copyLabel = t("common.copy")
   const copiedLabel = t("common.copied")
+  const failedLabel = t("menu.copyFailed")
+  const [allCopied, setAllCopied] = React.useState(false)
+
+  const copyAll = () => {
+    void copyText(buildPromptSheet(insert, insertLocale), copiedLabel, failedLabel).then((ok: boolean) => {
+      if (!ok) return
+      setAllCopied(true)
+      window.setTimeout(() => setAllCopied(false), 1400)
+    })
+  }
+
+  const shareLink = () => {
+    const url = new URL(window.location.href)
+    url.search = `?view=metadata&insert=${encodeURIComponent(insert.id)}`
+    url.hash = ""
+    void copyText(url.toString(), t("common.linkCopied"), failedLabel)
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -74,20 +109,35 @@ export function PromptsSection() {
             <SelectContent className="max-h-80 border-panel-border bg-popover font-mono">
               {inserts.map((i) => (
                 <SelectItem key={i.id} value={i.id} className="lowercase">
-                  {resolveInsert(i, locale).title}
+                  {resolveInsert(i, contentLocale).title}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <StatusBadge
             status={insert.status}
-            label={statusLabel(insert.status, locale)}
+            label={statusLabel(insert.status, contentLocale)}
           />
           <InsertLanguageToggle
             insertId={insert.id}
             hasEnglish={insert.hasEnglish}
             compact
           />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <ToolbarButton onClick={copyAll}>
+            {allCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+            {allCopied ? copiedLabel : t("prompts.copyAll")}
+          </ToolbarButton>
+          <ToolbarButton onClick={() => downloadText(`${insert.id}.prompts.txt`, buildPromptSheet(insert, insertLocale), "text/plain")}>
+            <Download className="size-3.5" /> {t("prompts.exportSheet")}
+          </ToolbarButton>
+          <ToolbarButton onClick={() => exportPromptSheets(inserts, contentLocale)}>
+            <FileJson className="size-3.5" /> {t("prompts.exportAll")}
+          </ToolbarButton>
+          <ToolbarButton onClick={shareLink}>
+            <Link2 className="size-3.5" /> {t("common.share")}
+          </ToolbarButton>
         </div>
       </header>
 
@@ -97,7 +147,7 @@ export function PromptsSection() {
           label={t("prompts.episodeScene")}
           value={`${insert.episode} · ${insert.scene}`}
         />
-        <KeyVal label={t("prompts.device")} value={deviceLabel(insert.device, locale)} />
+        <KeyVal label={t("prompts.device")} value={deviceLabel(insert.device, contentLocale)} />
         <KeyVal label={t("prompts.aspect")} value={insert.aspect} />
       </div>
 
@@ -106,18 +156,21 @@ export function PromptsSection() {
         value={insert.prompt}
         copyLabel={copyLabel}
         copiedLabel={copiedLabel}
+        failedLabel={failedLabel}
       />
       <CopyBlock
         label={t("prompts.short")}
         value={insert.shortPrompt}
         copyLabel={copyLabel}
         copiedLabel={copiedLabel}
+        failedLabel={failedLabel}
       />
       <CopyBlock
         label={t("prompts.negative")}
         value={insert.negativePrompt}
         copyLabel={copyLabel}
         copiedLabel={copiedLabel}
+        failedLabel={failedLabel}
       />
 
       <div className="flex flex-col gap-3">

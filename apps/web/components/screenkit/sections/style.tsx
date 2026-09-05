@@ -1,12 +1,18 @@
 "use client"
 
-import { LANG_LABEL, LOCALES } from "@/lib/screenkit/i18n"
-import type { Locale } from "@/lib/screenkit/types"
+import { LANG_LABEL, UI_LOCALES } from "@/lib/screenkit/i18n"
+import type { UiLocale } from "@/lib/screenkit/types"
 import { Check, Monitor, Moon, Sun } from "lucide-react"
 import * as React from "react"
 import { LibraryListControls } from "../library-list-controls"
 import { DEFAULT_MOTION_FEATURES, useMotion, type MotionFeature } from "../motion"
 import { Explain, SectionHeading, SegmentedControl } from "../primitives"
+import { DesktopSettings } from "../settings/desktop-settings"
+import { GlassControls } from "../settings/glass-controls"
+import { LayoutControls } from "../settings/layout-controls"
+import { PlayerSettingsPanel } from "../settings/player-settings"
+import { RpcSettings } from "../settings/rpc-settings"
+import { SettingsTabs } from "../settings-tabs"
 import { useScreenkit, type ContentWidth } from "../store"
 import {
   accentSurface,
@@ -32,7 +38,7 @@ const PALETTE_PREVIEW: { id: Palette; tokens: string[] }[] = [
 function ThemeControls() {
   const { t } = useScreenkit()
   const { theme, setTheme } = useThemeMode()
-  const { palette, setPalette, gradients, setGradients, scale, setScale, glow, setGlow } = usePalette()
+  const { palette, setPalette, gradients, setGradients, scale, setScale } = usePalette()
   const transition = useThemeTransition()
   const [mounted, setMounted] = React.useState(false)
   React.useEffect(() => setMounted(true), [])
@@ -137,19 +143,6 @@ function ThemeControls() {
       </div>
 
       <div className="flex flex-col gap-3">
-        <SectionHeading title="glow эффект" />
-        <SegmentedControl<"on" | "off">
-          options={[
-            { value: "on", label: "включён" },
-            { value: "off", label: "выключен" },
-          ]}
-          value={glow ? "on" : "off"}
-          onChange={(value) => setGlow(value === "on")}
-        />
-        <Explain>добавляет raycast-like внутреннюю окантовку и мягкое свечение к основным поверхностям интерфейса.</Explain>
-      </div>
-
-      <div className="flex flex-col gap-3">
         <SectionHeading title={t("scale.title")} />
         <SegmentedControl<ScaleLevel> options={scaleOptions} value={scale} onChange={setScale} />
         <Explain>{t("scale.desc")}</Explain>
@@ -160,17 +153,7 @@ function ThemeControls() {
 
 type MotionChoice = "auto" | "full" | "reduced"
 
-const MOTION_FEATURE_LABELS: Record<MotionFeature, { title: string; desc: string }> = {
-  sections: { title: "появление секций", desc: "fade/slide-анимации при переключении разделов и блоков." },
-  layout: { title: "изменение размеров", desc: "плавная перестройка ширины, карточек и layout-контейнеров." },
-  skeletons: { title: "скелетоны", desc: "анимированная загрузка и shimmer перед показом контента." },
-  scroll: { title: "плавный скролл", desc: "smooth scroll для внутренних областей и переходов." },
-  viewTransitions: {
-    title: "переключения тем",
-    desc: "плавный crossfade и цветовые переходы при смене светлой/тёмной темы, палитры, масштаба и glow.",
-  },
-  cursor: { title: "fluid-курсор", desc: "плавающий курсор-шарик, который принимает форму элементов." },
-}
+const MOTION_FEATURES: MotionFeature[] = Object.keys(DEFAULT_MOTION_FEATURES) as MotionFeature[]
 
 function MotionControls() {
   const { t } = useScreenkit()
@@ -205,19 +188,19 @@ function MotionControls() {
 
       <div className="flex flex-col gap-3 border-t border-panel-border/60 pt-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <SectionHeading title="продвинутые настройки анимаций" />
+          <SectionHeading title={t("motion.advanced")} />
           <button
             type="button"
             onClick={resetMotionFeatures}
             className="w-fit rounded-xl border border-panel-border bg-control px-3 py-1.5 font-mono text-[11px] lowercase text-text-secondary transition-colors hover:bg-panel-hover hover:text-foreground"
           >
-            сбросить
+            {t("motion.reset")}
           </button>
         </div>
-        <Explain>можно отключить конкретные семейства анимаций. fluid-курсор остаётся анимированным даже при reduce motion, пока его отдельный переключатель включён.</Explain>
+        <Explain>{t("motion.advancedDesc")}</Explain>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
-          {(Object.keys(DEFAULT_MOTION_FEATURES) as MotionFeature[]).map((feature) => {
-            const meta = MOTION_FEATURE_LABELS[feature]
+          {MOTION_FEATURES.map((feature) => {
+            const meta = { title: t(`motion.feature.${feature}`), desc: t(`motion.feature.${feature}Desc`) }
             const enabled = features[feature]
             return (
               <button
@@ -246,21 +229,54 @@ function MotionControls() {
 }
 
 function LayoutWidthControls() {
-  const { contentWidth, setContentWidth } = useScreenkit()
+  const { contentWidth, setContentWidth, t } = useScreenkit()
 
   return (
     <div className="hidden flex-col gap-3 md:flex">
-      <SectionHeading title="ширина основной части" />
+      <SectionHeading title={t("style.width")} />
       <SegmentedControl<ContentWidth>
         options={[
-          { value: "narrow", label: "узкая" },
-          { value: "default", label: "обычная" },
-          { value: "wide", label: "широкая" },
+          { value: "narrow", label: t("style.widthNarrow") },
+          { value: "default", label: t("style.widthDefault") },
+          { value: "wide", label: t("style.widthWide") },
         ]}
         value={contentWidth}
         onChange={setContentWidth}
       />
-      <Explain>работает только на экранах, где есть левая панель. на узких версиях с верхним меню содержимое всегда занимает всю доступную ширину.</Explain>
+      <Explain>{t("style.widthDesc")}</Explain>
+    </div>
+  )
+}
+
+const HOTKEYS: { keys: string[]; labelKey: string }[] = [
+  { keys: ["ctrl", "k"], labelKey: "hotkeys.palette" },
+  { keys: ["/"], labelKey: "hotkeys.search" },
+  { keys: ["[", "]"], labelKey: "hotkeys.prevNext" },
+  { keys: ["f"], labelKey: "hotkeys.fullscreen" },
+  { keys: ["s"], labelKey: "hotkeys.favorite" },
+  { keys: ["1", "…", "7"], labelKey: "hotkeys.sections" },
+]
+
+function HotkeysCard() {
+  const { t } = useScreenkit()
+  return (
+    <div className="flex flex-col gap-3">
+      <SectionHeading title={t("hotkeys.title")} />
+      <ul className="flex flex-col gap-2">
+        {HOTKEYS.map((row) => (
+          <li key={row.labelKey} className="flex items-center gap-3 rounded-xl border border-panel-border bg-control px-4 py-2.5">
+            <span className="flex shrink-0 items-center gap-1">
+              {row.keys.map((key) => (
+                <kbd key={key} className="rounded-md border border-panel-border bg-panel-soft px-1.5 py-0.5 font-mono text-[11px] text-foreground">
+                  {key}
+                </kbd>
+              ))}
+            </span>
+            <span className="font-mono text-[12px] lowercase text-text-secondary">{t(row.labelKey)}</span>
+          </li>
+        ))}
+      </ul>
+      <Explain>{t("hotkeys.desc")}</Explain>
     </div>
   )
 }
@@ -284,13 +300,14 @@ export function StyleSection() {
       <header className="flex flex-col gap-3">
         <SectionHeading title={t("style.title")} link />
         <Explain>{t("style.desc")}</Explain>
+        <SettingsTabs />
       </header>
 
       {/* site language */}
       <div className="flex flex-col gap-3">
         <SectionHeading title={t("style.language")} />
-        <SegmentedControl<Locale>
-          options={LOCALES.map((l) => ({ value: l, label: LANG_LABEL[l] }))}
+        <SegmentedControl<UiLocale>
+          options={UI_LOCALES.map((l) => ({ value: l, label: LANG_LABEL[l] }))}
           value={locale}
           onChange={setLocale}
         />
@@ -299,8 +316,14 @@ export function StyleSection() {
 
       <MotionControls />
       <LayoutWidthControls />
+      <LayoutControls />
       <LibraryListControls variant="settings" />
       <ThemeControls />
+      <GlassControls />
+      <RpcSettings />
+      <PlayerSettingsPanel />
+      <DesktopSettings />
+      <HotkeysCard />
 
       <div className="flex flex-col gap-4">
         <SectionHeading title={t("style.palette")} />

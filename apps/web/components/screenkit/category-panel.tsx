@@ -316,7 +316,7 @@ export function CategoryPanel({
           type="button"
           role="separator"
           aria-orientation="vertical"
-          aria-label="изменить ширину панели категорий"
+          aria-label={t("nav.resizePanel")}
           aria-valuemin={ICON_ONLY_WIDTH}
           aria-valuemax={maxWidth}
           aria-valuenow={width}

@@ -1,0 +1,560 @@
+name: release
+
+# Every commit on master that passed `ci` becomes a GitHub Release: the source
+# tree of that commit, every Windows installer and executable we can build, the
+# optional Android apk, and the checksums for all of them.
+on:
+  workflow_run:
+    workflows: ["ci"]
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "publish a release from the current master head; unchecked is a dry run that only computes and checks the tag"
+        type: boolean
+        default: true
+
+# One group per released commit, not one per branch: a group holds at most one
+# pending run, so a shared group would silently drop the middle commit of a
+# burst. Two commits never race for the same tag, so they can run at once, and
+# `cancel-in-progress: false` keeps a running release from being killed.
+concurrency:
+  group: release-${{ github.event.workflow_run.head_sha || github.sha }}
+  cancel-in-progress: false
+
+# contents: write creates the tag and the release. Naming one permission drops
+# every other one to none, so this is the whole grant of the workflow.
+permissions:
+  contents: write
+
+jobs:
+  # Resolves the commit, computes the tag and refuses to touch a tag that
+  # already exists. Everything else keys off its outputs.
+  guard:
+    name: tag
+    # `workflow_run` fires for every completed run of `ci`, including the runs
+    # `ci` does on a pull request, and `head_branch` is then the branch name in
+    # the contributor's fork — which for a fresh fork is `master` too. Only a
+    # push in this repository may be released: a fork cannot trigger one, and
+    # `head_repository` says so a second time in case a wider `push` trigger is
+    # ever added to `ci`.
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || (github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.event == 'push'
+      && github.event.workflow_run.head_repository.full_name == github.repository
+      && github.event.workflow_run.head_branch == 'master')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      sha: ${{ steps.version.outputs.sha }}
+      tag: ${{ steps.version.outputs.tag }}
+      title: ${{ steps.version.outputs.title }}
+      bundle_version: ${{ steps.bundle.outputs.version }}
+      publish: ${{ steps.gate.outputs.publish }}
+      mobile: ${{ steps.mobile.outputs.present }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # the exact commit ci went green on; a manual run takes the master head
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || 'master' }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: compute the release tag
+        id: version
+        run: node scripts/release/version.mjs --sha "$(git rev-parse HEAD)" --format github >> "$GITHUB_OUTPUT"
+      - name: refuse to reuse an existing tag
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "::error::tag ${TAG} already exists; a release tag is never moved or reused, so this commit has been released already"
+            exit 1
+          fi
+          echo "tag ${TAG} is free"
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+      # The calendar tag is not a version Windows can compare: an MSI reads
+      # three fields, major and minor at most 255. The artefacts therefore carry
+      # the number of this release run as the patch field — strictly increasing,
+      # one value per release, and printed in the release notes so an installed
+      # build can be traced back to the release it came from.
+      - name: the version compiled into the artefacts
+        id: bundle
+        run: echo "version=0.1.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+      - name: does this commit carry apps/mobile
+        id: mobile
+        run: echo "present=${{ hashFiles('apps/mobile/package.json') != '' }}" >> "$GITHUB_OUTPUT"
+      - name: publish or dry run
+        id: gate
+        run: echo "publish=${{ github.event_name != 'workflow_dispatch' || inputs.force }}" >> "$GITHUB_OUTPUT"
+
+  # The source of exactly this commit, in four formats. git archive gives the
+  # committed tree only: no .git, no node_modules, but pnpm-lock.yaml is in it.
+  source:
+    name: source
+    needs: guard
+    if: needs.guard.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      TAG: ${{ needs.guard.outputs.tag }}
+      SHA: ${{ needs.guard.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.guard.outputs.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: install 7-Zip
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y p7zip-full
+      - name: stage the tree of this commit
+        run: |
+          set -euo pipefail
+          mkdir -p stage dist
+          git archive --format=tar --prefix="mixture-${TAG}/" "${SHA}" | tar -x -C stage
+          test -f "stage/mixture-${TAG}/pnpm-lock.yaml"
+      - name: pack the source archives
+        run: |
+          set -euo pipefail
+          for format in zip tar.gz tar.xz 7z; do
+            node scripts/release/archive.mjs \
+              --format "$format" \
+              --source stage \
+              --out "dist/mixture-source-${TAG}.${format}"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source
+          path: dist
+          if-no-files-found: error
+
+  # One job per Windows target. The Tauri CLI is driven directly rather than
+  # through tauri-action: each target needs two bundler passes with different
+  # --config overrides (online and offline WebView2), and the assets are renamed
+  # and attached by the release job, which tauri-action's own upload would
+  # duplicate.
+  windows:
+    name: windows ${{ matrix.arch }}
+    needs: guard
+    if: needs.guard.outputs.publish == 'true'
+    runs-on: windows-latest
+    # the three targets run in parallel; the wall-clock target for the whole
+    # release is under 40 minutes, this is the ceiling before it is called stuck
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            target: x86_64-pc-windows-msvc
+            msi: true
+            offline: true
+          - arch: arm64
+            target: aarch64-pc-windows-msvc
+            # WiX 3.14.1 knows -arch arm64 and tauri-bundler maps AArch64 onto
+            # it, so the arm64 MSI is built like the other two.
+            msi: true
+            # The offline installer embeds Microsoft's WebView2 Evergreen
+            # standalone installer, and tauri-bundler knows only two download
+            # links for it, x64 and x86, falling back to x86 for anything else
+            # (crates/tauri-bundler/src/bundle/windows/util.rs). An arm64
+            # machine would get the x86 runtime, which an arm64 host
+            # application cannot load, so this arch has no offline installer.
+            offline: false
+          - arch: x86
+            target: i686-pc-windows-msvc
+            msi: true
+            offline: true
+    env:
+      TAG: ${{ needs.guard.outputs.tag }}
+      # inlined into the bundled interface at export time: the deployment its
+      # rpc calls go to. The window no longer opens a url — it loads a static
+      # export of apps/web from inside the bundle — so this is the api address,
+      # not the site address (apps/web/lib/rpc/settings.ts). It is scoped to
+      # this job because no other job builds the interface.
+      NEXT_PUBLIC_MIXTURE_API_URL: https://mixture-codeilluminators.vercel.app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.guard.outputs.sha }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      # the shell and the app it now bundles: the interface is a static export
+      # of apps/web, so this runner needs the web workspace as well. apps/mobile
+      # is still not installed here.
+      - run: pnpm install --frozen-lockfile --filter web... --filter @mixture/desktop...
+      # Explicit rather than through `beforeBuildCommand`: the bundler runs
+      # twice per target (online and offline WebView2) and would export the
+      # site twice. The overlays below clear the hook for the same reason.
+      - name: export the interface the bundle ships
+        run: pnpm --filter web build:desktop
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+          key: ${{ matrix.target }}
+      - name: what this target produces
+        shell: bash
+        run: |
+          echo "target ${{ matrix.target }} (${{ matrix.arch }})"
+          echo "nsis online installer: yes"
+          if [ "${{ matrix.offline }}" = "true" ]; then
+            echo "nsis offline installer: yes"
+          else
+            echo "nsis offline installer: skipped, tauri-bundler has no WebView2 offline runtime link for ${{ matrix.arch }}"
+          fi
+          if [ "${{ matrix.msi }}" = "true" ]; then
+            echo "msi installer: yes"
+          else
+            echo "msi installer: skipped for ${{ matrix.arch }} by the matrix"
+          fi
+          echo "portable executable: yes"
+      # Signing is optional, and the certificate is the highest-value secret in
+      # this repository, so it stays out of the job environment: `cargo build`
+      # runs the build script of every dependency and `pnpm install` runs
+      # lifecycle scripts, and both would read it there. A step `if:` cannot see
+      # the `secrets` context, hence the probe step: it is the only other step
+      # the secret is handed to, and it only measures whether it is set.
+      - name: is a signing certificate configured
+        id: has-cert
+        shell: bash
+        env:
+          CERT: ${{ secrets.WINDOWS_CERTIFICATE }}
+        run: |
+          if [ -n "${CERT:-}" ]; then
+            echo "yes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "yes=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: import the code signing certificate
+        id: sign
+        if: steps.has-cert.outputs.yes == 'true'
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP "code-signing.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
+          $password = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -Force -AsPlainText
+          $cert = Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password $password
+          Remove-Item $pfx -Force
+          "thumbprint=$($cert.Thumbprint)" >> $env:GITHUB_OUTPUT
+      # One overlay per WebView2 mode. Besides the mode they carry the version
+      # of this release, an empty `beforeBuildCommand` because the export
+      # already ran once above, and the capability set of a published build:
+      # the shell ships with `default` alone, so the localhost origin of
+      # capabilities/dev.json never reaches a released binary.
+      - name: write the bundler config overrides
+        shell: bash
+        run: |
+          set -euo pipefail
+          sign=""
+          if [ -n "${THUMBPRINT:-}" ]; then
+            sign='"certificateThumbprint": "'"${THUMBPRINT}"'", "digestAlgorithm": "sha256", "timestampUrl": "http://timestamp.digicert.com", '
+          fi
+          for mode in embedBootstrapper offlineInstaller; do
+            # The WebView2 floor belongs to the online installer only. When a
+            # runtime older than the floor is already installed, the NSIS
+            # template ignores the embedded runtime, asks EdgeUpdate to update
+            # it over the network and aborts the installation when that fails —
+            # exactly the machine the offline installer exists for.
+            floor=""
+            if [ "$mode" = "embedBootstrapper" ]; then
+              floor='"minimumWebview2Version": "110.0.0.0", '
+            fi
+            printf '{ "version": "%s", "build": { "beforeBuildCommand": "" }, "app": { "security": { "capabilities": ["default"] } }, "bundle": { "windows": { %s%s"webviewInstallMode": { "type": "%s", "silent": true } } } }\n' \
+              "$VERSION" "$sign" "$floor" "$mode" > "$RUNNER_TEMP/$mode.json"
+          done
+          echo "offline overlay:"
+          cat "$RUNNER_TEMP/offlineInstaller.json"
+        env:
+          THUMBPRINT: ${{ steps.sign.outputs.thumbprint }}
+          VERSION: ${{ needs.guard.outputs.bundle_version }}
+      - name: build the installers, online WebView2
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundles=nsis
+          if [ "${{ matrix.msi }}" = "true" ]; then bundles=nsis,msi; fi
+          pnpm --filter @mixture/desktop exec tauri build \
+            --target ${{ matrix.target }} \
+            --bundles "$bundles" \
+            --config "$RUNNER_TEMP/embedBootstrapper.json"
+      - name: collect the online installers
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          out="apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle"
+          mkdir -p dist
+          nsis=("$out"/nsis/*-setup.exe)
+          if [ ${#nsis[@]} -ne 1 ]; then
+            echo "::error::expected one NSIS installer, found ${#nsis[@]}"
+            exit 1
+          fi
+          # moved out before the second pass: it writes the same file name
+          mv "${nsis[0]}" "dist/mixture-screenkit-${TAG}-windows-${{ matrix.arch }}-setup.exe"
+          if [ "${{ matrix.msi }}" = "true" ]; then
+            msi=("$out"/msi/*.msi)
+            if [ ${#msi[@]} -ne 1 ]; then
+              echo "::error::expected one MSI installer, found ${#msi[@]}"
+              exit 1
+            fi
+            mv "${msi[0]}" "dist/mixture-screenkit-${TAG}-windows-${{ matrix.arch }}-setup.msi"
+          fi
+      # a second pass over the same tree: --config changes TAURI_CONFIG, so the
+      # crate relinks, but every dependency is already compiled and cached
+      - name: build the installer, offline WebView2
+        if: matrix.offline
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm --filter @mixture/desktop exec tauri build \
+            --target ${{ matrix.target }} \
+            --bundles nsis \
+            --config "$RUNNER_TEMP/offlineInstaller.json"
+      - name: collect the offline installer
+        if: matrix.offline
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          nsis=("apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle"/nsis/*-setup.exe)
+          if [ ${#nsis[@]} -ne 1 ]; then
+            echo "::error::expected one offline NSIS installer, found ${#nsis[@]}"
+            exit 1
+          fi
+          mv "${nsis[0]}" "dist/mixture-screenkit-${TAG}-windows-${{ matrix.arch }}-setup-offline.exe"
+      - name: pack the portable executable
+        shell: bash
+        run: |
+          set -euo pipefail
+          release="apps/desktop/src-tauri/target/${{ matrix.target }}/release"
+          mkdir -p portable
+          # the CLI renames the cargo binary to mainBinaryName; fall back to the
+          # crate name so a rename that stops happening is not a silent failure
+          if [ -f "$release/mixture-screenkit.exe" ]; then
+            cp "$release/mixture-screenkit.exe" portable/mixture-screenkit.exe
+          else
+            cp "$release/mixture-screenkit-desktop.exe" portable/mixture-screenkit.exe
+          fi
+          node scripts/release/archive.mjs --format zip --source portable \
+            --out "dist/mixture-screenkit-${TAG}-windows-${{ matrix.arch }}-portable.zip"
+          node scripts/release/archive.mjs --format 7z --source portable \
+            --out "dist/mixture-screenkit-${TAG}-windows-${{ matrix.arch }}-portable.7z"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.arch }}
+          path: dist
+          if-no-files-found: error
+
+  # Optional: only commits that carry apps/mobile produce an apk, and a failure
+  # here costs the release its apk, not the release. The steps are the ones
+  # .github/workflows/mobile.yml uses for its own `apk` job.
+  android:
+    name: android
+    needs: guard
+    if: needs.guard.outputs.publish == 'true' && needs.guard.outputs.mobile == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    env:
+      TAG: ${{ needs.guard.outputs.tag }}
+      # react-native autolinking and gradle read a flat node_modules tree; this
+      # only changes the layout for this job, never the repository default
+      NPM_CONFIG_NODE_LINKER: hoisted
+      EXPO_NO_TELEMETRY: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.guard.outputs.sha }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+
+      # the hoisted layout does not match the committed lockfile resolution, so
+      # this install cannot be --frozen-lockfile; mobile.yml does the same
+      - run: pnpm install --no-frozen-lockfile
+
+      - name: prebuild the android project
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform android --no-install
+
+      # A release build has to be signed. Without secrets the workflow makes a
+      # throwaway debug keystore so the apk is installable for testing; it is
+      # NOT suitable for the play store or for updating an installed app.
+      #
+      # To ship a real build, add these repository secrets and they win:
+      #   ANDROID_KEYSTORE_BASE64  base64 of your .jks
+      #   ANDROID_KEYSTORE_PASSWORD
+      #   ANDROID_KEY_ALIAS
+      #   ANDROID_KEY_PASSWORD
+      - name: prepare the signing key
+        working-directory: apps/mobile/android/app
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > release.keystore
+            # the delimiter form: a secret that happens to contain a newline
+            # would otherwise write further lines into the job environment
+            {
+              echo "MIXTURE_STORE_FILE=release.keystore"
+              echo "MIXTURE_STORE_PASSWORD<<MIXTURE_SECRET_EOF"
+              echo "$KEYSTORE_PASSWORD"
+              echo "MIXTURE_SECRET_EOF"
+              echo "MIXTURE_KEY_ALIAS<<MIXTURE_SECRET_EOF"
+              echo "$KEY_ALIAS"
+              echo "MIXTURE_SECRET_EOF"
+              echo "MIXTURE_KEY_PASSWORD<<MIXTURE_SECRET_EOF"
+              echo "$KEY_PASSWORD"
+              echo "MIXTURE_SECRET_EOF"
+            } >> "$GITHUB_ENV"
+          else
+            keytool -genkeypair -v -keystore release.keystore -storetype JKS \
+              -alias ci -keyalg RSA -keysize 2048 -validity 365 \
+              -storepass android -keypass android \
+              -dname "CN=mixture screenkit ci, OU=ci, O=mixture, C=RU"
+            {
+              echo "MIXTURE_STORE_FILE=release.keystore"
+              echo "MIXTURE_STORE_PASSWORD=android"
+              echo "MIXTURE_KEY_ALIAS=ci"
+              echo "MIXTURE_KEY_PASSWORD=android"
+            } >> "$GITHUB_ENV"
+          fi
+
+      # expo prebuild writes a release block that signs with the debug key; point
+      # it at the keystore prepared above without editing the generated project
+      - name: assembleRelease
+        working-directory: apps/mobile/android
+        run: |
+          ./gradlew assembleRelease --no-daemon \
+            -Pandroid.injected.signing.store.file="$PWD/app/$MIXTURE_STORE_FILE" \
+            -Pandroid.injected.signing.store.password="$MIXTURE_STORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$MIXTURE_KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$MIXTURE_KEY_PASSWORD"
+
+      # the runner is discarded either way, but a signing key has no business
+      # outliving the step that used it
+      - name: remove the signing key
+        if: always()
+        working-directory: apps/mobile/android/app
+        run: rm -f release.keystore
+
+      - name: collect the apk
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          mkdir -p dist
+          apks=(apps/mobile/android/app/build/outputs/apk/release/*.apk)
+          if [ ${#apks[@]} -ne 1 ]; then
+            echo "::error::expected one release apk, found ${#apks[@]}"
+            exit 1
+          fi
+          mv "${apks[0]}" "dist/mixture-screenkit-${TAG}-android.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: dist
+          if-no-files-found: error
+
+  # One release, one upload step, all assets. A failed Windows target or a
+  # failed source archive fails the release; a skipped or failed Android job
+  # only costs the release its apk.
+  release:
+    name: publish
+    needs: [guard, source, windows, android]
+    if: >-
+      always()
+      && needs.guard.result == 'success'
+      && needs.guard.outputs.publish == 'true'
+      && needs.source.result == 'success'
+      && needs.windows.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ needs.guard.outputs.tag }}
+      SHA: ${{ needs.guard.outputs.sha }}
+      BUILD_VERSION: ${{ needs.guard.outputs.bundle_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.guard.outputs.sha }}
+          # the whole history and every tag: without the tags `git describe` in
+          # notes.mjs finds no previous release and every release reads as the first
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+      - name: list what will be published
+        run: |
+          ls -l assets
+          echo "android job: ${{ needs.android.result }}"
+          if [ ! -f "assets/mixture-screenkit-${TAG}-android.apk" ]; then
+            echo "::warning::this release carries no apk (android job ${{ needs.android.result }})"
+          fi
+      - name: write SHA256SUMS.txt
+        run: node scripts/release/checksums.mjs --dir assets
+      - name: render the release notes
+        run: |
+          node scripts/release/notes.mjs \
+            --tag "${TAG}" \
+            --sha "${SHA}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --build-version "${BUILD_VERSION}" \
+            --assets assets \
+            --out notes.md
+          cat notes.md
+      # one step, every asset: assets/* always matches the source archives, so
+      # fail_on_unmatched_files guards the glob without demanding the optional apk
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.guard.outputs.tag }}
+          # the tag is created here, from the released commit; no bot pushes a tag
+          target_commitish: ${{ needs.guard.outputs.sha }}
+          name: ${{ needs.guard.outputs.title }}
+          body_path: notes.md
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          make_latest: "true"
+          fail_on_unmatched_files: true
+          files: assets/*

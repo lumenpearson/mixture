@@ -1,7 +1,40 @@
 {
-  "generatedAt": "2026-06-06T00:49:51.432Z",
-  "count": 62,
+  "generatedAt": "2026-09-03T11:43:36.191Z",
+  "count": 69,
   "packages": [
+    {
+      "name": "@bufbuild/protobuf",
+      "version": "2.14.1",
+      "declared": "^2.14.1",
+      "license": "(Apache-2.0 AND BSD-3-Clause)",
+      "author": null,
+      "repository": "https://github.com/bufbuild/protobuf-es",
+      "homepage": "https://protobufes.com/",
+      "licenseFile": null,
+      "hasText": false
+    },
+    {
+      "name": "@connectrpc/connect",
+      "version": "2.1.2",
+      "declared": "^2.1.2",
+      "license": "Apache-2.0",
+      "author": null,
+      "repository": "https://github.com/connectrpc/connect-es",
+      "homepage": null,
+      "licenseFile": null,
+      "hasText": false
+    },
+    {
+      "name": "@connectrpc/connect-web",
+      "version": "2.1.2",
+      "declared": "^2.1.2",
+      "license": "Apache-2.0",
+      "author": null,
+      "repository": "https://github.com/connectrpc/connect-es",
+      "homepage": null,
+      "licenseFile": null,
+      "hasText": false
+    },
     {
       "name": "@hookform/resolvers",
       "version": "3.10.0",
@@ -333,6 +366,17 @@
       "hasText": true
     },
     {
+      "name": "@tauri-apps/api",
+      "version": "2.11.1",
+      "declared": "^2.9.0",
+      "license": "Apache-2.0 OR MIT",
+      "author": null,
+      "repository": "https://github.com/tauri-apps/tauri",
+      "homepage": "https://github.com/tauri-apps/tauri#readme",
+      "licenseFile": null,
+      "hasText": false
+    },
+    {
       "name": "@types/node",
       "version": "24.13.1",
       "declared": "^24",
@@ -461,6 +505,28 @@
       "author": "David Jerleke",
       "repository": "https://github.com/davidjerleke/embla-carousel",
       "homepage": "https://www.embla-carousel.com",
+      "licenseFile": null,
+      "hasText": false
+    },
+    {
+      "name": "eslint",
+      "version": "9.39.5",
+      "declared": "^9.39.4",
+      "license": "MIT",
+      "author": "Nicholas C. Zakas <nicholas+npm@nczconsulting.com>",
+      "repository": "eslint/eslint",
+      "homepage": "https://eslint.org",
+      "licenseFile": "eslint.txt",
+      "hasText": true
+    },
+    {
+      "name": "eslint-config-next",
+      "version": "16.2.6",
+      "declared": "16.2.6",
+      "license": "MIT",
+      "author": null,
+      "repository": "vercel/next.js",
+      "homepage": "https://nextjs.org/docs/app/api-reference/config/eslint",
       "licenseFile": null,
       "hasText": false
     },
@@ -671,6 +737,17 @@
       "repository": "https://github.com/emilkowalski/vaul",
       "homepage": "https://vaul.emilkowal.ski/",
       "licenseFile": "vaul.txt",
+      "hasText": true
+    },
+    {
+      "name": "vitest",
+      "version": "4.1.11",
+      "declared": "^4.1.11",
+      "license": "MIT",
+      "author": "Anthony Fu <anthonyfu117@hotmail.com>",
+      "repository": "https://github.com/vitest-dev/vitest",
+      "homepage": "https://vitest.dev",
+      "licenseFile": "vitest.txt",
       "hasText": true
     },
     {

@@ -95,6 +95,19 @@ function autoReduceMotion(): boolean {
   return prefersReducedMotion() || isSlowDevice()
 }
 
+/**
+ * Smooth scrolling is pleasant with a trackpad or mouse wheel but fights
+ * touch scrolling (momentum plus an animated scroll-behavior compound into a
+ * laggy feel). Default it off on touch-first / narrow viewports and on
+ * everywhere else; an explicit stored choice (below) always wins.
+ */
+export function defaultScrollFeature(): boolean {
+  if (typeof window === "undefined") return true
+  const coarsePointer = window.matchMedia?.("(pointer: coarse)").matches ?? false
+  const narrow = window.innerWidth < 1024
+  return !(coarsePointer || narrow)
+}
+
 function normalizeMotionFeatures(parsed: LegacyMotionFeatures): MotionFeatures {
   return MOTION_FEATURE_KEYS.reduce<MotionFeatures>(
     (acc, key) => {
@@ -105,6 +118,10 @@ function normalizeMotionFeatures(parsed: LegacyMotionFeatures): MotionFeatures {
             : typeof parsed.themeTransitions === "boolean"
               ? parsed.themeTransitions
               : DEFAULT_MOTION_FEATURES[key]
+        return acc
+      }
+      if (key === "scroll") {
+        acc[key] = typeof parsed.scroll === "boolean" ? parsed.scroll : defaultScrollFeature()
         return acc
       }
       acc[key] =
@@ -124,10 +141,10 @@ function readMotionFeatures(): MotionFeatures {
     const raw =
       window.localStorage.getItem(MOTION_FEATURES_KEY) ??
       window.localStorage.getItem("screenkit-motion-features-v1")
-    if (!raw) return DEFAULT_MOTION_FEATURES
+    if (!raw) return { ...DEFAULT_MOTION_FEATURES, scroll: defaultScrollFeature() }
     return normalizeMotionFeatures(JSON.parse(raw) as LegacyMotionFeatures)
   } catch {
-    return DEFAULT_MOTION_FEATURES
+    return { ...DEFAULT_MOTION_FEATURES, scroll: defaultScrollFeature() }
   }
 }
 
@@ -232,9 +249,10 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
   )
 
   const resetMotionFeatures = React.useCallback(() => {
-    setFeaturesState(DEFAULT_MOTION_FEATURES)
-    writeMotionFeatures(DEFAULT_MOTION_FEATURES)
-    applyToDocument(reduceMotion, DEFAULT_MOTION_FEATURES)
+    const defaults = { ...DEFAULT_MOTION_FEATURES, scroll: defaultScrollFeature() }
+    setFeaturesState(defaults)
+    writeMotionFeatures(defaults)
+    applyToDocument(reduceMotion, defaults)
   }, [reduceMotion])
 
   const value = React.useMemo<MotionCtx>(

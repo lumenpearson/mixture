@@ -132,7 +132,7 @@ async function main() {
     const pkgDir = await resolvePkgDir(name)
     const pkg = await readJSON(path.join(pkgDir, "package.json"))
     const license = readLicenseField(pkg)
-    const { file, text } = (await findLicenseText(pkgDir)) ?? {}
+    const { text } = (await findLicenseText(pkgDir)) ?? {}
 
     let licenseFile = null
     if (text) {
@@ -160,6 +160,16 @@ async function main() {
   }
 
   await fs.mkdir(path.dirname(MANIFEST), { recursive: true })
+  // keep the previous timestamp when nothing but the clock changed, so a
+  // build does not dirty the working tree
+  try {
+    const previous = JSON.parse(await fs.readFile(MANIFEST, "utf8"))
+    if (JSON.stringify(previous.packages) === JSON.stringify(manifest.packages)) {
+      manifest.generatedAt = previous.generatedAt
+    }
+  } catch {
+    // no previous manifest: write a fresh one
+  }
   await fs.writeFile(MANIFEST, JSON.stringify(manifest, null, 2) + "\n", "utf8")
 
   console.log(

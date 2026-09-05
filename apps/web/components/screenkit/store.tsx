@@ -1,16 +1,21 @@
 "use client"
 
 import * as React from "react"
+import { toast } from "sonner"
 import type {
   AspectRatio,
   CategoryDef,
   CategoryId,
   DeviceType,
   Insert,
+  InsertKind,
+  InsertSource,
   InsertStatus,
   Locale,
   PlaybackMode,
+  UiLocale,
 } from "@/lib/screenkit/types"
+import { contentLocaleOf } from "@/lib/screenkit/types"
 import {
   DEFAULT_CATEGORY_DEFS,
   INSERTS,
@@ -19,16 +24,26 @@ import {
   findInsert,
   hasEnglish,
 } from "@/lib/screenkit/data"
-import { DEFAULT_LOCALE, LOCALE_STORAGE_KEY, translate } from "@/lib/screenkit/i18n"
+import { DEFAULT_LOCALE, LOCALE_STORAGE_KEY, isUiLocale, translate } from "@/lib/screenkit/i18n"
 import {
-  addCategoryAction,
-  addInsertAction,
-  getLibraryAction,
-  resetLibraryAction,
+  EDIT_TOKEN_STORAGE_KEY,
+  getEditToken,
+  libraryClient,
+  rpcErrorMessage,
+  writeStorage,
+} from "@/lib/rpc/client"
+import {
+  aspectToPb,
+  deviceToPb,
+  kindToPb,
+  libraryFromPb,
+  sourceToPb,
+  statusToPb,
   type LibraryData,
-} from "@/app/actions/library"
+} from "@/lib/rpc/codec"
 import {
   DEFAULT_LIBRARY_LIST_SETTINGS,
+  LIBRARY_PAGE_SIZE_OPTIONS,
   type LibraryListSettings,
 } from "./library-list-settings"
 
@@ -39,6 +54,7 @@ export type Section =
   | "timeline"
   | "prompts"
   | "style"
+  | "cloud"
   | "about"
 
 // each menu item gets its own explicitly-assigned url slug (no transliteration).
@@ -49,6 +65,7 @@ export const SECTION_SLUGS: Record<Section, string> = {
   timeline: "changelog",
   prompts: "metadata",
   style: "appearance",
+  cloud: "cloud",
   about: "info",
 }
 
@@ -65,8 +82,10 @@ export function sectionFromSlug(slug?: string | null): Section | null {
  * client-side library cache (stale-while-revalidate)
  * ------------------------------------------------------------------ */
 
-const LIBRARY_CACHE_KEY = "screenkit-library-cache-v1"
+const LIBRARY_CACHE_KEY = "screenkit-library-cache-v2"
 const CONTENT_WIDTH_STORAGE_KEY = "screenkit-content-width-v1"
+const FAVORITES_STORAGE_KEY = "screenkit-favorites-v1"
+const LIBRARY_LIST_STORAGE_KEY = "screenkit-library-list-v1"
 
 function readLibraryCache(): LibraryData | null {
   if (typeof window === "undefined") return null
@@ -74,12 +93,13 @@ function readLibraryCache(): LibraryData | null {
     const raw = window.sessionStorage.getItem(LIBRARY_CACHE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as LibraryData
-    if (
-      parsed &&
-      Array.isArray(parsed.inserts) &&
-      Array.isArray(parsed.categories)
-    ) {
-      return parsed
+    if (parsed && Array.isArray(parsed.inserts) && Array.isArray(parsed.categories)) {
+      return {
+        categories: parsed.categories,
+        inserts: parsed.inserts,
+        persistent: Boolean(parsed.persistent),
+        editLocked: Boolean(parsed.editLocked),
+      }
     }
   } catch {
     // ignore
@@ -96,6 +116,36 @@ function writeLibraryCache(data: LibraryData) {
   }
 }
 
+function readFavorites(): string[] {
+  if (typeof window === "undefined") return []
+  try {
+    const raw = window.localStorage.getItem(FAVORITES_STORAGE_KEY)
+    const parsed = raw ? (JSON.parse(raw) as unknown) : []
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : []
+  } catch {
+    return []
+  }
+}
+
+function readListSettings(): LibraryListSettings | null {
+  if (typeof window === "undefined") return null
+  try {
+    const raw = window.localStorage.getItem(LIBRARY_LIST_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<LibraryListSettings>
+    const pageSize = (LIBRARY_PAGE_SIZE_OPTIONS as readonly number[]).includes(parsed.pageSize ?? 0)
+      ? (parsed.pageSize as LibraryListSettings["pageSize"])
+      : DEFAULT_LIBRARY_LIST_SETTINGS.pageSize
+    return {
+      sort: parsed.sort ?? DEFAULT_LIBRARY_LIST_SETTINGS.sort,
+      view: parsed.view ?? DEFAULT_LIBRARY_LIST_SETTINGS.view,
+      pageSize,
+    }
+  } catch {
+    return null
+  }
+}
+
 export type MessengerTheme = "dark" | "light"
 export type MessengerVideoFormat = "mixed" | "vertical" | "horizontal" | "square"
 export type ContentWidth = "narrow" | "default" | "wide"
@@ -109,11 +159,12 @@ export type PreviewSettings = {
   reflections: boolean
   scanlines: boolean
   timestamp: boolean
-  messengerTheme: MessengerTheme
-  messengerMotion: boolean
-  messengerDelay: number
-  messengerVideoFormat: MessengerVideoFormat
-  messengerHiddenNumber: boolean
+  // messenger-only controls (optional: scenes fall back to their defaults)
+  messengerTheme?: MessengerTheme
+  messengerMotion?: boolean
+  messengerDelay?: number
+  messengerVideoFormat?: MessengerVideoFormat
+  messengerHiddenNumber?: boolean
 }
 
 export type Filters = {
@@ -121,11 +172,43 @@ export type Filters = {
   category: CategoryId | "all"
   device: DeviceType | "all"
   status: InsertStatus | "all"
+  favoritesOnly: boolean
 }
 
-export type NewCategoryInput = Parameters<typeof addCategoryAction>[0]
+export type NewCategoryInput = {
+  labelRu: string
+  labelEn?: string
+  slug?: string
+  accent?: string
+  tint?: string
+  icon?: string
+}
 
-export type NewInsertInput = Parameters<typeof addInsertAction>[0]
+export type NewInsertInput = {
+  slug?: string
+  category: string
+  device: DeviceType
+  aspect: AspectRatio
+  status: InsertStatus
+  episode: string
+  scene: string
+  date: string
+  titleRu: string
+  titleEn?: string
+  descriptionRu?: string
+  descriptionEn?: string
+  promptRu?: string
+  promptEn?: string
+  shortPromptRu?: string
+  shortPromptEn?: string
+  negativePromptRu?: string
+  negativePromptEn?: string
+  technicalNotesRu?: string[]
+  technicalNotesEn?: string[]
+  /** scene (default), site or file */
+  kind?: InsertKind
+  source?: InsertSource
+}
 
 type Ctx = {
   section: Section
@@ -150,6 +233,8 @@ type Ctx = {
   setMobileNavOpen: (v: boolean) => void
 
   openInPreview: (id: string) => void
+  /** move the preview selection by ±n within the current library order */
+  stepInsert: (delta: number) => void
 
   // dynamic, server-backed library data (defaults + custom)
   inserts: Insert[]
@@ -158,14 +243,29 @@ type Ctx = {
   catDef: (id: CategoryId) => CategoryDef | undefined
   catLabel: (id: CategoryId) => string
   libraryBusy: boolean
+  /** false when the deployment has no database: mutations are unavailable */
+  persistent: boolean
+  /** true when the server requires an edit token for mutations */
+  editLocked: boolean
+  editToken: string
+  setEditToken: (token: string) => void
   addCategory: (input: NewCategoryInput) => Promise<void>
   addInsert: (input: NewInsertInput) => Promise<void>
+  deleteInsert: (id: string) => Promise<void>
+  deleteCategory: (id: string) => Promise<void>
   resetLibrary: () => Promise<void>
+  refreshLibrary: () => Promise<void>
   hasCustom: boolean
 
-  // site language (persisted)
-  locale: Locale
-  setLocale: (l: Locale) => void
+  // favourites (local to this browser)
+  favorites: ReadonlySet<string>
+  isFavorite: (id: string) => boolean
+  toggleFavorite: (id: string) => void
+
+  // interface language (persisted); `contentLocale` is what inserts render in
+  locale: UiLocale
+  contentLocale: Locale
+  setLocale: (l: UiLocale) => void
   t: (key: string) => string
 
   // per-insert language override, independent of the site language
@@ -180,6 +280,8 @@ export function ScreenkitProvider({
   children,
   initialInserts,
   initialCategories,
+  initialPersistent,
+  initialEditLocked,
   initialSelectedId,
   initialView,
   initialCategory,
@@ -187,6 +289,8 @@ export function ScreenkitProvider({
   children: React.ReactNode
   initialInserts?: Insert[]
   initialCategories?: CategoryDef[]
+  initialPersistent?: boolean
+  initialEditLocked?: boolean
   /** when provided, open straight into this insert's preview (deep link) */
   initialSelectedId?: string
   /** menu-item slug to open on load (?view=…) */
@@ -194,12 +298,13 @@ export function ScreenkitProvider({
   /** library category slug to open on load (?cat=…) */
   initialCategory?: string
 }) {
-  const [inserts, setInserts] = React.useState<Insert[]>(
-    initialInserts ?? INSERTS,
-  )
+  const [inserts, setInserts] = React.useState<Insert[]>(initialInserts ?? INSERTS)
   const [categories, setCategories] = React.useState<CategoryDef[]>(
     initialCategories ?? DEFAULT_CATEGORY_DEFS,
   )
+  const [persistent, setPersistent] = React.useState(Boolean(initialPersistent))
+  const [editLocked, setEditLocked] = React.useState(Boolean(initialEditLocked))
+  const [editToken, setEditTokenState] = React.useState("")
   const [libraryBusy, setLibraryBusy] = React.useState(false)
 
   const allInserts = initialInserts ?? INSERTS
@@ -220,17 +325,20 @@ export function ScreenkitProvider({
     deepLinked ?? allInserts[0]?.id ?? "",
   )
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false)
-  const [locale, setLocaleState] = React.useState<Locale>(DEFAULT_LOCALE)
+  const [locale, setLocaleState] = React.useState<UiLocale>(DEFAULT_LOCALE)
+  const contentLocale = contentLocaleOf(locale)
   const [contentWidth, setContentWidthState] = React.useState<ContentWidth>("default")
   const [insertLocaleOverrides, setInsertLocaleOverrides] = React.useState<
     Record<string, Locale>
   >({})
+  const [favorites, setFavorites] = React.useState<ReadonlySet<string>>(() => new Set())
 
   const [filters, setFilters] = React.useState<Filters>({
     search: "",
     category: initialCat,
     device: "all",
     status: "all",
+    favoritesOnly: false,
   })
   const [libraryListSettings, setLibraryListSettings] =
     React.useState<LibraryListSettings>(DEFAULT_LIBRARY_LIST_SETTINGS)
@@ -261,19 +369,18 @@ export function ScreenkitProvider({
     const params = new URLSearchParams(window.location.search)
     params.set("view", SECTION_SLUGS[section])
     if (section !== "timeline") {
-      params.delete("log")
-      params.delete("sort")
-      params.delete("page")
-      params.delete("per")
-      params.delete("branch")
-      params.delete("author")
-      params.delete("q")
+      for (const key of ["log", "sort", "page", "per", "branch", "author", "q"]) params.delete(key)
     }
+    if (section !== "cloud") params.delete("path")
     if (section === "library" && filters.category !== "all") {
       params.set("cat", String(filters.category))
+    } else {
+      params.delete("cat")
     }
-    if (section === "preview" && selectedId) {
+    if ((section === "preview" || section === "prompts") && selectedId) {
       params.set("insert", selectedId)
+    } else {
+      params.delete("insert")
     }
     window.history.replaceState(
       null,
@@ -282,11 +389,11 @@ export function ScreenkitProvider({
     )
   }, [section, filters.category, selectedId])
 
-  // hydrate site locale and layout width from storage
+  // hydrate site locale, layout width, favourites and list settings from storage
   React.useEffect(() => {
     try {
       const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY)
-      if (stored === "ru" || stored === "en") setLocaleState(stored)
+      if (isUiLocale(stored)) setLocaleState(stored)
       const width = window.localStorage.getItem(CONTENT_WIDTH_STORAGE_KEY)
       if (width === "narrow" || width === "default" || width === "wide") {
         setContentWidthState(width)
@@ -294,9 +401,33 @@ export function ScreenkitProvider({
     } catch {
       // ignore
     }
+    setFavorites(new Set(readFavorites()))
+    const list = readListSettings()
+    if (list) setLibraryListSettings(list)
+    setEditTokenState(getEditToken())
   }, [])
 
-  const setLocale = React.useCallback((l: Locale) => {
+  // persist list settings whenever they change (after hydration)
+  const listHydrated = React.useRef(false)
+  React.useEffect(() => {
+    if (!listHydrated.current) {
+      listHydrated.current = true
+      return
+    }
+    try {
+      window.localStorage.setItem(LIBRARY_LIST_STORAGE_KEY, JSON.stringify(libraryListSettings))
+    } catch {
+      // ignore
+    }
+  }, [libraryListSettings])
+
+  // keep <html lang> in step with the site language for assistive tech
+  React.useEffect(() => {
+    document.documentElement.lang = contentLocale
+    document.documentElement.dataset.uiLocale = locale
+  }, [locale, contentLocale])
+
+  const setLocale = React.useCallback((l: UiLocale) => {
     setLocaleState(l)
     try {
       window.localStorage.setItem(LOCALE_STORAGE_KEY, l)
@@ -314,6 +445,12 @@ export function ScreenkitProvider({
     }
   }, [])
 
+  const setEditToken = React.useCallback((token: string) => {
+    const clean = token.trim()
+    setEditTokenState(clean)
+    writeStorage(EDIT_TOKEN_STORAGE_KEY, clean)
+  }, [])
+
   const t = React.useCallback((key: string) => translate(locale, key), [locale])
 
   const getInsert = React.useCallback(
@@ -327,47 +464,111 @@ export function ScreenkitProvider({
   const catLabel = React.useCallback(
     (id: CategoryId) => {
       const def = findCategoryDef(categories, id)
-      return def ? categoryLabelFromDef(def, locale) : String(id)
+      return def ? categoryLabelFromDef(def, contentLocale) : String(id)
     },
-    [categories, locale],
+    [categories, contentLocale],
   )
 
   const apply = React.useCallback((data: LibraryData) => {
     setCategories(data.categories)
     setInserts(data.inserts)
+    setPersistent(data.persistent)
+    setEditLocked(data.editLocked)
     writeLibraryCache(data)
   }, [])
 
-  const addCategory = React.useCallback(
-    async (input: NewCategoryInput) => {
+  /* every mutation goes through the same wrapper: busy flag, apply the fresh
+     library the server returns, surface failures as a toast and rethrow so
+     the calling dialog can stay open */
+  const mutate = React.useCallback(
+    async (run: () => Promise<{ library?: Parameters<typeof libraryFromPb>[0] }>, fallback: string) => {
       setLibraryBusy(true)
       try {
-        apply(await addCategoryAction(input))
+        const response = await run()
+        apply(libraryFromPb(response.library))
+      } catch (error) {
+        const message = rpcErrorMessage(error, fallback)
+        toast.error(message)
+        throw error
       } finally {
         setLibraryBusy(false)
       }
     },
     [apply],
+  )
+
+  const addCategory = React.useCallback(
+    (input: NewCategoryInput) =>
+      mutate(
+        () =>
+          libraryClient().addCategory({
+            labelRu: input.labelRu,
+            labelEn: input.labelEn ?? "",
+            slug: input.slug ?? "",
+            accent: input.accent ?? "",
+            tint: input.tint ?? "",
+            icon: input.icon ?? "",
+          }),
+        "could not add the category",
+      ),
+    [mutate],
   )
 
   const addInsert = React.useCallback(
-    async (input: NewInsertInput) => {
-      setLibraryBusy(true)
-      try {
-        apply(await addInsertAction(input))
-      } finally {
-        setLibraryBusy(false)
-      }
-    },
-    [apply],
+    (input: NewInsertInput) =>
+      mutate(
+        () =>
+          libraryClient().addInsert({
+            slug: input.slug ?? "",
+            category: input.category,
+            device: deviceToPb(input.device),
+            aspect: aspectToPb(input.aspect),
+            status: statusToPb(input.status),
+            episode: input.episode,
+            scene: input.scene,
+            date: input.date,
+            titleRu: input.titleRu,
+            titleEn: input.titleEn ?? "",
+            descriptionRu: input.descriptionRu ?? "",
+            descriptionEn: input.descriptionEn ?? "",
+            promptRu: input.promptRu ?? "",
+            promptEn: input.promptEn ?? "",
+            shortPromptRu: input.shortPromptRu ?? "",
+            shortPromptEn: input.shortPromptEn ?? "",
+            negativePromptRu: input.negativePromptRu ?? "",
+            negativePromptEn: input.negativePromptEn ?? "",
+            technicalNotesRu: input.technicalNotesRu ?? [],
+            technicalNotesEn: input.technicalNotesEn ?? [],
+            kind: kindToPb(input.kind),
+            // scene inserts send no source at all; the server rejects one
+            source: input.source ? sourceToPb(input.source) : undefined,
+          }),
+        "could not add the insert",
+      ),
+    [mutate],
   )
 
-  const resetLibrary = React.useCallback(async () => {
-    setLibraryBusy(true)
+  const deleteInsert = React.useCallback(
+    (id: string) => mutate(() => libraryClient().deleteInsert({ id }), "could not delete the insert"),
+    [mutate],
+  )
+
+  const deleteCategory = React.useCallback(
+    (id: string) => mutate(() => libraryClient().deleteCategory({ id }), "could not delete the category"),
+    [mutate],
+  )
+
+  const resetLibrary = React.useCallback(
+    () => mutate(() => libraryClient().resetLibrary({}), "could not reset the library"),
+    [mutate],
+  )
+
+  const refreshLibrary = React.useCallback(async () => {
     try {
-      apply(await resetLibraryAction())
-    } finally {
-      setLibraryBusy(false)
+      const response = await libraryClient().getLibrary({})
+      apply(libraryFromPb(response.library))
+    } catch {
+      // keep whatever we have; the next navigation retries
     }
   }, [apply])
 
@@ -375,16 +576,21 @@ export function ScreenkitProvider({
   React.useEffect(() => {
     // server provided data -> just mirror it into the cache for later paints
     if (initialInserts && initialCategories) {
-      writeLibraryCache({ categories: allCategories, inserts: allInserts })
+      writeLibraryCache({
+        categories: allCategories,
+        inserts: allInserts,
+        persistent: Boolean(initialPersistent),
+        editLocked: Boolean(initialEditLocked),
+      })
       return
     }
     // no server data -> paint instantly from cache, then revalidate in the bg
     const cached = readLibraryCache()
     if (cached) apply(cached)
-    getLibraryAction().then(apply).catch(() => {})
+    void refreshLibrary()
     // allCategories / allInserts are derived from the (stable) initial props
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apply, initialInserts, initialCategories])
+  }, [apply, refreshLibrary, initialInserts, initialCategories])
 
   const setInsertLocale = React.useCallback((id: string, l: Locale) => {
     setInsertLocaleOverrides((prev) => ({ ...prev, [id]: l }))
@@ -397,10 +603,10 @@ export function ScreenkitProvider({
     (id: string): Locale => {
       const insert = findInsert(inserts, id)
       const english = insert ? hasEnglish(insert) : false
-      const wanted = insertLocaleOverrides[id] ?? locale
+      const wanted = insertLocaleOverrides[id] ?? contentLocale
       return wanted === "en" && !english ? "ru" : wanted
     },
-    [insertLocaleOverrides, locale, inserts],
+    [insertLocaleOverrides, contentLocale, inserts],
   )
 
   const openInPreview = React.useCallback(
@@ -420,10 +626,36 @@ export function ScreenkitProvider({
     [inserts],
   )
 
+  const stepInsert = React.useCallback(
+    (delta: number) => {
+      if (!inserts.length) return
+      const index = Math.max(0, inserts.findIndex((i) => i.id === selectedId))
+      const next = inserts[(index + delta + inserts.length) % inserts.length]
+      if (!next) return
+      setSelectedId(next.id)
+      setPreview((p) => ({ ...p, device: next.device, aspect: next.aspect }))
+    },
+    [inserts, selectedId],
+  )
+
+  const isFavorite = React.useCallback((id: string) => favorites.has(id), [favorites])
+
+  const toggleFavorite = React.useCallback((id: string) => {
+    setFavorites((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      try {
+        window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify([...next]))
+      } catch {
+        // ignore
+      }
+      return next
+    })
+  }, [])
+
   const hasCustom = React.useMemo(
-    () =>
-      categories.some((c) => c.custom) ||
-      inserts.length > INSERTS.length,
+    () => categories.some((c) => c.custom) || inserts.some((i) => i.custom),
     [categories, inserts],
   )
 
@@ -443,17 +675,29 @@ export function ScreenkitProvider({
     mobileNavOpen,
     setMobileNavOpen,
     openInPreview,
+    stepInsert,
     inserts,
     categories,
     getInsert,
     catDef,
     catLabel,
     libraryBusy,
+    persistent,
+    editLocked,
+    editToken,
+    setEditToken,
     addCategory,
     addInsert,
+    deleteInsert,
+    deleteCategory,
     resetLibrary,
+    refreshLibrary,
     hasCustom,
+    favorites,
+    isFavorite,
+    toggleFavorite,
     locale,
+    contentLocale,
     setLocale,
     t,
     insertLocaleOverrides,

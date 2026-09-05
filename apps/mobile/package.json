@@ -1,0 +1,64 @@
+{
+  "name": "mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "prebuild": "expo prebuild --platform android",
+    "doctor": "expo-doctor",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "^2.14.1",
+    "@connectrpc/connect": "^2.1.2",
+    "@connectrpc/connect-web": "^2.1.2",
+    "@expo-google-fonts/jetbrains-mono": "^0.4.1",
+    "@expo/vector-icons": "^15.0.2",
+    "@mixture/protocol": "workspace:*",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@screenkit/core": "workspace:*",
+    "@shopify/flash-list": "2.0.2",
+    "expo": "~57.0.20",
+    "expo-blur": "~57.0.2",
+    "expo-clipboard": "~57.0.1",
+    "expo-constants": "~57.0.17",
+    "expo-document-picker": "~57.0.1",
+    "expo-file-system": "~57.0.6",
+    "expo-font": "~57.0.3",
+    "expo-haptics": "~57.0.2",
+    "expo-linking": "~57.0.9",
+    "expo-router": "~57.0.19",
+    "expo-sharing": "~57.0.18",
+    "expo-splash-screen": "~57.0.8",
+    "expo-status-bar": "~57.0.1",
+    "expo-system-ui": "~57.0.3",
+    "expo-video": "~57.0.3",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "react-native": "0.86.3",
+    "react-native-fast-encoder": "^0.3.1",
+    "react-native-gesture-handler": "~2.32.0",
+    "react-native-reanimated": "4.5.1",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-svg": "15.15.4",
+    "react-native-url-polyfill": "^4.0.0",
+    "react-native-webview": "13.16.1",
+    "react-native-worklets": "0.10.1",
+    "web-streams-polyfill": "^4.3.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@types/react": "~19.2.0",
+    "typescript": "5.7.3"
+  },
+  "expo": {
+    "install": {
+      "// react": "matched to the version the workspace already resolves, so the native build sees one copy",
+      "// typescript": "pinned to the monorepo version (tsconfig.base.json); expo would suggest 6.x",
+      "exclude": ["react", "react-dom", "typescript"]
+    }
+  }
+}

@@ -33,5 +33,10 @@ export const screenkitInserts = pgTable("screenkit_inserts", {
   negativePromptEn: text("negative_prompt_en"),
   technicalNotesRu: jsonb("technical_notes_ru").notNull().default([]),
   technicalNotesEn: jsonb("technical_notes_en"),
+  /* what the insert renders: "scene" (default), "site" or "file"; rows written
+     before insert kinds existed read back as scenes */
+  kind: text("kind").notNull().default("scene"),
+  /* the site / file source as InsertSource; null for scenes */
+  source: jsonb("source"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 })

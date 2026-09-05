@@ -6,10 +6,12 @@ import {
   LANG_TAG,
   LOCALE_STORAGE_KEY,
   LOCALES,
+  isUiLocale,
   modeLabel,
   translate,
 } from "@/lib/screenkit/i18n"
-import type { Insert, Locale, PlaybackMode } from "@/lib/screenkit/types"
+import type { Insert, Locale, PlaybackMode, UiLocale } from "@/lib/screenkit/types"
+import { contentLocaleOf } from "@/lib/screenkit/types"
 import { Languages } from "lucide-react"
 import * as React from "react"
 import { aspectValue } from "./device-frame"
@@ -46,7 +48,8 @@ function fitBox(vw: number, vh: number, ratio: number, orientation: Orientation)
 export function ScreenState({ insert }: { insert: Insert }) {
   const [mode, setMode] = React.useState<PlaybackMode>("clean")
   // standalone view owns its own language (no site chrome around it)
-  const [siteLocale, setSiteLocale] = React.useState<Locale>(DEFAULT_LOCALE)
+  const [siteLocale, setSiteLocale] = React.useState<UiLocale>(DEFAULT_LOCALE)
+  const siteContentLocale = contentLocaleOf(siteLocale)
   const [override, setOverride] = React.useState<Locale | null>(null)
   const [orientation, setOrientation] = React.useState<Orientation>("landscape")
 
@@ -81,8 +84,7 @@ export function ScreenState({ insert }: { insert: Insert }) {
   React.useEffect(() => {
     try {
       const storedLocale = window.localStorage.getItem(LOCALE_STORAGE_KEY)
-      if (storedLocale === "ru" || storedLocale === "en")
-        setSiteLocale(storedLocale)
+      if (isUiLocale(storedLocale)) setSiteLocale(storedLocale)
       const storedMode = window.localStorage.getItem(REVEAL_MODE_KEY)
       if (storedMode === "exit" || storedMode === "hotkey")
         setRevealMode(storedMode)
@@ -171,7 +173,7 @@ export function ScreenState({ insert }: { insert: Insert }) {
     }
   }, [ratio, orientation])
 
-  const wanted = override ?? siteLocale
+  const wanted = override ?? siteContentLocale
   const insertLocale: Locale = wanted === "en" && !english ? "ru" : wanted
   const resolved = resolveInsert(insert, insertLocale)
 
@@ -231,7 +233,7 @@ export function ScreenState({ insert }: { insert: Insert }) {
                   : "text-white/55 hover:text-white")
               }
             >
-              {modeLabel(m, siteLocale)}
+              {modeLabel(m, siteContentLocale)}
             </button>
           ))}
         </div>

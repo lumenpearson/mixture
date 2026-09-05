@@ -1,0 +1,165 @@
+import { RPC_MAX_MESSAGE_BYTES } from "@/lib/rpc/limits"
+import { describe, expect, it } from "vitest"
+import {
+  DIRECT_UPLOAD_LIMIT,
+  UPLOAD_LIMIT_RPC,
+  buildUploadItems,
+  nextPending,
+  patchItem,
+  queueIsFinished,
+  resolveConflict,
+  summarize,
+  takenPaths,
+  uploadRoute,
+  type UploadCandidate,
+} from "./upload-queue"
+
+const candidate = (name: string, size = 10, relativePath = name): UploadCandidate => ({
+  file: new File([new Uint8Array(size)], name.split("/").pop() ?? name),
+  relativePath,
+})
+
+const build = (candidates: UploadCandidate[], patch: Partial<Parameters<typeof buildUploadItems>[1]> = {}) =>
+  buildUploadItems(candidates, { basePath: "", existing: [], canUploadDirectly: false, ...patch })
+
+describe("uploadRoute", () => {
+  it("keeps small files on the rpc route", () => {
+    expect(uploadRoute(1024, false)).toBe("rpc")
+    expect(uploadRoute(UPLOAD_LIMIT_RPC, false)).toBe("rpc")
+  })
+
+  // the ceiling is the payload, not the message: a file of exactly
+  // RPC_MAX_MESSAGE_BYTES serializes past the router's readMaxBytes and the
+  // transport refuses it before the handler can call it too large
+  it("leaves the request envelope room under the transport cap", () => {
+    expect(UPLOAD_LIMIT_RPC).toBeLessThan(RPC_MAX_MESSAGE_BYTES)
+    expect(uploadRoute(RPC_MAX_MESSAGE_BYTES, false)).toBe("too-large")
+    expect(RPC_MAX_MESSAGE_BYTES - UPLOAD_LIMIT_RPC).toBeGreaterThan(512)
+  })
+
+  // the negative half: without the caller's own github token the vercel body
+  // cap is the hard ceiling, and the ui must be able to say so
+  it("refuses a large file when the caller has no github token", () => {
+    expect(uploadRoute(UPLOAD_LIMIT_RPC + 1, false)).toBe("too-large")
+  })
+
+  it("sends a large file straight to github when the caller has a token", () => {
+    expect(uploadRoute(UPLOAD_LIMIT_RPC + 1, true)).toBe("direct")
+    expect(uploadRoute(DIRECT_UPLOAD_LIMIT, true)).toBe("direct")
+    expect(uploadRoute(DIRECT_UPLOAD_LIMIT + 1, true)).toBe("too-large")
+  })
+})
+
+describe("buildUploadItems", () => {
+  it("resolves paths under the current folder and keeps folder structure", () => {
+    const { items } = build([candidate("shots/a.png", 10, "shots/a.png")], { basePath: "renders" })
+    expect(items[0]?.path).toBe("renders/shots/a.png")
+    expect(items[0]?.name).toBe("a.png")
+    expect(items[0]?.status).toBe("pending")
+  })
+
+  it("marks an item that would overwrite an existing file as a conflict", () => {
+    const { items } = build([candidate("a.png")], { existing: [{ path: "a.png", sha: "abc" }] })
+    expect(items[0]?.status).toBe("conflict")
+    expect(items[0]?.sha).toBe("abc")
+  })
+
+  // same rule as the server: a path the service would refuse never gets queued
+  it("rejects traversal and the config file instead of queueing them", () => {
+    const { items, rejected } = build([candidate("../evil.png", 10, "../evil.png"), candidate("cloud.config.json")])
+    expect(items).toHaveLength(0)
+    expect(rejected.map((r) => r.reason)).toEqual(["forbidden-segment", "config-file"])
+  })
+
+  it("gives every item a distinct id even for identical names", () => {
+    const { items } = build([candidate("a.png"), candidate("a.png")])
+    expect(items[0]?.id).not.toBe(items[1]?.id)
+  })
+})
+
+describe("resolveConflict", () => {
+  const folder = ["a.png"]
+  const conflicted = () => build([candidate("a.png")], { existing: [{ path: "a.png", sha: "abc" }] }).items
+
+  it("overwrite keeps the path and the sha so the commit replaces the blob", () => {
+    const items = conflicted()
+    const next = resolveConflict(items, items[0]!.id, "overwrite", takenPaths(items, folder))
+    expect(next[0]?.status).toBe("pending")
+    expect(next[0]?.sha).toBe("abc")
+    expect(next[0]?.path).toBe("a.png")
+  })
+
+  it("keep-both renames and drops the sha so nothing is replaced", () => {
+    const items = conflicted()
+    const next = resolveConflict(items, items[0]!.id, "keep-both", takenPaths(items, folder))
+    expect(next[0]?.path).toBe("a (copy).png")
+    expect(next[0]?.sha).toBe("")
+    expect(next[0]?.status).toBe("pending")
+  })
+
+  /*
+   * The queue is not the folder. `keep both` used to be handed the queued
+   * paths alone, so a repository already holding `a (copy).png` got that file
+   * overwritten — the item goes out with an empty sha and the server fills the
+   * existing one in. `takenPaths` is what the runner passes; asserting on it
+   * is asserting on the real call.
+   */
+  it("keep-both steps over a name the folder already holds", () => {
+    const items = conflicted()
+    const next = resolveConflict(items, items[0]!.id, "keep-both", takenPaths(items, ["a.png", "a (copy).png"]))
+    expect(next[0]?.path).toBe("a (copy 2).png")
+  })
+
+  it("skip takes the item out of the run", () => {
+    const items = conflicted()
+    const next = resolveConflict(items, items[0]!.id, "skip", takenPaths(items, folder))
+    expect(next[0]?.status).toBe("skipped")
+    expect(nextPending(next)).toBeNull()
+  })
+})
+
+describe("takenPaths", () => {
+  it("unions the folder listing with everything queued", () => {
+    const { items } = build([candidate("b.png")])
+    expect(takenPaths(items, ["a.png"])).toEqual(["a.png", "b.png"])
+  })
+
+  // the negative twin: with an empty folder listing only the queue is avoided,
+  // which is exactly the state that made "keep both" overwrite a file
+  it("has only the queue to go on when the folder is unknown", () => {
+    const { items } = build([candidate("b.png")])
+    expect(takenPaths(items, [])).toEqual(["b.png"])
+  })
+})
+
+describe("the runner view of the queue", () => {
+  it("never hands the runner an item it cannot send", () => {
+    const { items } = build([candidate("big.png", 0)])
+    const oversized = patchItem(items, items[0]!.id, { route: "too-large" })
+    expect(nextPending(oversized)).toBeNull()
+  })
+
+  it("summarises bytes moved across done, active and failed items", () => {
+    const { items } = build([candidate("a.png", 100), candidate("b.png", 100)])
+    let queue = patchItem(items, items[0]!.id, { status: "done", progress: 1 })
+    queue = patchItem(queue, items[1]!.id, { status: "uploading", progress: 0.5 })
+    const summary = summarize(queue)
+    expect(summary.total).toBe(2)
+    expect(summary.done).toBe(1)
+    expect(summary.active).toBe(true)
+    expect(summary.progress).toBeCloseTo(0.75, 5)
+  })
+
+  it("counts an error and reports the queue as unfinished until it is dealt with", () => {
+    const { items } = build([candidate("a.png", 10)])
+    const failed = patchItem(items, items[0]!.id, { status: "error", error: "github 403" })
+    expect(summarize(failed).failed).toBe(1)
+    expect(queueIsFinished(failed)).toBe(false)
+    expect(queueIsFinished(patchItem(failed, items[0]!.id, { status: "done" }))).toBe(true)
+  })
+
+  it("has nothing to report for an empty queue", () => {
+    expect(summarize([]).progress).toBe(0)
+    expect(queueIsFinished([])).toBe(false)
+  })
+})

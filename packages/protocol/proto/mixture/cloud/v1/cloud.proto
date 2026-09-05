@@ -1,0 +1,247 @@
+syntax = "proto3";
+
+package mixture.cloud.v1;
+
+// Cloud drive backed by a private GitHub repository. Files live in the
+// repository root; `cloud.config.json` in the same root defines visibility
+// rules and access roles.
+
+enum Visibility {
+  VISIBILITY_UNSPECIFIED = 0;
+  // listed and readable only by viewers, editors and owners
+  VISIBILITY_PRIVATE = 1;
+  // readable by anyone allowed by `allow_anonymous_public`
+  VISIBILITY_PUBLIC = 2;
+  // never listed for anyone but owners
+  VISIBILITY_HIDDEN = 3;
+}
+
+enum EntryKind {
+  ENTRY_KIND_UNSPECIFIED = 0;
+  ENTRY_KIND_FILE = 1;
+  ENTRY_KIND_DIRECTORY = 2;
+}
+
+// The caller's resolved role for this request.
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_ANONYMOUS = 1;
+  ROLE_VIEWER = 2;
+  ROLE_EDITOR = 3;
+  ROLE_OWNER = 4;
+}
+
+message Entry {
+  // repository-relative posix path, e.g. "renders/ep01/lock-screen.png"
+  string path = 1;
+  string name = 2;
+  EntryKind kind = 3;
+  int64 size = 4;
+  string sha = 5;
+  Visibility visibility = 6;
+  // true when the caller may modify or delete this entry
+  bool editable = 7;
+  string content_type = 8;
+  // a direct download link when GitHub exposes one for the caller
+  string download_url = 9;
+}
+
+message Status {
+  // false when neither a server token nor a caller token is available
+  bool configured = 1;
+  string repo = 2;
+  string branch = 3;
+  // GitHub login of the caller when authenticated with a GitHub token
+  string login = 4;
+  Role role = 5;
+  // a human-readable reason when `configured` is false or access is limited
+  string message = 6;
+  // true when the repository exists and is reachable
+  bool reachable = 7;
+}
+
+message VisibilityRule {
+  // glob pattern relative to the repository root ("public/**", "*.png")
+  string pattern = 1;
+  Visibility visibility = 2;
+}
+
+message AccessKey {
+  string name = 1;
+  Role role = 2;
+  // sha256 hex of the key; raw keys are never stored
+  string key_hash = 3;
+}
+
+message Access {
+  repeated string owners = 1;
+  repeated string editors = 2;
+  repeated string viewers = 3;
+  bool allow_anonymous_public = 4;
+  repeated AccessKey keys = 5;
+}
+
+message Config {
+  int32 version = 1;
+  Visibility default_visibility = 2;
+  repeated VisibilityRule rules = 3;
+  Access access = 4;
+}
+
+message GetStatusRequest {}
+
+message GetStatusResponse {
+  Status status = 1;
+}
+
+message ListEntriesRequest {
+  string path = 1;
+}
+
+message ListEntriesResponse {
+  string path = 1;
+  repeated Entry entries = 2;
+  Status status = 3;
+}
+
+message GetTreeRequest {
+  // only entries under this folder ("" for everything)
+  string prefix = 1;
+}
+
+message GetTreeResponse {
+  // every visible file and folder under the prefix, recursively
+  repeated Entry entries = 1;
+  // true when the repository is too large for one listing
+  bool truncated = 2;
+  // the commit sha the listing was taken from
+  string sha = 3;
+}
+
+message StatEntryRequest {
+  string path = 1;
+}
+
+message StatEntryResponse {
+  Entry entry = 1;
+}
+
+message ReadFileRequest {
+  string path = 1;
+}
+
+message ReadFileResponse {
+  Entry entry = 1;
+  bytes content = 2;
+  // true when the file exceeded the inline limit and `content` is empty
+  bool truncated = 3;
+}
+
+message CreateStreamTicketRequest {
+  string path = 1;
+}
+
+message CreateStreamTicketResponse {
+  // same-origin url the browser may put into <video src>; it carries a signed
+  // ticket, never a github token and never an access key
+  string url = 1;
+  // when the ticket stops being accepted (unix milliseconds)
+  int64 expires_at_unix_ms = 2;
+}
+
+message WriteFileRequest {
+  string path = 1;
+  bytes content = 2;
+  // sha of the existing blob when overwriting
+  string sha = 3;
+  string message = 4;
+}
+
+message WriteFileResponse {
+  Entry entry = 1;
+  string commit_sha = 2;
+}
+
+message DeleteEntryRequest {
+  string path = 1;
+  string sha = 2;
+}
+
+message DeleteEntryResponse {
+  string commit_sha = 1;
+}
+
+message MoveEntryRequest {
+  string from = 1;
+  string to = 2;
+}
+
+message MoveEntryResponse {
+  Entry entry = 1;
+}
+
+message CreateDirectoryRequest {
+  string path = 1;
+}
+
+message CreateDirectoryResponse {
+  Entry entry = 1;
+}
+
+message InitRepositoryRequest {
+  // create the repository as private (default true)
+  bool private = 1;
+}
+
+message InitRepositoryResponse {
+  Status status = 1;
+  // true when the repository was created by this call, false when it existed
+  bool created = 2;
+  string html_url = 3;
+}
+
+message GetConfigRequest {}
+
+message GetConfigResponse {
+  Config config = 1;
+  string sha = 2;
+}
+
+message UpdateConfigRequest {
+  Config config = 1;
+  string sha = 2;
+}
+
+message UpdateConfigResponse {
+  Config config = 1;
+  string sha = 2;
+}
+
+// Cloud drive over a private GitHub repository. Identity comes from the
+// `x-mixture-cloud-token` (GitHub token) or `x-mixture-cloud-key` (access key)
+// request headers; the server token from MIXTURE_CLOUD_GITHUB_TOKEN performs
+// repository operations when the caller has no token of their own.
+service CloudService {
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+  // create the cloud repository (and its default config) with the caller's
+  // GitHub token when it does not exist yet
+  rpc InitRepository(InitRepositoryRequest) returns (InitRepositoryResponse);
+  rpc ListEntries(ListEntriesRequest) returns (ListEntriesResponse);
+  // recursive listing for search, the command palette and folder pickers
+  rpc GetTree(GetTreeRequest) returns (GetTreeResponse);
+  // metadata for one path without transferring its bytes; answers not_found
+  // for anything the caller may not see, exactly like ReadFile
+  rpc StatEntry(StatEntryRequest) returns (StatEntryResponse);
+  rpc ReadFile(ReadFileRequest) returns (ReadFileResponse);
+  // mint a short-lived, signed url for byte-range playback of one file.
+  // Resolves the caller's role and visibility exactly like ReadFile, then
+  // signs a ticket the /api/cloud/stream route can verify without the
+  // caller's credentials — a <video> element cannot send request headers.
+  rpc CreateStreamTicket(CreateStreamTicketRequest) returns (CreateStreamTicketResponse);
+  rpc WriteFile(WriteFileRequest) returns (WriteFileResponse);
+  rpc DeleteEntry(DeleteEntryRequest) returns (DeleteEntryResponse);
+  rpc MoveEntry(MoveEntryRequest) returns (MoveEntryResponse);
+  rpc CreateDirectory(CreateDirectoryRequest) returns (CreateDirectoryResponse);
+  rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
+  rpc UpdateConfig(UpdateConfigRequest) returns (UpdateConfigResponse);
+}

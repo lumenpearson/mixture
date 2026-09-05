@@ -1,0 +1,135 @@
+name: mobile
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - "apps/mobile/**"
+      - ".github/workflows/mobile.yml"
+      - "packages/protocol/**"
+      - "packages/screenkit-core/**"
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # cheap gate for pull requests: the app has to typecheck and expo has to be
+  # happy with the dependency versions before anyone waits on a gradle build
+  check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter mobile typecheck
+      - name: expo doctor
+        working-directory: apps/mobile
+        run: npx --yes expo-doctor@latest
+
+  apk:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      # react-native autolinking and gradle read a flat node_modules tree; this
+      # only changes the layout for this job, never the repository default
+      NPM_CONFIG_NODE_LINKER: hoisted
+      EXPO_NO_TELEMETRY: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+
+      - run: pnpm install --no-frozen-lockfile
+
+      - name: prebuild the android project
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform android --no-install
+
+      # A release build has to be signed. Without secrets the workflow makes a
+      # throwaway debug keystore so the artefact is installable for testing; it
+      # is NOT suitable for the play store or for updating an installed app.
+      #
+      # To ship a real build, add these repository secrets and they win:
+      #   ANDROID_KEYSTORE_BASE64  base64 of your .jks
+      #   ANDROID_KEYSTORE_PASSWORD
+      #   ANDROID_KEY_ALIAS
+      #   ANDROID_KEY_PASSWORD
+      - name: prepare the signing key
+        working-directory: apps/mobile/android/app
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > release.keystore
+            # the delimiter form: a secret that happens to contain a newline
+            # would otherwise write further lines into the job environment
+            {
+              echo "MIXTURE_STORE_FILE=release.keystore"
+              echo "MIXTURE_STORE_PASSWORD<<MIXTURE_SECRET_EOF"
+              echo "$KEYSTORE_PASSWORD"
+              echo "MIXTURE_SECRET_EOF"
+              echo "MIXTURE_KEY_ALIAS<<MIXTURE_SECRET_EOF"
+              echo "$KEY_ALIAS"
+              echo "MIXTURE_SECRET_EOF"
+              echo "MIXTURE_KEY_PASSWORD<<MIXTURE_SECRET_EOF"
+              echo "$KEY_PASSWORD"
+              echo "MIXTURE_SECRET_EOF"
+            } >> "$GITHUB_ENV"
+          else
+            keytool -genkeypair -v -keystore release.keystore -storetype JKS \
+              -alias ci -keyalg RSA -keysize 2048 -validity 365 \
+              -storepass android -keypass android \
+              -dname "CN=mixture screenkit ci, OU=ci, O=mixture, C=RU"
+            {
+              echo "MIXTURE_STORE_FILE=release.keystore"
+              echo "MIXTURE_STORE_PASSWORD=android"
+              echo "MIXTURE_KEY_ALIAS=ci"
+              echo "MIXTURE_KEY_PASSWORD=android"
+            } >> "$GITHUB_ENV"
+          fi
+
+      # expo prebuild writes a release block that signs with the debug key; point
+      # it at the keystore prepared above without editing the generated project
+      - name: assembleRelease
+        working-directory: apps/mobile/android
+        run: |
+          ./gradlew assembleRelease --no-daemon \
+            -Pandroid.injected.signing.store.file="$PWD/app/$MIXTURE_STORE_FILE" \
+            -Pandroid.injected.signing.store.password="$MIXTURE_STORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$MIXTURE_KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$MIXTURE_KEY_PASSWORD"
+
+      # the runner is discarded either way, but a signing key has no business
+      # outliving the step that used it
+      - name: remove the signing key
+        if: always()
+        working-directory: apps/mobile/android/app
+        run: rm -f release.keystore
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenkit-android-${{ github.sha }}
+          path: apps/mobile/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 30

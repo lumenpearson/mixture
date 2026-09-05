@@ -280,3 +280,33 @@ export function AboutSkeleton() {
     </SkeletonWrap>
   )
 }
+
+/* -------------------------------- cloud -------------------------------- */
+
+export function CloudSkeleton() {
+  return (
+    <SkeletonWrap>
+      <div className="flex flex-col gap-8">
+        <header className="flex flex-col gap-3">
+          <Skeleton className="h-5 w-32 rounded-md" />
+          <Lines count={2} className="max-w-xl" />
+          <div className="flex gap-2">
+            <Skeleton className="h-9 w-28 rounded-full" />
+            <Skeleton className="h-9 w-24 rounded-full" />
+          </div>
+        </header>
+        <Skeleton className="h-20 w-full rounded-3xl" />
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-28 rounded-xl" />
+            <Skeleton className="h-10 w-32 rounded-xl" />
+            <Skeleton className="h-10 w-24 rounded-xl" />
+          </div>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    </SkeletonWrap>
+  )
+}

@@ -1,0 +1,319 @@
+/* -------------------------------------------------------------------------
+ * glass-muted-glow — a global translucent-glass surface treatment with a
+ * soft glowing border highlight. superseded the plain boolean glow.css.
+ *
+ * driven entirely by <html> attributes and custom properties written by
+ * `components/screenkit/theme.tsx` (the GlassProvider / useGlass()):
+ *
+ *   data-glass="on|off"                 master switch
+ *   data-glass-panels="on|off"          .bg-panel-soft / .bg-panel / .bg-control
+ *   data-glass-cards="on|off"           .rounded-2xl / .rounded-3xl surfaces
+ *   data-glass-rail="on|off"            the primary nav rail + category panel
+ *   data-glass-menus="on|off"           popovers, selects, dropdown/context menus, toasts
+ *   data-glass-dialogs="on|off"         dialog / alert-dialog / sheet / drawer content
+ *   --glass-blur                        backdrop-filter blur radius (px)
+ *   --glass-alpha                       surface translucency, 0–1
+ *   --glass-saturate                    backdrop-filter saturate(), unitless
+ *   --glass-border-glow                 border/halo strength, 0–1
+ *   --glass-glow-color                  a color-producing value: var(--ring),
+ *                                       var(--foreground) or currentColor
+ *   --glass-noise                       "0" | "1", informational
+ *   --glass-noise-image                 the actual grain layer, or "none"
+ *
+ * two hooks components can set on themselves:
+ *
+ *   class="sk-glass-rail"               treat this element as a navigation
+ *                                       surface (the category panel does)
+ *   data-glass-edge="top"               put the rail's inset highlight on the
+ *                                       top edge instead of the right one
+ *   data-glass-surface="card"           opt a card into the backdrop blur even
+ *                                       though it carries no panel colour
+ * ------------------------------------------------------------------------- */
+
+:root,
+html[data-glass="on"] {
+  --glass-blur: 14px;
+  --glass-alpha: 0.72;
+  --glass-saturate: 1.15;
+  --glass-border-glow: 0.35;
+  --glass-glow-color: var(--ring);
+  --glass-noise: 0;
+  --glass-noise-image: none;
+  /* text sits on these surfaces and the backdrop can be anything — a bright
+     insert on the preview stage, a photo in the cloud grid. keep them dense
+     enough to read over. mirrors GLASS_ALPHA_MIN in lib/screenkit/glass.ts,
+     which is also the translucency slider's minimum. */
+  --glass-alpha-floor: 0.5;
+}
+
+/* white-ish glass reads thinner still in the light scheme; floor it higher. */
+.light[data-glass="on"] {
+  --glass-alpha-floor: 0.78;
+}
+
+html[data-glass="on"] {
+  --glass-alpha-effective: max(var(--glass-alpha), var(--glass-alpha-floor));
+  --glass-ring: color-mix(in srgb, var(--glass-glow-color) calc(var(--glass-border-glow) * 70%), transparent);
+  --glass-halo: color-mix(in srgb, var(--glass-glow-color) calc(var(--glass-border-glow) * 45%), transparent);
+  --glass-ring-hover: color-mix(in srgb, var(--glass-glow-color) calc(var(--glass-border-glow) * 100%), transparent);
+  --glass-halo-hover: color-mix(in srgb, var(--glass-glow-color) calc(var(--glass-border-glow) * 70%), transparent);
+  --glass-shadow: inset 0 0 0 1px var(--glass-ring), 0 0 12px var(--glass-halo);
+  --glass-shadow-hover: inset 0 0 0 1px var(--glass-ring-hover), 0 0 16px var(--glass-halo-hover);
+}
+
+@layer utilities {
+  /* the standard property goes last in every pair below: lightningcss keeps
+     only the last declaration of a prefixed/unprefixed pair, and with the
+     prefixed one last the build shipped `-webkit-backdrop-filter` alone —
+     which firefox does not implement, so glass had no blur there at all. */
+
+  /* ---------------------------- panels ---------------------------- */
+  /* `data-glass-surface="flat"` opts an element out of the blur half while
+     keeping the colour and the border highlight. Long lists set it: the
+     library grid paints up to 24 cards at once, and one compositing layer per
+     card repaints on every scroll frame to blur a page background that is
+     flat anyway. The nested-surface rule below cannot help there — the cards
+     sit in a bare `<ul>`, not inside another glass surface. */
+  html[data-glass="on"][data-glass-panels="on"]
+    :where(.bg-panel-soft, .bg-panel, .bg-control):not([data-glass-surface="flat"]) {
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    background-image: var(--glass-noise-image);
+    background-blend-mode: overlay;
+    box-shadow: var(--glass-shadow);
+  }
+  html[data-glass="on"][data-glass-panels="on"] .bg-panel-soft {
+    background-color: color-mix(in srgb, var(--panel-soft) calc(var(--glass-alpha-effective) * 100%), transparent);
+  }
+  html[data-glass="on"][data-glass-panels="on"] .bg-panel {
+    background-color: color-mix(in srgb, var(--panel) calc(var(--glass-alpha-effective) * 100%), transparent);
+  }
+  html[data-glass="on"][data-glass-panels="on"] .bg-control {
+    background-color: color-mix(in srgb, var(--control) calc(var(--glass-alpha-effective) * 100%), transparent);
+  }
+
+  /* ----------------------------- cards ----------------------------- *
+   * every rounded surface gets the border highlight: it is one box-shadow and
+   * costs nothing. */
+  html[data-glass="on"][data-glass-cards="on"] :where(.rounded-2xl, .rounded-3xl):not(aside):not(nav) {
+    box-shadow: var(--glass-shadow);
+  }
+  /* the blur is the expensive half — one compositing layer per element, and
+     ~120 elements in this app carry one of those two radius utilities. it also
+     only *shows* through a surface that is itself translucent, so limit it to
+     cards that carry a panel colour (or say so with data-glass-surface). a
+     rounded-2xl button over the flat page background pays for a blur nobody
+     can see. */
+  html[data-glass="on"][data-glass-cards="on"]
+    :where(.rounded-2xl, .rounded-3xl):where(.bg-panel-soft, .bg-panel, .bg-control, [data-glass-surface="card"]):not([data-glass-surface="flat"]):not(aside):not(nav) {
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    background-image: var(--glass-noise-image);
+    background-blend-mode: overlay;
+  }
+
+  /* ------------------------ rail + category panel ------------------------ *
+   * the two real navigation surfaces, named explicitly. a bare `aside`
+   * selector also caught the insert wizard's step sidebar, which belongs to
+   * the dialogs target and is painted in a different token. */
+  html[data-glass="on"][data-glass-rail="on"] :where(nav[aria-label="primary"], .sk-glass-rail) {
+    --glass-surface: var(--sidebar);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    background-color: color-mix(in srgb, var(--glass-surface) calc(var(--glass-alpha-effective) * 100%), transparent);
+    background-image: var(--glass-noise-image);
+    background-blend-mode: overlay;
+    box-shadow: inset -1px 0 0 var(--glass-ring), 0 0 16px var(--glass-halo);
+  }
+  /* the category panel is painted in --background, not --sidebar; glass must
+     not repaint it in the rail's colour. */
+  html[data-glass="on"][data-glass-rail="on"] .sk-glass-rail {
+    --glass-surface: var(--background);
+  }
+  /* the horizontal bottom rail meets the content along its top edge */
+  html[data-glass="on"][data-glass-rail="on"] [data-glass-edge="top"] {
+    box-shadow: inset 0 1px 0 var(--glass-ring), 0 0 16px var(--glass-halo);
+  }
+
+  /* ------------------------- menus / overlays ------------------------- */
+  html[data-glass="on"][data-glass-menus="on"] :where(
+    [data-slot="context-menu-content"],
+    [data-slot="context-menu-sub-content"],
+    [data-slot="dropdown-menu-content"],
+    [data-slot="dropdown-menu-sub-content"],
+    [data-slot="popover-content"],
+    [data-slot="select-content"],
+    [data-slot="tooltip-content"],
+    [data-slot="hover-card-content"],
+    [data-slot="menubar-content"],
+    [data-slot="menubar-sub-content"],
+    [data-slot="navigation-menu-content"],
+    [data-radix-popper-content-wrapper] > *,
+    [data-sonner-toast]
+  ) {
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    background-color: color-mix(in srgb, var(--popover) calc(var(--glass-alpha-effective) * 100%), transparent);
+    background-image: var(--glass-noise-image);
+    background-blend-mode: overlay;
+    box-shadow: var(--glass-shadow);
+  }
+
+  /* ------------------------------ dialogs ------------------------------ */
+  html[data-glass="on"][data-glass-dialogs="on"] :where(
+    [data-slot="dialog-content"],
+    [data-slot="alert-dialog-content"],
+    [data-slot="sheet-content"],
+    [data-slot="drawer-content"]
+  ) {
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    background-color: color-mix(in srgb, var(--background) calc(var(--glass-alpha-effective) * 100%), transparent);
+    background-image: var(--glass-noise-image);
+    background-blend-mode: overlay;
+    box-shadow: inset 0 0 0 1px var(--glass-ring), 0 0 18px var(--glass-halo);
+  }
+
+  /* ------------------------------ hover ------------------------------ *
+   * a glass surface reads a touch brighter under the pointer: the same
+   * two-layer shadow, a stronger mix of the same glow color.
+   *
+   * three deliberate limits. it is gated per target like the base rules, so a
+   * surface group the user switched off is fully off. it is `(hover: hover)`
+   * only, so a tap does not leave a stuck highlight behind. and it never
+   * applies to a keyboard-focused element: tailwind's focus ring is also a
+   * box-shadow, so a glow declared here would replace it rather than compose
+   * with it — and at --glass-border-glow 0 the replacement is transparent. */
+  @media (hover: hover) {
+    html[data-glass="on"][data-glass-panels="on"]
+      :where(.bg-panel-soft, .bg-panel, .bg-control):hover:not(:focus-visible),
+    html[data-glass="on"][data-glass-cards="on"]
+      :where(.rounded-2xl, .rounded-3xl):not(aside):not(nav):hover:not(:focus-visible),
+    html[data-glass="on"][data-glass-rail="on"]
+      :where(nav[aria-label="primary"], .sk-glass-rail):hover:not(:focus-visible),
+    html[data-glass="on"][data-glass-menus="on"] :where(
+      [data-slot="context-menu-content"], [data-slot="dropdown-menu-content"],
+      [data-slot="popover-content"], [data-slot="select-content"],
+      [data-slot="tooltip-content"], [data-slot="hover-card-content"],
+      [data-slot="menubar-content"], [data-slot="navigation-menu-content"]
+    ):hover:not(:focus-visible),
+    html[data-glass="on"][data-glass-dialogs="on"] :where(
+      [data-slot="dialog-content"], [data-slot="alert-dialog-content"],
+      [data-slot="sheet-content"], [data-slot="drawer-content"]
+    ):hover:not(:focus-visible) {
+      box-shadow: var(--glass-shadow-hover);
+    }
+  }
+
+  /* ------------------------------ focus ------------------------------ *
+   * a decorative setting must never be the only thing standing between the
+   * user and a focus indicator. several surfaces (the media player root, every
+   * cloud file row) set `outline-none` and rely on a ring that is itself a
+   * box-shadow — the same property every rule above writes. give focused glass
+   * surfaces an outline, which composes instead of competing. */
+  /* Only the surfaces a user can actually focus. The overlay content slots are
+     deliberately left out: radix focuses a popover or a menu panel itself when
+     it opens, and the vendored popover sets `outline-hidden` on exactly that
+     element — a rule here outranks it and draws a ring around a container
+     nobody is interacting with. */
+  html[data-glass="on"] :where(
+    .bg-panel-soft, .bg-panel, .bg-control,
+    .rounded-2xl, .rounded-3xl
+  ):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* --------------------------- nested surfaces --------------------------- *
+   * backdrop-filter is expensive and blur-inside-blur reads muddy, so a glass
+   * surface inside another glass surface drops the blur. it keeps everything
+   * else: its background colour is load-bearing for layout, not decoration,
+   * and a background-image reset would flatten the inline gradients components
+   * paint on their own surfaces (the live preview in the glass settings does).
+   *
+   * `.sticky` is exempt. A sticky bar is the only thing standing between it
+   * and the rows scrolling underneath — the insert wizard's footer, the rpc
+   * log's table head — so a translucent one that has also lost its blur shows
+   * the content straight through. There are two of them; the blur is free at
+   * that count. */
+  html[data-glass="on"] :where(
+    .bg-panel-soft, .bg-panel, .bg-control,
+    .rounded-2xl, .rounded-3xl,
+    nav[aria-label="primary"], .sk-glass-rail,
+    [data-slot="context-menu-content"], [data-slot="dropdown-menu-content"],
+    [data-slot="popover-content"], [data-slot="select-content"],
+    [data-slot="tooltip-content"], [data-slot="hover-card-content"],
+    [data-slot="menubar-content"], [data-slot="navigation-menu-content"],
+    [data-slot="dialog-content"], [data-slot="alert-dialog-content"],
+    [data-slot="sheet-content"], [data-slot="drawer-content"]
+  ) :where(.bg-panel-soft, .bg-panel, .bg-control, .rounded-2xl, .rounded-3xl):not(.sticky) {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* weak devices and reduce-motion already share one heuristic (see
+     motion.tsx's isSlowDevice) — piggyback on data-motion="reduced" instead
+     of re-detecting hardware here, and drop the blur layer but keep the
+     cheap translucent color + border glow. */
+  html[data-motion="reduced"] :where(
+    .bg-panel-soft, .bg-panel, .bg-control,
+    .rounded-2xl, .rounded-3xl,
+    nav[aria-label="primary"], .sk-glass-rail,
+    [data-slot="context-menu-content"], [data-slot="dropdown-menu-content"],
+    [data-slot="popover-content"], [data-slot="select-content"],
+    [data-slot="tooltip-content"], [data-slot="hover-card-content"],
+    [data-slot="menubar-content"], [data-slot="navigation-menu-content"],
+    [data-slot="dialog-content"], [data-slot="alert-dialog-content"],
+    [data-slot="sheet-content"], [data-slot="drawer-content"],
+    [data-radix-popper-content-wrapper] > *,
+    [data-sonner-toast]
+  ) {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* OS-level "reduce transparency" — fall back to fully opaque surfaces. kept
+     inside this same @layer, after every rule above, on purpose: cascade
+     layers invert !important priority (an unlayered !important loses to a
+     layered one), so this has to live in `utilities` too and win on normal
+     same-layer source order, not on being "the last unlayered rule". */
+  @media (prefers-reduced-transparency: reduce) {
+    /* kill the grain at the source rather than resetting background-image on
+       every surface: an !important reset there also flattens the inline
+       gradients components paint on their own rounded surfaces. */
+    html[data-glass="on"] {
+      --glass-noise-image: none !important;
+    }
+    html[data-glass="on"] :where(.bg-panel-soft, .bg-panel, .bg-control, .rounded-2xl, .rounded-3xl) {
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+    }
+    html[data-glass="on"][data-glass-panels="on"] .bg-panel-soft { background-color: var(--panel-soft) !important; }
+    html[data-glass="on"][data-glass-panels="on"] .bg-panel { background-color: var(--panel) !important; }
+    html[data-glass="on"][data-glass-panels="on"] .bg-control { background-color: var(--control) !important; }
+    html[data-glass="on"][data-glass-rail="on"] :where(nav[aria-label="primary"], .sk-glass-rail) {
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+      background-color: var(--glass-surface) !important;
+    }
+    html[data-glass="on"][data-glass-menus="on"] :where(
+      [data-slot="context-menu-content"], [data-slot="dropdown-menu-content"],
+      [data-slot="popover-content"], [data-slot="select-content"],
+      [data-slot="tooltip-content"], [data-slot="hover-card-content"],
+      [data-slot="menubar-content"], [data-slot="navigation-menu-content"],
+      [data-radix-popper-content-wrapper] > *, [data-sonner-toast]
+    ) {
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+      background-color: var(--popover) !important;
+    }
+    html[data-glass="on"][data-glass-dialogs="on"] :where(
+      [data-slot="dialog-content"], [data-slot="alert-dialog-content"],
+      [data-slot="sheet-content"], [data-slot="drawer-content"]
+    ) {
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+      background-color: var(--background) !important;
+    }
+  }
+}
