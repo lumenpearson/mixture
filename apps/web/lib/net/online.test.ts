@@ -3,7 +3,8 @@ import {
   INITIAL_NETWORK_STATE,
   OFFLINE_PROBE_INTERVAL_MS,
   ONLINE_PROBE_INTERVAL_MS,
-  PROBE_PATH,
+  PROBE_METHOD,
+  probeAnswered,
   isOffline,
   nextProbeDelayMs,
   probeUrl,
@@ -92,16 +93,34 @@ describe("nextProbeDelayMs", () => {
 })
 
 describe("probeUrl", () => {
-  it("probes the origin of the rpc route, not the route itself", () => {
-    expect(probeUrl("https://mixture.example/api/rpc")).toBe(`https://mixture.example${PROBE_PATH}`)
+  it("asks the rpc route for a method nothing implements", () => {
+    expect(probeUrl("https://mixture.example/api/rpc")).toBe(
+      `https://mixture.example/api/rpc/${PROBE_METHOD}`,
+    )
   })
 
-  it("drops a path prefix, a query and a port stays", () => {
-    expect(probeUrl("http://localhost:3000/api/rpc?x=1")).toBe(`http://localhost:3000${PROBE_PATH}`)
+  it("does not double the separator when the base ends in a slash", () => {
+    expect(probeUrl("http://localhost:3000/api/rpc/")).toBe(
+      `http://localhost:3000/api/rpc/${PROBE_METHOD}`,
+    )
   })
 
-  it("falls back to a relative path when the base is unusable", () => {
-    expect(probeUrl("")).toBe(PROBE_PATH)
-    expect(probeUrl("not a url")).toBe(PROBE_PATH)
+  it("stays relative when the base is empty, which is the same-origin case", () => {
+    // `rpcBaseUrl()` yields an absolute url in a browser and "/api/rpc" only
+    // if it were ever called without one; either way fetch resolves it
+    expect(probeUrl("")).toBe(`/${PROBE_METHOD}`)
+    expect(probeUrl("/api/rpc")).toBe(`/api/rpc/${PROBE_METHOD}`)
+  })
+})
+
+describe("probeAnswered", () => {
+  it("counts the router's own 404 as an answer and a gateway fault as none", () => {
+    // the probe asks for a method nothing implements: 404 is success here
+    expect(probeAnswered(404)).toBe(true)
+    expect(probeAnswered(200)).toBe(true)
+    expect(probeAnswered(502)).toBe(false)
+    expect(probeAnswered(503)).toBe(false)
+    // a rejected fetch never produces a status
+    expect(probeAnswered(0)).toBe(false)
   })
 })

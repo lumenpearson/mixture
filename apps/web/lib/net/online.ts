@@ -18,8 +18,17 @@ import { rpcBaseUrl } from "@/lib/rpc/client"
  * is not a preference.
  * ------------------------------------------------------------------ */
 
-/** a tiny static file every deployment serves; HEAD costs one round trip */
-export const PROBE_PATH = "/manifest.webmanifest"
+/**
+ * What the probe asks for: a method name the router does not have, under the
+ * rpc mount point. The router answers `404 unknown rpc` without touching the
+ * database or GitHub, and — unlike a static file — that answer carries the
+ * cross-origin headers `lib/rpc/cors.ts` puts on this route. The desktop
+ * bundle calls the api from its own local origin, so a probe at
+ * `/manifest.webmanifest` would be rejected by the browser for having no
+ * `Access-Control-Allow-Origin` and the shell would report "no network" while
+ * the api was answering perfectly.
+ */
+export const PROBE_METHOD = "mixture.probe.v1.Reachability/Ping"
 export const PROBE_TIMEOUT_MS = 5_000
 /** while offline: often enough to feel instant, rare enough to be free */
 export const OFFLINE_PROBE_INTERVAL_MS = 20_000
@@ -120,15 +129,18 @@ export function nextProbeDelayMs(offline: boolean, tauri: boolean): number | nul
   return tauri ? ONLINE_PROBE_INTERVAL_MS : null
 }
 
-/** the probe target: the origin the rpc route lives on, plus the manifest */
+/** the probe target: the rpc mount point plus a method nothing implements */
 export function probeUrl(base: string): string {
-  try {
-    const url = typeof window === "undefined" ? new URL(base) : new URL(base, window.location.href)
-    return `${url.origin}${PROBE_PATH}`
-  } catch {
-    return PROBE_PATH
-  }
+  const trimmed = base.replace(/\/+$/, "")
+  return `${trimmed}/${PROBE_METHOD}`
 }
+
+/**
+ * Did the server answer at all? A 404 is the expected answer and means the
+ * route is alive; a gateway 5xx means the deployment is not. A rejected fetch
+ * never reaches here — that is the offline case.
+ */
+export const probeAnswered = (status: number): boolean => status > 0 && status < 500
 
 /* ------------------------------ the store ------------------------------ */
 
@@ -175,12 +187,13 @@ async function probe(): Promise<boolean> {
   dispatch({ type: "probe:start" })
   try {
     const response = await fetch(probeUrl(rpcBaseUrl()), {
-      method: "HEAD",
+      method: "GET",
       cache: "no-store",
       signal: controller.signal,
     })
-    dispatch({ type: "probe:done", ok: response.ok, at: Date.now() })
-    return response.ok
+    const ok = probeAnswered(response.status)
+    dispatch({ type: "probe:done", ok, at: Date.now() })
+    return ok
   } catch {
     dispatch({ type: "probe:done", ok: false, at: Date.now() })
     return false
