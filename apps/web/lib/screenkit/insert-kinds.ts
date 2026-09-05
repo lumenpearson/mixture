@@ -50,7 +50,7 @@ export const defaultSource = (kind: InsertKind): InsertSource => ({ ...DEFAULT_S
 
 /** which source fields mean anything for a kind; the rest is dropped */
 const SOURCE_FIELDS: Record<InsertKind, readonly (keyof InsertSource)[]> = {
-  scene: [],
+  scene: ["sceneKey"],
   site: ["url", "fit", "zoom", "scroll", "background"],
   file: ["url", "path", "fit", "zoom", "autoplay", "loop", "muted", "background"],
 }
@@ -59,13 +59,22 @@ export const MAX_SOURCE_URL_LENGTH = 2000
 /** the same ceiling the cloud service applies to a file path */
 export const MAX_SOURCE_PATH_LENGTH = 512
 export const MIN_SOURCE_ZOOM = 0.25
-export const MAX_SOURCE_ZOOM = 4
+/* the renderer clamps to this and both zoom sliders stop here; a source
+   written by a non-browser client used to be accepted at 4 and then drawn at
+   3, which is a validator that agrees with nothing */
+export const MAX_SOURCE_ZOOM = 3
 
 /* the background reaches an inline style on every visitor's screen, so it is
    held to the same shape as a category accent (ACCENT_RE in
    lib/rpc/library.service.ts): an accent variable, a hex literal or rgb(a) —
    never something that could smuggle in url() or a second declaration */
 export const SOURCE_COLOR_RE = /^(var\(--accent-[a-z]+\)|#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\))$/i
+
+/* a scene package key (`packages/inserts/*` manifest `key`). Existence is not
+   checked here: this module stays free of the scene registry, which pulls in
+   every scene component, and an unknown key resolves through the same
+   id/category/fallback chain an absent one does. */
+export const SCENE_KEY_RE = /^[a-z0-9][a-z0-9-]{0,63}$/
 
 const CONTROL_CHARS = /[\x00-\x1f\x7f]/
 
@@ -81,6 +90,26 @@ export const hasSource = (source: InsertSource | undefined): boolean =>
 
 const isLoopbackHost = (hostname: string): boolean =>
   hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]"
+
+/**
+ * This app's own origin, as far as the caller can see it: the page in the
+ * browser, the configured site url on the server. A site insert framing it
+ * would be genuinely same-origin with a document whose localStorage holds the
+ * edit token and the user's GitHub token, and the frame keeps `allow-scripts`.
+ */
+function appOrigins(): string[] {
+  const origins: string[] = []
+  if (typeof window !== "undefined" && window.location?.origin) origins.push(window.location.origin)
+  const site = process.env.NEXT_PUBLIC_SITE_URL
+  if (site) {
+    try {
+      origins.push(new URL(site).origin)
+    } catch {
+      // a misconfigured site url is not this function's problem
+    }
+  }
+  return origins
+}
 
 /**
  * An https url, or http against the developer's own machine. Everything else
@@ -99,6 +128,9 @@ export function checkSourceUrl(value: string | undefined, field = "source.url"):
   } catch {
     return fail(field, "must be a valid url")
   }
+  if (appOrigins().includes(parsed.origin)) {
+    return fail(field, "cannot frame this app")
+  }
   if (parsed.protocol === "https:") return { ok: true }
   if (parsed.protocol === "http:" && isLoopbackHost(parsed.hostname)) return { ok: true }
   return fail(field, "must be an https url")
@@ -113,7 +145,11 @@ export function checkSourcePath(value: string | undefined, field = "source.path"
   const clean = normalizeCloudPath((value ?? "").trim())
   if (!clean) return fail(field, "a cloud path is required")
   if (clean.length > MAX_SOURCE_PATH_LENGTH) return fail(field, "path is too long")
-  for (const segment of clean.split("/")) {
+  for (const raw of clean.split("/")) {
+    // lower-cased before the comparison exactly as the cloud service's
+    // `cleanPath` does; two copies of one rule that disagree on case let
+    // ".GIT/config" into the library and then fail on every read
+    const segment = raw.toLowerCase()
     if (segment === ".." || segment === ".git" || CONTROL_CHARS.test(segment)) {
       return fail(field, "forbidden path segment")
     }
@@ -128,9 +164,16 @@ export function checkSourcePath(value: string | undefined, field = "source.path"
 export function validateSource(kind: InsertKind, source: InsertSource | undefined): SourceCheck {
   const value = source ?? {}
 
-  // a packaged scene draws itself; a source on one would be silently ignored
+  /* a packaged scene draws itself: the only thing an author picks for one is
+     which package draws it, and any other field would be silently ignored */
   if (kind === "scene") {
-    return hasSource(value) ? fail("source", "a scene insert carries no source") : { ok: true }
+    const sceneKey = (value.sceneKey ?? "").trim()
+    if (sceneKey && !SCENE_KEY_RE.test(sceneKey)) {
+      return fail("source.sceneKey", "must be a scene package key")
+    }
+    const rest = { ...value }
+    delete rest.sceneKey
+    return hasSource(rest) ? fail("source", "a scene insert carries no source") : { ok: true }
   }
 
   if (value.fit !== undefined && value.fit !== "contain" && value.fit !== "cover") {
@@ -195,6 +238,10 @@ export function normalizeSource(kind: InsertKind, source: InsertSource | undefin
     const background = (value.background ?? "").trim()
     if (background) out.background = background
   }
+  if (allowed.includes("sceneKey")) {
+    const sceneKey = (value.sceneKey ?? "").trim()
+    if (sceneKey) out.sceneKey = sceneKey
+  }
   return out
 }
 
@@ -220,6 +267,15 @@ export function parseInsertSource(value: unknown): InsertSource | undefined {
   if (typeof raw.autoplay === "boolean") out.autoplay = raw.autoplay
   if (typeof raw.loop === "boolean") out.loop = raw.loop
   if (typeof raw.muted === "boolean") out.muted = raw.muted
-  if (typeof raw.background === "string" && raw.background) out.background = raw.background
+  /* held to the same rule as on the way in: this value reaches an inline
+     `style` on every visitor's screen, and a row that never passed
+     `validateSource` (a restored backup, a direct sql write) must not be able
+     to put `url(https://tracker.example/p.gif)` there */
+  if (typeof raw.background === "string" && SOURCE_COLOR_RE.test(raw.background.trim())) {
+    out.background = raw.background.trim()
+  }
+  if (typeof raw.sceneKey === "string" && SCENE_KEY_RE.test(raw.sceneKey.trim())) {
+    out.sceneKey = raw.sceneKey.trim()
+  }
   return Object.keys(out).length ? out : undefined
 }

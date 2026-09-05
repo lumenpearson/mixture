@@ -2,6 +2,8 @@
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { normalizeHttpUrl } from "@/lib/media/url"
+import { rpcErrorMessage } from "@/lib/rpc/client"
+import type { InsertSource } from "@/lib/screenkit/types"
 import { cn } from "@/lib/utils"
 import { ArrowLeft, ArrowRight, Check, Loader2, X } from "lucide-react"
 import * as React from "react"
@@ -41,6 +43,25 @@ const STEP_COMPONENTS: Record<WizardStep, React.ComponentType<{ draft: WizardDra
 
 const fill = (template: string, values: Record<string, string | number>) =>
   template.replace(/\{(\w+)\}/g, (_, key: string) => String(values[key] ?? ""))
+
+/**
+ * What actually goes on the wire.
+ *
+ * A scene insert carries only the package the author picked — without it the
+ * review step's «отрисует сцена: …» named a package the registry never chose.
+ * Both url-bearing kinds are normalised the same way the wizard's own gate
+ * normalises them (`validateStep` runs the typed value through
+ * `normalizeHttpUrl`), so a bare host that passed the step cannot be refused
+ * by the server one screen later.
+ */
+function sourceForSubmit(draft: WizardDraft): InsertSource | undefined {
+  if (draft.kind === "scene") {
+    return draft.sceneKey ? { sceneKey: draft.sceneKey } : undefined
+  }
+  const url = draft.source.url?.trim()
+  const normalized = url ? normalizeHttpUrl(url) || url : undefined
+  return { ...draft.source, ...(url ? { url: normalized } : {}) }
+}
 
 export function InsertWizard({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const { t, categories, addInsert, libraryBusy } = useScreenkit()
@@ -128,14 +149,12 @@ export function InsertWizard({ open, onOpenChange }: { open: boolean; onOpenChan
         technicalNotesRu: splitLines(draft.technicalNotesRu),
         technicalNotesEn: splitLines(draft.technicalNotesEn),
         kind: draft.kind,
-        source:
-          draft.kind === "scene"
-            ? undefined
-            : draft.kind === "site"
-              ? { ...draft.source, url: normalizeHttpUrl(draft.source.url) }
-              : draft.source,
+        source: sourceForSubmit(draft),
       })
-    } catch {
+    } catch (failure) {
+      // the store toasts the server's own message; keep the footer slot in
+      // step with it instead of leaving the author with an empty error row
+      setError(rpcErrorMessage(failure))
       setBusy(false)
       return
     }
@@ -171,7 +190,17 @@ export function InsertWizard({ open, onOpenChange }: { open: boolean; onOpenChan
       >
         <ArrowLeft className="size-3.5" /> {t("wizard.back")}
       </button>
-      {error ? <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-accent-red">{error}</span> : <span className="flex-1" />}
+      {/* the message is the only sign a step refused to advance: the button
+          does not move and focus stays where it was, so it has to announce
+          itself. it also wraps rather than truncating — a server message is
+          longer than the footer. */}
+      {error ? (
+        <span role="alert" className="min-w-0 flex-1 font-mono text-[11px] leading-snug text-accent-red [overflow-wrap:anywhere]">
+          {error}
+        </span>
+      ) : (
+        <span className="flex-1" />
+      )}
       {isLast ? (
         <button
           type="button"

@@ -1,6 +1,7 @@
 "use client"
 
 import { normalizeHttpUrl } from "@/lib/media/url"
+import { MAX_SOURCE_ZOOM, MIN_SOURCE_ZOOM } from "@/lib/screenkit/insert-kinds"
 import type { ResolvedInsert } from "@/lib/screenkit/types"
 import { Globe } from "lucide-react"
 import * as React from "react"
@@ -35,7 +36,13 @@ export function SiteScreen({ insert }: { insert: ResolvedInsert }) {
         key={url}
         src={url}
         title={insert.title}
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+        /* `allow-same-origin` keeps the framed site on its own origin, which
+           a real page needs. `checkSourceUrl` refuses this app's own origin,
+           so it can never mean "same origin as the shell" — a frame that did
+           would share a document with the localStorage holding the edit and
+           github tokens. popups and presentation are not needed to render a
+           page inside a prop device frame. */
+        sandbox="allow-scripts allow-same-origin allow-forms"
         referrerPolicy="no-referrer"
         loading="lazy"
         scrolling={source.scroll ? "auto" : "no"}
@@ -52,7 +59,8 @@ export function SiteScreen({ insert }: { insert: ResolvedInsert }) {
   )
 }
 
+/** the validator's range, applied to whatever a row actually carries */
 export function clampZoom(value: number | undefined): number {
   if (!Number.isFinite(value) || value === undefined) return 1
-  return Math.min(3, Math.max(0.25, value))
+  return Math.min(MAX_SOURCE_ZOOM, Math.max(MIN_SOURCE_ZOOM, value))
 }

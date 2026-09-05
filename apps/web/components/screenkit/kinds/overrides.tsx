@@ -1,5 +1,6 @@
 "use client"
 
+import { parseInsertSource } from "@/lib/screenkit/insert-kinds"
 import type { InsertSource } from "@/lib/screenkit/types"
 import * as React from "react"
 
@@ -29,7 +30,18 @@ function load(): Overrides {
   try {
     const raw = window.localStorage.getItem(KIND_OVERRIDES_KEY)
     const parsed = raw ? (JSON.parse(raw) as unknown) : null
-    if (parsed && typeof parsed === "object") state = parsed as Overrides
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      /* Every value here is merged over a row's own source and reaches the
+         same inline styles and iframe attributes, so it is held to the same
+         rules as a row read out of the database rather than cast: this is
+         localStorage, which anything running on this origin can write. */
+      const clean: Overrides = {}
+      for (const [id, value] of Object.entries(parsed as Record<string, unknown>)) {
+        const source = parseInsertSource(value)
+        if (source) clean[id] = source
+      }
+      state = clean
+    }
   } catch {
     state = {}
   }

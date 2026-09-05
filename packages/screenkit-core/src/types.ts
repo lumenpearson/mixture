@@ -17,6 +17,8 @@ export type InsertSource = {
   url?: string
   /** cloud-drive path for `file` inserts */
   path?: string
+  /** which scene package draws a `scene` insert; absent = resolve by id/category */
+  sceneKey?: string
   /** how a file fills the screen */
   fit?: "contain" | "cover"
   /** zoom factor for sites and images (1 = natural) */

@@ -44,7 +44,8 @@ message InsertSource {
   // cloud-drive path for `file` inserts
   optional string path = 2;
   InsertFit fit = 3;
-  // zoom factor (1 = natural), validated to 0.25 .. 4 by the server
+  // zoom factor (1 = natural), validated to 0.25 .. 3 by the server — the
+  // same ceiling the zoom controls and the renderer clamp to
   optional double zoom = 4;
   // allow scrolling inside a site insert
   optional bool scroll = 5;
@@ -53,6 +54,11 @@ message InsertSource {
   optional bool muted = 8;
   // background behind letterboxed content; a css color, validated server-side
   optional string background = 9;
+  // which scene package renders a `scene` insert (a manifest key such as
+  // "cctv"). Absent means the registry picks by insert id, then by category,
+  // then the fallback package — the behaviour every insert had before this
+  // field existed.
+  optional string scene_key = 10;
 }
 
 // A screen insert: the library card plus its generation prompts.

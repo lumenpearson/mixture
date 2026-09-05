@@ -122,6 +122,7 @@ export function sourceToPb(s: InsertSource): PbInsertSource {
     loop: s.loop,
     muted: s.muted,
     background: s.background,
+    sceneKey: s.sceneKey,
   })
 }
 
@@ -143,6 +144,7 @@ export function sourceFromPb(s: PbInsertSource | undefined): InsertSource {
   if (s.loop !== undefined) out.loop = s.loop
   if (s.muted !== undefined) out.muted = s.muted
   if (s.background !== undefined) out.background = s.background
+  if (s.sceneKey !== undefined) out.sceneKey = s.sceneKey
   return out
 }
 

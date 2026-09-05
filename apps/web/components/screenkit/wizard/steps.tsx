@@ -21,6 +21,8 @@ import { toast } from "sonner"
 import { InsertPreview } from "../insert-preview"
 import { invalidateCloudTree } from "../media/use-cloud-tree"
 import { Explain, KeyVal, SegmentedControl } from "../primitives"
+import { MAX_SOURCE_ZOOM, MIN_SOURCE_ZOOM } from "@/lib/screenkit/insert-kinds"
+import { useNarrow } from "./use-narrow"
 import { useScreenkit } from "../store"
 import { splitLines, suggestSlug, type WizardDraft } from "./draft"
 import { KIND_ART } from "./kind-art"
@@ -102,7 +104,7 @@ function Toggle({ title, desc, checked, onChange }: { title: string; desc: strin
         <span className="font-mono text-sm lowercase text-foreground">{title}</span>
         <span className="font-mono text-[11px] text-text-muted">{desc}</span>
       </div>
-      <Switch checked={checked} onCheckedChange={onChange} />
+      <Switch checked={checked} onCheckedChange={onChange} aria-label={title} />
     </div>
   )
 }
@@ -220,7 +222,14 @@ function SiteSource({ draft, update }: StepProps) {
               <span className="font-mono text-[11px] lowercase text-text-secondary">{t("kind.source.zoom")}</span>
               <span className="font-mono text-xs text-text-secondary">{zoom}%</span>
             </div>
-            <Slider value={[zoom]} min={25} max={300} step={5} onValueChange={(value) => setSource({ zoom: value[0] / 100 })} />
+            <Slider
+              value={[zoom]}
+              min={MIN_SOURCE_ZOOM * 100}
+              max={MAX_SOURCE_ZOOM * 100}
+              step={5}
+              onValueChange={(value) => setSource({ zoom: value[0] / 100 })}
+              aria-label={t("kind.source.zoom")}
+            />
           </div>
           <Toggle title={t("kind.source.scroll")} desc={t("kind.source.scrollDesc")} checked={draft.source.scroll ?? false} onChange={(scroll) => setSource({ scroll })} />
           <Explain>{t("kind.site.blocked")}</Explain>
@@ -374,6 +383,9 @@ function PickerSkeleton({ label }: { label: string }) {
 
 export function IdentityStep({ draft, update }: StepProps) {
   const { t, categories, catLabel, contentLocale } = useScreenkit()
+  /* on a phone the wizard is full-screen with a sticky footer, and raising
+     the keyboard the moment the step opens covers both */
+  const narrow = useNarrow()
   const pickDevice = (device: DeviceType) => {
     const preset = DEVICES.find((item) => item.id === device)
     update({ device, aspect: preset?.aspect ?? draft.aspect })
@@ -383,7 +395,7 @@ export function IdentityStep({ draft, update }: StepProps) {
       <StepIntro title={t("wizard.identity.title")} desc={t("wizard.identity.desc")} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t("editor.titleRu")} required>
-          <Input value={draft.titleRu} onChange={(event) => update({ titleRu: event.target.value })} placeholder={t("editor.titleRuPh")} className={inputCls} autoFocus />
+          <Input value={draft.titleRu} onChange={(event) => update({ titleRu: event.target.value })} placeholder={t("editor.titleRuPh")} className={inputCls} autoFocus={!narrow} />
         </Field>
         <Field label={t("editor.titleEn")} hint={t("editor.optional")}>
           <Input value={draft.titleEn} onChange={(event) => update({ titleEn: event.target.value })} placeholder={t("editor.titleEnPh")} className={inputCls} />

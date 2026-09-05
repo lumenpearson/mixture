@@ -97,7 +97,7 @@ export function FilePicker({ value, onPick }: { value?: string; onPick: (entry: 
       </div>
 
       {!query ? (
-        <nav className="flex flex-wrap items-center gap-1 font-mono text-[11px] lowercase text-text-faint" aria-label="folder">
+        <nav className="flex flex-wrap items-center gap-1 font-mono text-[11px] lowercase text-text-faint" aria-label={t("wizard.file.breadcrumbs")}>
           <button type="button" onClick={() => setFolder("")} className="rounded-md px-1.5 py-0.5 hover:bg-panel-hover hover:text-foreground">
             {t("wizard.file.root")}
           </button>

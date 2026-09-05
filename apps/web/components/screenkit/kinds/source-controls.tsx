@@ -119,6 +119,7 @@ export function SourceControls({ insert }: { insert: ResolvedInsert }) {
             value={source.background ?? ""}
             onChange={(event) => set({ background: event.target.value })}
             placeholder="#000000"
+            aria-label={t("kind.source.background")}
             className={cn(inputCls, "h-8 w-32")}
           />
         </div>
@@ -154,7 +155,10 @@ function Toggle({
         <span className="font-mono text-sm lowercase text-foreground">{title}</span>
         <span className="font-mono text-[12px] text-text-muted">{desc}</span>
       </div>
-      <Switch checked={checked} onCheckedChange={onChange} />
+      {/* the title above is a plain span: without this the switch is
+          announced as an unnamed "switch, off", three in a row on the file
+          panel */}
+      <Switch checked={checked} onCheckedChange={onChange} aria-label={title} />
     </div>
   )
 }
@@ -185,7 +189,14 @@ function Range({
           {suffix}
         </span>
       </div>
-      <Slider value={[value]} min={min} max={max} step={1} onValueChange={(next) => onChange(next[0])} />
+      <Slider
+        value={[value]}
+        min={min}
+        max={max}
+        step={1}
+        onValueChange={(next) => onChange(next[0])}
+        aria-label={title}
+      />
       <Explain>{desc}</Explain>
     </div>
   )

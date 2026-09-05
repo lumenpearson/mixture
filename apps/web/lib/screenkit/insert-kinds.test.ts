@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   INSERT_KINDS,
   MAX_SOURCE_URL_LENGTH,
+  MAX_SOURCE_ZOOM,
   checkSourcePath,
   checkSourceUrl,
   defaultSource,
@@ -76,6 +77,8 @@ describe("source paths", () => {
     expect(fail(checkSourcePath("../../etc/passwd")).message).toBe("forbidden path segment")
     expect(fail(checkSourcePath("public/../../secrets.txt")).message).toBe("forbidden path segment")
     expect(fail(checkSourcePath(".git/config")).message).toBe("forbidden path segment")
+    // the cloud service lower-cases each segment before this comparison
+    expect(fail(checkSourcePath(".GIT/config")).message).toBe("forbidden path segment")
     expect(fail(checkSourcePath("clips/ha\u0000ll.mp4")).message).toBe("forbidden path segment")
     expect(fail(checkSourcePath("a".repeat(600))).message).toBe("path is too long")
     expect(fail(checkSourcePath("/")).message).toBe("a cloud path is required")
@@ -118,7 +121,11 @@ describe("validateSource", () => {
       "must be a number",
     )
     expect(validateSource("site", { url: "https://example.com", zoom: 0.25 })).toEqual({ ok: true })
-    expect(validateSource("site", { url: "https://example.com", zoom: 4 })).toEqual({ ok: true })
+    // the ceiling is the one the renderer clamps to and both sliders stop at
+    expect(validateSource("site", { url: "https://example.com", zoom: MAX_SOURCE_ZOOM })).toEqual({ ok: true })
+    expect(fail(validateSource("site", { url: "https://example.com", zoom: MAX_SOURCE_ZOOM + 1 })).field).toBe(
+      "source.zoom",
+    )
     const fit = { url: "https://example.com", fit: "fill" } as unknown as Parameters<typeof validateSource>[1]
     expect(fail(validateSource("site", fit)).field).toBe("source.fit")
   })
@@ -214,5 +221,54 @@ describe("reading a source back from jsonb", () => {
     expect(hasSource({ url: "" })).toBe(false)
     expect(hasSource({ scroll: false })).toBe(true)
     expect(hasSource({ url: "https://example.com" })).toBe(true)
+  })
+})
+
+
+describe("parseInsertSource on the read path", () => {
+  it("drops a background that is not a colour", () => {
+    // the value lands in an inline style; a row written by direct sql or
+    // restored from a backup never passed validateSource
+    expect(parseInsertSource({ url: "https://a.example/", background: "url(https://tracker.example/p.gif)" })).toEqual(
+      { url: "https://a.example/" },
+    )
+    expect(parseInsertSource({ url: "https://a.example/", background: "#0b0f17" })).toEqual({
+      url: "https://a.example/",
+      background: "#0b0f17",
+    })
+  })
+
+  it("keeps a scene key that looks like one and drops anything else", () => {
+    expect(parseInsertSource({ sceneKey: "cctv" })).toEqual({ sceneKey: "cctv" })
+    expect(parseInsertSource({ sceneKey: "../etc" })).toBeUndefined()
+    expect(parseInsertSource({ sceneKey: "A B" })).toBeUndefined()
+  })
+})
+
+describe("a scene insert", () => {
+  it("carries the package the author picked and nothing else", () => {
+    expect(validateSource("scene", { sceneKey: "countdown" })).toEqual({ ok: true })
+    expect(normalizeSource("scene", { sceneKey: " countdown " })).toEqual({ sceneKey: "countdown" })
+    expect(fail(validateSource("scene", { sceneKey: "no spaces allowed" })).field).toBe("source.sceneKey")
+    expect(fail(validateSource("scene", { sceneKey: "countdown", url: "https://a.example/" })).field).toBe("source")
+    // a scene source with nothing in it is still a scene
+    expect(validateSource("scene", {})).toEqual({ ok: true })
+    expect(normalizeSource("scene", { url: "https://a.example/" })).toEqual({})
+  })
+})
+
+describe("checkSourceUrl", () => {
+  it("refuses a url that frames this app itself", () => {
+    // the frame keeps allow-scripts, and same-origin there would mean sharing
+    // a document with the localStorage that holds the tokens
+    const site = process.env.NEXT_PUBLIC_SITE_URL
+    process.env.NEXT_PUBLIC_SITE_URL = "https://mixture.example"
+    try {
+      expect(fail(checkSourceUrl("https://mixture.example/insert/gs-001")).message).toBe("cannot frame this app")
+      expect(checkSourceUrl("https://elsewhere.example/")).toEqual({ ok: true })
+    } finally {
+      if (site === undefined) delete process.env.NEXT_PUBLIC_SITE_URL
+      else process.env.NEXT_PUBLIC_SITE_URL = site
+    }
   })
 })
