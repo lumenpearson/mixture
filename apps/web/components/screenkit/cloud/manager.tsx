@@ -47,6 +47,7 @@ import {
 import { UploadPanel } from "./upload-panel"
 import { invalidateTreeCache, useDebounced, useTreeSearch } from "./use-tree-search"
 import { useUploads } from "./use-uploads"
+import { copyText } from "@/lib/clipboard"
 
 /* ------------------------------------------------------------------ *
  * the cloud file manager
@@ -396,12 +397,11 @@ export function CloudManager({
     [provider, t],
   )
 
-  const copyText = React.useCallback(
+  const copyToClipboard = React.useCallback(
     (value: string, message: string) => {
-      void navigator.clipboard?.writeText(value)
-      toast.success(message)
+      void copyText(value, message, t("menu.copyFailed"))
     },
-    [],
+    [t],
   )
 
   /*
@@ -505,8 +505,8 @@ export function CloudManager({
     () => ({
       open: openEntry,
       download: (entry) => void download(entry),
-      copyLink: (entry) => copyText(linkFor(entry), t("common.copied")),
-      copyPath: (entry) => copyText(entry.path, t("common.copied")),
+      copyLink: (entry) => copyToClipboard(linkFor(entry), t("common.copied")),
+      copyPath: (entry) => copyToClipboard(entry.path, t("common.copied")),
       startRename: (entry) => setRenamingPath(entry.path),
       move: (entry) => setMoveState({ initial: entry.path, targets: [entry] }),
       duplicate,
@@ -518,7 +518,7 @@ export function CloudManager({
       cut: (list) => setClipboard({ mode: "cut", entries: [...list] }),
       copy: (list) => setClipboard({ mode: "copy", entries: [...list] }),
     }),
-    [copyText, download, duplicate, favorites, linkFor, openEntry, pickFiles, t],
+    [copyToClipboard, download, duplicate, favorites, linkFor, openEntry, pickFiles, t],
   )
 
   const deleteSelection = React.useCallback(() => {

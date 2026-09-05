@@ -24,11 +24,11 @@ import { formatBytes } from "@/lib/cloud/paths"
 import { EntryKind, type Entry } from "@mixture/protocol/cloud"
 import { Copy, MoveRight, Plus } from "lucide-react"
 import * as React from "react"
-import { toast } from "sonner"
 import { KeyVal } from "../primitives"
 import { useScreenkit } from "../store"
 import { VISIBILITY_KEY } from "./entry-row"
 import { toolbarButtonCls, toolbarPrimaryCls } from "./toolbar"
+import { copyText } from "@/lib/clipboard"
 
 /* ------------------------------------------------------------------ *
  * the manager's dialogs: new folder, move, delete, properties
@@ -211,8 +211,7 @@ export function PropertiesDialog({
   const isDir = entry.kind === EntryKind.DIRECTORY
   const category = isDir ? null : categoryFor(entry.name, entry.contentType)
   const copy = (value: string) => {
-    void navigator.clipboard?.writeText(value)
-    toast.success(t("common.copied"))
+    void copyText(value, t("common.copied"), t("menu.copyFailed"))
   }
   return (
     <Dialog open onOpenChange={onOpenChange}>

@@ -25,7 +25,7 @@ import {
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import * as React from "react"
-import { toast } from "sonner"
+import { copyText } from "@/lib/clipboard"
 import {
   LIBRARY_PAGE_SIZE_OPTIONS,
   librarySortOptions,
@@ -42,25 +42,6 @@ import { groupEntries, type MenuEntry, type MenuModel } from "./model"
  * menu builders: the actions the library, the preview stage and the
  * cards offer. each returns a function that builds a model on demand.
  * ------------------------------------------------------------------ */
-
-/**
- * copy and say what actually happened.
- *
- * `navigator.clipboard` is undefined on a non-secure origin — the desktop
- * shell's http dev target and any plain-http preview — and `writeText` also
- * rejects when the document is not focused or the permission is refused.
- * Announcing success regardless left the user with an empty clipboard and a
- * green toast.
- */
-async function copy(text: string, done: string, failed: string) {
-  try {
-    if (!navigator.clipboard) throw new Error("no clipboard api")
-    await navigator.clipboard.writeText(text)
-    toast.success(done)
-  } catch {
-    toast.error(failed)
-  }
-}
 
 export function useMenuLabels() {
   const { t } = useScreenkit()
@@ -137,14 +118,14 @@ export function useInsertMenuBuilder() {
           label: t("menu.copy.link"),
           icon: Link2,
           group: "share",
-          run: () => void copy(link(), t("common.linkCopied"), t("menu.copyFailed")),
+          run: () => void copyText(link(), t("common.linkCopied"), t("menu.copyFailed")),
         },
         {
           id: "copy-prompt",
           label: t("menu.copy.prompt"),
           icon: Copy,
           group: "share",
-          run: () => void copy(buildPromptSheet(insert, contentLocale), t("menu.copied"), t("menu.copyFailed")),
+          run: () => void copyText(buildPromptSheet(insert, contentLocale), t("menu.copied"), t("menu.copyFailed")),
         },
         {
           id: "export-sheet",

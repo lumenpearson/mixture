@@ -93,7 +93,14 @@ export const retryInterceptor: Interceptor = (next) => async (req) => {
       return await next(req)
     } catch (error) {
       const decision = decideRetry({
-        code: ConnectError.from(error).code,
+        /* A dropped connection never reaches here as a ConnectError: the
+           transport awaits `fetch`, so an offline moment, a DNS failure or a
+           TLS reset arrives as a bare TypeError, which `from` would class as
+           `unknown` — the one code the retry list deliberately excludes. The
+           fallback names it for what it is. An AbortError still maps to
+           `canceled` inside `from`, and a real ConnectError passes through
+           untouched, so only the bare rejection changes class. */
+        code: ConnectError.from(error, Code.Unavailable).code,
         replayable,
         attempt,
         retries,
@@ -128,8 +135,11 @@ function responseBytes(header: Headers): number | null {
  * record one entry per attempt. Placed innermost so the duration is the wire
  * time of a single request rather than the sum of the backoff sleeps. Only
  * metadata is written; see `log.ts` for what is deliberately left out.
+ *
+ * Exported for `client.test.ts`, which drives it together with `credentials`
+ * to prove the tokens that interceptor attaches never reach the buffer.
  */
-const logging: Interceptor = (next) => async (req) => {
+export const logging: Interceptor = (next) => async (req) => {
   if (!rpcSettingsStore.get().log) return next(req)
   const started = now()
   const attempt = attemptOf.get(req) ?? 0

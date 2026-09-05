@@ -7,12 +7,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { copyText } from "@/lib/clipboard"
 import { resolveInsert } from "@/lib/screenkit/data"
 import { deviceLabel, statusLabel } from "@/lib/screenkit/i18n"
 import { buildPromptSheet, downloadText, exportPromptSheets } from "@/lib/screenkit/export"
 import { Check, Copy, Download, FileJson, Link2 } from "lucide-react"
 import * as React from "react"
-import { toast } from "sonner"
 import { InsertLanguageToggle } from "../insert-language-toggle"
 import { Explain, KeyVal, SectionHeading, StatusBadge } from "../primitives"
 import { useScreenkit } from "../store"
@@ -22,11 +22,13 @@ function CopyBlock({
   value,
   copyLabel,
   copiedLabel,
+  failedLabel,
 }: {
   label: string
   value: string
   copyLabel: string
   copiedLabel: string
+  failedLabel: string
 }) {
   const [copied, setCopied] = React.useState(false)
   return (
@@ -35,9 +37,11 @@ function CopyBlock({
         <SectionHeading title={label} />
         <button
           onClick={() => {
-            navigator.clipboard?.writeText(value)
-            setCopied(true)
-            setTimeout(() => setCopied(false), 1400)
+            void copyText(value, copiedLabel, failedLabel).then((ok: boolean) => {
+              if (!ok) return
+              setCopied(true)
+              setTimeout(() => setCopied(false), 1400)
+            })
           }}
           className="inline-flex items-center gap-1.5 rounded-lg border border-panel-border bg-control px-2.5 py-1 font-mono text-[11px] lowercase text-text-secondary transition-colors hover:bg-panel-hover hover:text-foreground"
         >
@@ -73,20 +77,22 @@ export function PromptsSection() {
 
   const copyLabel = t("common.copy")
   const copiedLabel = t("common.copied")
+  const failedLabel = t("menu.copyFailed")
   const [allCopied, setAllCopied] = React.useState(false)
 
   const copyAll = () => {
-    void navigator.clipboard?.writeText(buildPromptSheet(insert, insertLocale))
-    setAllCopied(true)
-    window.setTimeout(() => setAllCopied(false), 1400)
+    void copyText(buildPromptSheet(insert, insertLocale), copiedLabel, failedLabel).then((ok: boolean) => {
+      if (!ok) return
+      setAllCopied(true)
+      window.setTimeout(() => setAllCopied(false), 1400)
+    })
   }
 
   const shareLink = () => {
     const url = new URL(window.location.href)
     url.search = `?view=metadata&insert=${encodeURIComponent(insert.id)}`
     url.hash = ""
-    void navigator.clipboard?.writeText(url.toString())
-    toast.success(t("common.linkCopied"))
+    void copyText(url.toString(), t("common.linkCopied"), failedLabel)
   }
 
   return (
@@ -150,18 +156,21 @@ export function PromptsSection() {
         value={insert.prompt}
         copyLabel={copyLabel}
         copiedLabel={copiedLabel}
+        failedLabel={failedLabel}
       />
       <CopyBlock
         label={t("prompts.short")}
         value={insert.shortPrompt}
         copyLabel={copyLabel}
         copiedLabel={copiedLabel}
+        failedLabel={failedLabel}
       />
       <CopyBlock
         label={t("prompts.negative")}
         value={insert.negativePrompt}
         copyLabel={copyLabel}
         copiedLabel={copiedLabel}
+        failedLabel={failedLabel}
       />
 
       <div className="flex flex-col gap-3">

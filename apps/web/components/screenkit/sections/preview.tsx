@@ -25,7 +25,6 @@ import { cn } from "@/lib/utils"
 import { Check, ChevronLeft, ChevronRight, Link2, Maximize2, Star, Trash2 } from "lucide-react"
 import Link from "next/link"
 import * as React from "react"
-import { toast } from "sonner"
 import { useInsertMenuBuilder, usePreviewExtras } from "../context-menu/builders"
 import { SkContextMenu } from "../context-menu/menu"
 import { InsertLanguageToggle } from "../insert-language-toggle"
@@ -40,6 +39,7 @@ import {
   StatusBadge,
 } from "../primitives"
 import { useScreenkit, type MessengerTheme, type MessengerVideoFormat } from "../store"
+import { copyText } from "@/lib/clipboard"
 
 const MESSENGER_THEMES: MessengerTheme[] = ["dark", "light"]
 const MESSENGER_VIDEO_FORMATS: MessengerVideoFormat[] = [
@@ -73,10 +73,11 @@ export function PreviewSection() {
     const url = new URL(window.location.href)
     url.search = `?view=preview&insert=${encodeURIComponent(raw.id)}`
     url.hash = ""
-    void navigator.clipboard?.writeText(url.toString())
-    setLinkCopied(true)
-    toast.success(t("common.linkCopied"))
-    window.setTimeout(() => setLinkCopied(false), 1400)
+    void copyText(url.toString(), t("common.linkCopied"), t("menu.copyFailed")).then((ok: boolean) => {
+      if (!ok) return
+      setLinkCopied(true)
+      window.setTimeout(() => setLinkCopied(false), 1400)
+    })
   }, [raw.id, t])
   // the device content uses the per-insert language; the chrome uses the site language
   const insertLocale = insertLocaleFor(raw.id)

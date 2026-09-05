@@ -43,7 +43,6 @@ import {
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import * as React from "react"
-import { toast } from "sonner"
 import {
   CLOUD_OPEN_EVENT,
   COMMAND_PALETTE_EVENT,
@@ -64,6 +63,7 @@ import {
   useThemeMode,
   useThemeTransition,
 } from "./theme"
+import { copyText } from "@/lib/clipboard"
 
 /* ------------------------------------------------------------------ *
  * ctrl/cmd+k command palette
@@ -424,8 +424,7 @@ export function CommandPalette() {
           const url = new URL(window.location.href)
           url.search = `?view=preview&insert=${encodeURIComponent(selectedResolved.id)}`
           url.hash = ""
-          void navigator.clipboard?.writeText(url.toString())
-          toast.success(t("common.linkCopied"))
+          void copyText(url.toString(), t("common.linkCopied"), t("menu.copyFailed"))
         },
       })
       list.push({

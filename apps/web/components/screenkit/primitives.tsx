@@ -65,16 +65,21 @@ export function SegmentedControl<T extends string>({
   onChange,
   className,
   size = "md",
+  label,
 }: {
   options: SegmentOption<T>[]
   value: T
   onChange: (v: T) => void
   className?: string
   size?: "sm" | "md"
+  /** what this group of segments is for — a tablist without a name is
+   *  announced as an anonymous "tab list" with nothing to tell two apart */
+  label?: string
 }) {
   return (
     <div
       role="tablist"
+      aria-label={label}
       className={cn(
         "flex w-full gap-1 rounded-2xl border border-panel-border bg-control p-1",
         className,

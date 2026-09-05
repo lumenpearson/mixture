@@ -38,10 +38,15 @@ export const NATIVE_MENU_SURFACES = [
   "select",
   "[contenteditable]:not([contenteditable='false'])",
   "a[href]",
+  /* Only the media elements whose browser menu carries something this app
+     does not offer — save image, download video, picture-in-picture. `svg`
+     and `canvas` were here too and cost more than they gave: every lucide
+     glyph is an inline <svg> and every insert scene is a <canvas>, so a
+     right-click landing on a rail icon opened chrome's generic page menu
+     while the same click three pixels away on the button's padding did not.
+     Chromium offers nothing svg- or canvas-specific anyway. */
   "img",
   "picture",
-  "svg",
-  "canvas",
   "video",
   "audio",
   "embed",

@@ -214,7 +214,11 @@ export function LocalPermissionScreen({
             <span className="inline-flex items-center gap-1.5 rounded-full border border-panel-border bg-control px-2.5 py-1 text-accent-green">
               <ShieldCheck className="size-3.5" aria-hidden="true" /> {t("local.granted")}
             </span>
-            <span className="text-foreground">{rootName ?? scan?.root ?? "—"}</span>
+            {/* a granted folder can be named anything at all; let it wrap
+                instead of pushing the badge off the row */}
+            <span className="min-w-0 text-foreground [overflow-wrap:anywhere]">
+              {rootName ?? scan?.root ?? "—"}
+            </span>
           </div>
 
           {/* scanning and failing are both async answers to a button press */}

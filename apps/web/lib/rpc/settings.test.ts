@@ -165,6 +165,10 @@ describe("retry decision", () => {
     Code.AlreadyExists,
     Code.ResourceExhausted,
     Code.Canceled,
+    /* A dropped connection does not arrive as `unknown`: the retry
+       interceptor names a bare fetch rejection `unavailable` before asking
+       (client.ts). What is left under this code is a server that answered
+       with it, and repeating that changes nothing. */
     Code.Unknown,
     // the deadline is the budget of the whole call, so its own signal has
     // already aborted the request by the time this code arrives

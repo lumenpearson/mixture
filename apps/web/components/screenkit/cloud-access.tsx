@@ -19,6 +19,7 @@ import * as React from "react"
 import { toast } from "sonner"
 import { Explain, SectionHeading } from "./primitives"
 import { useScreenkit } from "./store"
+import { copyText } from "@/lib/clipboard"
 
 /* ------------------------------------------------------------------ *
  * cloud access editor — edits cloud.config.json through CloudService
@@ -304,8 +305,11 @@ export function CloudAccessEditor({ canSave }: { canSave: boolean }) {
               <button
                 type="button"
                 onClick={() => {
-                  void navigator.clipboard?.writeText(freshKey.key)
-                  setCopied(true)
+                  /* the key is shown exactly once: a green toast over an
+                     empty clipboard loses it for good */
+                  void copyText(freshKey.key, t("common.copied"), t("menu.copyFailed")).then((ok: boolean) => {
+                    if (ok) setCopied(true)
+                  })
                 }}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-panel-border bg-control px-2.5 py-1 font-mono text-[11px] lowercase text-text-secondary transition-colors hover:bg-panel-hover hover:text-foreground"
               >

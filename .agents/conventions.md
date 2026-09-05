@@ -99,10 +99,14 @@ Next-вставки из `public/screenkit-inserts/*`, манифест и ик�
 - Тема, палитра, масштаб, glow — `components/screenkit/theme.tsx`; движение —
   `motion.tsx`. Они пишут атрибуты на `<html>` и `localStorage`.
 - `localStorage` владеет всем, что сохраняет браузер; ключи с префиксом `screenkit-`
-  (locale, palette, gradients, scale, glow, motion, motion-features, content-width,
-  category-panel-width, favorites, library-list) и `mixture-` (edit-token, cloud-token,
-  cloud-key). `sessionStorage` — только кэши (`screenkit-library-cache-v2`,
-  `screenkit-changelog-cache-v3`).
+  (locale, palette, palette-recent, gradients, scale, glass, motion, motion-features,
+  content-width, category-panel-width, layout, favorites, library-list, kind-overrides,
+  wizard-draft, player, rpc, desktop, cloud-settings, cloud-favorites) и `mixture-`
+  (edit-token, cloud-token, cloud-key). `sessionStorage` — только кэши
+  (`screenkit-library-cache-v2`, `screenkit-changelog-cache-v3`). Полный список с
+  назначением — в `CLAUDE.md`; он проверяется тестом
+  `lib/screenkit/storage-keys.test.ts`, так что новый ключ добавляется в список тем же
+  изменением.
 - Встроенные вставки (`lib/screenkit/data.ts`) и пакеты вставок (`packages/inserts/*`) —
   неизменяемая конфигурация, а не состояние.
 

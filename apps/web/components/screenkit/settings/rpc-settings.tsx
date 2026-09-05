@@ -21,11 +21,11 @@ import {
 import { cn } from "@/lib/utils"
 import { Check, Copy, Loader2, Pause, Play, RotateCcw, Trash2, TriangleAlert, Zap } from "lucide-react"
 import * as React from "react"
-import { toast } from "sonner"
 import { MotionNumber } from "../motion-number"
 import { Explain, KeyVal, SectionHeading, SegmentedControl } from "../primitives"
 import { useScreenkit } from "../store"
 import { fill, recentCalls } from "./rpc-format"
+import { copyText } from "@/lib/clipboard"
 
 /* ------------------------------------------------------------------ *
  * connection · grpc / protobuf
@@ -110,8 +110,7 @@ export function RpcSettings() {
   }, [])
 
   const copyCurl = React.useCallback(() => {
-    void navigator.clipboard?.writeText(rpcCurlCommand())
-    toast.success(t("rpc.copied"))
+    void copyText(rpcCurlCommand(), t("rpc.copied"), t("menu.copyFailed"))
   }, [t])
 
   const reset = React.useCallback(() => {
@@ -123,6 +122,19 @@ export function RpcSettings() {
   // the deployment refuses a longer deadline; a remote host may not, so this
   // is a warning rather than a clamp (see RPC_SERVER_MAX_TIMEOUT_MS)
   const overDeadline = !settings.baseUrl && settings.timeoutMs > RPC_SERVER_MAX_TIMEOUT_MS
+
+  /* the applied override, when it points somewhere other than the page it is
+     rendered on. empty while the field is empty or names this same origin */
+  const remoteOrigin = React.useSyncExternalStore(
+    rpcSettingsStore.subscribe,
+    () => {
+      const base = rpcSettingsStore.get().baseUrl
+      if (!base) return ""
+      if (typeof window !== "undefined" && base === window.location.origin) return ""
+      return base
+    },
+    () => "",
+  )
 
   return (
     <section className="flex min-w-0 flex-col gap-6 rounded-3xl border border-panel-border bg-panel-soft p-4 sm:p-5">
@@ -142,6 +154,7 @@ export function RpcSettings() {
           value={settings.protocol}
           onChange={(protocol) => rpcSettingsStore.update({ protocol })}
           size="sm"
+          label={t("rpc.protocol")}
         />
       </Field>
 
@@ -151,6 +164,7 @@ export function RpcSettings() {
           value={settings.format}
           onChange={(format) => rpcSettingsStore.update({ format })}
           size="sm"
+          label={t("rpc.format")}
         />
       </Field>
 
@@ -171,13 +185,17 @@ export function RpcSettings() {
             <span>{fill(t("rpc.timeoutServerLimit"), { max: RPC_SERVER_MAX_TIMEOUT_MS / 1000 })}</span>
           </p>
         ) : null}
-        <Slider
-          value={[settings.timeoutMs]}
-          min={RPC_TIMEOUT_MIN_MS}
-          max={RPC_TIMEOUT_MAX_MS}
-          step={RPC_TIMEOUT_STEP_MS}
-          onValueChange={(next) => rpcSettingsStore.update({ timeoutMs: next[0] })}
-        />
+        {/* the visible label above is a plain span, so the thumb would be
+            announced as an unnamed "slider, 30000" without this group */}
+        <div role="group" aria-label={t("rpc.timeout")}>
+          <Slider
+            value={[settings.timeoutMs]}
+            min={RPC_TIMEOUT_MIN_MS}
+            max={RPC_TIMEOUT_MAX_MS}
+            step={RPC_TIMEOUT_STEP_MS}
+            onValueChange={(next) => rpcSettingsStore.update({ timeoutMs: next[0] })}
+          />
+        </div>
         <Explain>{t("rpc.timeoutDesc")}</Explain>
       </div>
 
@@ -188,13 +206,15 @@ export function RpcSettings() {
             <MotionNumber value={settings.retries} />
           </span>
         </div>
-        <Slider
-          value={[settings.retries]}
-          min={0}
-          max={RPC_RETRIES_MAX}
-          step={1}
-          onValueChange={(next) => rpcSettingsStore.update({ retries: next[0] })}
-        />
+        <div role="group" aria-label={t("rpc.retries")}>
+          <Slider
+            value={[settings.retries]}
+            min={0}
+            max={RPC_RETRIES_MAX}
+            step={1}
+            onValueChange={(next) => rpcSettingsStore.update({ retries: next[0] })}
+          />
+        </div>
         <Explain>{t("rpc.retriesDesc")}</Explain>
         <Explain>{t("rpc.explain.retries")}</Explain>
       </div>
@@ -239,6 +259,15 @@ export function RpcSettings() {
               : ""
             : t(`rpc.baseUrl.${check.reason}`)}
         </p>
+        {remoteOrigin ? (
+          /* the credential interceptor attaches the edit token and the user's
+             github token to every request, so where the requests go is not a
+             detail to leave in a description nobody re-reads */
+          <p className="flex items-start gap-1.5 font-mono text-[12px] leading-relaxed text-warning [overflow-wrap:anywhere]">
+            <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+            <span>{fill(t("rpc.baseUrl.remote"), { origin: remoteOrigin })}</span>
+          </p>
+        ) : null}
         <Explain>{t("rpc.baseUrlDesc")}</Explain>
       </div>
 

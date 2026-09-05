@@ -34,6 +34,7 @@ import {
 import { MotionNumber } from "../motion-number"
 import { Explain } from "../primitives"
 import { useScreenkit } from "../store"
+import { copyText } from "@/lib/clipboard"
 
 type ChangelogItem = ChangelogItem_
 type ChangelogCommit = ChangelogCommit_
@@ -246,11 +247,11 @@ function isPageSize(value: string): value is `${PageSize}` {
   return ["10", "20", "40", "80"].includes(value)
 }
 
-function copyPublicAnchor(slug: string) {
+function copyPublicAnchor(slug: string, done: string, failed: string) {
   if (typeof window === "undefined") return
   const url = new URL(window.location.href)
   url.hash = slug
-  void navigator.clipboard?.writeText(url.toString())
+  void copyText(url.toString(), done, failed)
   window.history.replaceState(null, "", url)
 }
 
@@ -275,7 +276,7 @@ function writeCache(data: ChangelogData) {
 }
 
 export function TimelineSection() {
-  const { locale } = useScreenkit()
+  const { locale, t } = useScreenkit()
   const text = locale === "en" ? TEXT.en : TEXT.ru
   const [data, setData] = React.useState<ChangelogData | null>(null)
   const [loading, setLoading] = React.useState(true)
@@ -401,7 +402,7 @@ export function TimelineSection() {
   }, [page, totalPages])
 
   const copy = (slug: string) => {
-    copyPublicAnchor(slug)
+    copyPublicAnchor(slug, t("common.linkCopied"), t("menu.copyFailed"))
     setCopied(slug)
     window.setTimeout(() => setCopied(null), 1200)
   }

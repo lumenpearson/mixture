@@ -36,7 +36,9 @@ user-added inserts and categories; without it the library is read-only),
 `MIXTURE_EDIT_TOKEN` (gates library mutations), `MIXTURE_GITHUB_REPO` /
 `MIXTURE_GITHUB_TOKEN` (changelog source), `MIXTURE_CLOUD_REPO` / `MIXTURE_CLOUD_BRANCH` /
 `MIXTURE_CLOUD_GITHUB_TOKEN` / `MIXTURE_CLOUD_OWNERS` (cloud drive),
-`NEXT_PUBLIC_SITE_URL` (metadata base).
+`NEXT_PUBLIC_SITE_URL` (metadata base), `MIXTURE_RPC_ALLOWED_ORIGINS` (comma-separated
+origins allowed to call `/api/rpc` cross-origin; the desktop bundle's own origins are
+always allowed — see `lib/rpc/cors.ts`).
 
 ## Architecture
 
@@ -88,14 +90,20 @@ is off because Vercel functions speak HTTP/1.1 without trailers.
   and per-insert locale overrides. It is the only caller of the library RPCs.
 - `theme.tsx` owns palette, gradients, scale and glow (`<html data-*>` attributes);
   `motion.tsx` owns reduce-motion and per-feature flags.
-- `localStorage` keys: `screenkit-locale`, `screenkit-palette`, `screenkit-gradients`,
-  `screenkit-scale`, `screenkit-glass-v1`, `screenkit-layout-v1`, `screenkit-motion`,
-  `screenkit-motion-features-v2`, `screenkit-content-width-v1`,
-  `screenkit-category-panel-width`, `screenkit-favorites-v1`, `screenkit-library-list-v1`,
-  `screenkit.reveal-mode`, `mixture-edit-token`, `mixture-cloud-token`,
-  `mixture-cloud-key`. `screenkit-glow` is the pre-glass flag: read once for migration,
-  then removed. `sessionStorage`: `screenkit-library-cache-v2`,
-  `screenkit-changelog-cache-v3`.
+- `localStorage` keys — appearance: `screenkit-locale`, `screenkit-palette`,
+  `screenkit-palette-recent-v1`, `screenkit-gradients`, `screenkit-scale`,
+  `screenkit-glass-v1`, `screenkit-motion`, `screenkit-motion-features-v2`; layout:
+  `screenkit-layout-v1`, `screenkit-content-width-v1`, `screenkit-category-panel-width`;
+  library: `screenkit-favorites-v1`, `screenkit-library-list-v1`,
+  `screenkit-kind-overrides-v1`, `screenkit-wizard-draft-v1`; media and transport:
+  `screenkit-player-v1`, `screenkit-rpc-v1`; desktop: `screenkit-desktop-v1`; cloud:
+  `screenkit-cloud-settings-v1`, `screenkit-cloud-favorites-v1`; plus
+  `screenkit.reveal-mode` and the credentials `mixture-edit-token`,
+  `mixture-cloud-token`, `mixture-cloud-key`. Two are legacy, read once to migrate and
+  then removed: `screenkit-glow` (pre-glass) and `screenkit-motion-features-v1`.
+  `sessionStorage`: `screenkit-library-cache-v2`, `screenkit-changelog-cache-v3`.
+  `lib/screenkit/storage-keys.test.ts` fails when a key in the source is missing here,
+  so add a new one to this list in the same change.
 - Built-in inserts, scene packages and `cloud.config.json` are configuration, not state.
 
 ### Degradation by design
